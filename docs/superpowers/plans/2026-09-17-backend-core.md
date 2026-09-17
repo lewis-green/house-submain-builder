@@ -4,7 +4,7 @@
 
 **Goal:** Build the pure panel generator, the Postgres-backed data layer, and the design API that turns circuit counts into a laid-out DIN panel.
 
-**Architecture:** A pure C# function in a `Domain` project with no EF dependency takes circuits, an enclosure, a ruleset and a catalogue, and returns a layout, diagnostics and a bill of materials. Identical inputs always produce an identical panel, which makes it unit-testable and golden-file-testable. The `Api` project persists the result, merging existing commissioning data by device label so re-generation never destroys captured MACs.
+**Architecture:** A pure C# function in a `Domain` project with no EF dependency takes circuits, an enclosure, a ruleset and a catalogue, and returns a layout, diagnostics and a bill of materials. Identical inputs always produce an identical panel, which makes it unit-testable and golden-file-testable. The `Api` project persists the result; circuits are owned by the submain, so re-generation re-assigns them to channels and reports any that no longer have a home.
 
 **Tech Stack:** .NET 9, EF Core 9, Postgres 17, Keycloak bearer auth, xUnit, Testcontainers, Docker Compose.
 
@@ -28,7 +28,7 @@
 house-config/
   Directory.Packages.props            central package versions
   HouseConfig.slnx                    solution
-  docker-compose.yml                  postgres + minio + api
+  docker-compose.yml                  postgres + api
   seed/catalogue.v1.json              versioned catalogue seed data
   src/
     PubInvest.HouseConfig.Domain/
@@ -48,7 +48,7 @@ house-config/
       Generation/BandPacker.cs
       Generation/BomBuilder.cs
       Generation/PanelGenerator.cs    orchestration, GenerationRequest/Result
-      Generation/LayoutMerger.cs      re-generation merge by device label
+      Generation/OrphanReporter.cs    circuits left without a channel
     PubInvest.HouseConfig.Data/
       Entities/*.cs                   EF entities, one file each
       HouseConfigDbContext.cs
@@ -74,7 +74,7 @@ house-config/
       BomBuilderTests.cs
       PanelGeneratorTests.cs
       Golden/typical-submain.json
-      LayoutMergerTests.cs
+      OrphanReporterTests.cs
     PubInvest.HouseConfig.Api.Tests/
       HouseConfigApiFactory.cs        WebApplicationFactory + Testcontainers
       ProjectEndpointTests.cs
@@ -1853,21 +1853,21 @@ git commit -m "feat: orchestrate panel generation with a golden layout test"
 
 ---
 
-### Task 9: LayoutMerger
+### Task 9: OrphanReporter
 
 **Files:**
-- Create: `src/PubInvest.HouseConfig.Domain/Generation/LayoutMerger.cs`
-- Test: `tests/PubInvest.HouseConfig.Domain.Tests/LayoutMergerTests.cs`
+- Create: `src/PubInvest.HouseConfig.Domain/Generation/OrphanReporter.cs`
+- Test: `tests/PubInvest.HouseConfig.Domain.Tests/OrphanReporterTests.cs`
 
 **Interfaces:**
-- Consumes: `PanelLayout`, `PlacedDevice`, `ChannelAssignment`, `Diagnostic`.
-- Produces: `ExistingDevice`, `MergedDevice`, `MergeResult`, and `LayoutMerger.Merge(PanelLayout newLayout, IReadOnlyList<ExistingDevice> existing) -> MergeResult`.
+- Consumes: `PanelLayout`, `ChannelAssignment`, `Diagnostic`.
+- Produces: `ExistingAssignment(Guid DeviceId, string Label, IReadOnlyList<ChannelAssignment> Channels)` and `OrphanReporter.Report(PanelLayout newLayout, IReadOnlyList<ExistingAssignment> existing) -> IReadOnlyList<Diagnostic>`.
 
-**Matching rule:** a newly generated device inherits commissioning data from the existing device with the same `(Category, Label)`. Labels are deterministic (`"Dimmer 1"`, `"Relay 2"`, `"L7"`), so a device keeps its MAC and photo even when it moves to a different slot. An existing device with no match, or a circuit that was assigned before and has no channel now, produces an `ORPHANED_ASSIGNMENT` warning — never a silent loss.
+**Why this is small.** Circuit names and rooms live on `Circuit` rows owned by the submain, so they survive re-generation without any help. Nothing is currently stored on a device that is worth carrying across a re-run, so re-generation replaces device rows outright. The one thing that must not happen silently is a circuit that *was* wired to a channel losing its home — that is what this reports. When Plan 2 adds engineer-dragged positions, those become state worth preserving and this grows into a real merge.
 
 - [ ] **Step 1: Write the failing test**
 
-`tests/PubInvest.HouseConfig.Domain.Tests/LayoutMergerTests.cs`:
+`tests/PubInvest.HouseConfig.Domain.Tests/OrphanReporterTests.cs`:
 
 ```csharp
 using FluentAssertions;
@@ -1879,189 +1879,124 @@ using Xunit;
 
 namespace PubInvest.HouseConfig.Domain.Tests;
 
-public class LayoutMergerTests
+public class OrphanReporterTests
 {
     private static readonly Guid CircuitA = new("44444444-0000-0000-0000-000000000001");
     private static readonly Guid CircuitB = new("44444444-0000-0000-0000-000000000002");
 
-    private static PlacedDevice NewDimmer(int row, int slot, string label, params Guid?[] circuits) =>
-        new(CatalogueFixture.DimmerId, DeviceCategory.Dimmer240, row, slot, 2, label,
+    private static PlacedDevice Dimmer(string label, params Guid?[] circuits) =>
+        new(CatalogueFixture.DimmerId, DeviceCategory.Dimmer240, 1, 0, 2, label,
             circuits.Select((c, i) => new ChannelAssignment(i, c, c is null)).ToList(),
             TerminalRole.None);
 
-    private static ExistingDevice OldDimmer(string label, string? mac, params Guid?[] circuits) =>
-        new(Guid.NewGuid(), CatalogueFixture.DimmerId, DeviceCategory.Dimmer240, label, mac, "SN-1",
-            PhotoAssetId: Guid.NewGuid(), CommissionedAt: DateTimeOffset.UnixEpoch,
-            Channels: circuits.Select((c, i) => new ChannelAssignment(i, c, c is null)).ToList(),
-            TerminalRole: TerminalRole.None);
+    private static ExistingAssignment Existing(string label, params Guid?[] circuits) =>
+        new(Guid.NewGuid(), label,
+            circuits.Select((c, i) => new ChannelAssignment(i, c, c is null)).ToList());
 
     [Fact]
-    public void A_device_keeps_its_mac_when_it_moves_to_a_different_slot()
+    public void Nothing_is_reported_when_every_circuit_still_has_a_channel()
     {
-        var layout = new PanelLayout(6, 24, [NewDimmer(2, 6, "Dimmer 1", CircuitA, CircuitB)]);
-        var existing = new[] { OldDimmer("Dimmer 1", "AA:BB:CC:DD:EE:01", CircuitA, CircuitB) };
+        var layout = new PanelLayout(6, 24, [Dimmer("Dimmer 1", CircuitA, CircuitB)]);
 
-        var result = LayoutMerger.Merge(layout, existing);
+        var diagnostics = OrphanReporter.Report(layout, [Existing("Dimmer 1", CircuitA, CircuitB)]);
 
-        var merged = result.Devices.Should().ContainSingle().Subject;
-        merged.MacAddress.Should().Be("AA:BB:CC:DD:EE:01");
-        merged.ExistingDeviceId.Should().Be(existing[0].Id);
-        merged.Placed.StartSlot.Should().Be(6);
-        result.Diagnostics.Should().BeEmpty();
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
-    public void A_new_device_with_no_predecessor_has_no_commissioning_data()
+    public void Nothing_is_reported_when_a_circuit_simply_moves_to_another_device()
     {
-        var layout = new PanelLayout(6, 24, [NewDimmer(2, 0, "Dimmer 1", CircuitA, null)]);
+        var layout = new PanelLayout(6, 24, [Dimmer("Dimmer 1", CircuitA, null), Dimmer("Dimmer 2", CircuitB, null)]);
 
-        var result = LayoutMerger.Merge(layout, []);
+        var diagnostics = OrphanReporter.Report(layout, [Existing("Dimmer 1", CircuitA, CircuitB)]);
 
-        var merged = result.Devices.Should().ContainSingle().Subject;
-        merged.MacAddress.Should().BeNull();
-        merged.ExistingDeviceId.Should().BeNull();
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
-    public void A_commissioned_device_that_falls_out_of_the_design_is_reported()
+    public void A_circuit_that_loses_its_channel_is_reported_as_a_warning()
     {
-        var layout = new PanelLayout(6, 24, [NewDimmer(2, 0, "Dimmer 1", CircuitA, null)]);
-        var existing = new[]
-        {
-            OldDimmer("Dimmer 1", "AA:BB:CC:DD:EE:01", CircuitA, null),
-            OldDimmer("Dimmer 2", "AA:BB:CC:DD:EE:02", null, null)
-        };
+        var layout = new PanelLayout(6, 24, [Dimmer("Dimmer 1", CircuitA, null)]);
 
-        var result = LayoutMerger.Merge(layout, existing);
+        var diagnostics = OrphanReporter.Report(layout, [Existing("Dimmer 1", CircuitA, CircuitB)]);
 
-        result.Diagnostics.Should().ContainSingle()
+        diagnostics.Should().ContainSingle()
             .Which.Should().Match<Diagnostic>(d =>
                 d.Code == DiagnosticCodes.OrphanedAssignment
                 && d.Severity == DiagnosticSeverity.Warning
-                && d.Message.Contains("Dimmer 2")
-                && d.Message.Contains("AA:BB:CC:DD:EE:02"));
+                && d.Message.Contains(CircuitB.ToString()));
     }
 
     [Fact]
-    public void A_circuit_that_loses_its_channel_is_reported_even_when_the_device_survives()
+    public void Several_orphans_are_reported_in_a_stable_order()
     {
-        var layout = new PanelLayout(6, 24, [NewDimmer(2, 0, "Dimmer 1", CircuitA, null)]);
-        var existing = new[] { OldDimmer("Dimmer 1", "AA:BB:CC:DD:EE:01", CircuitA, CircuitB) };
+        var layout = new PanelLayout(6, 24, [Dimmer("Dimmer 1", null, null)]);
 
-        var result = LayoutMerger.Merge(layout, existing);
+        var diagnostics = OrphanReporter.Report(layout, [Existing("Dimmer 1", CircuitA, CircuitB)]);
 
-        result.Diagnostics.Should().ContainSingle()
-            .Which.Message.Should().Contain(CircuitB.ToString());
+        diagnostics.Should().HaveCount(2);
+        diagnostics[0].Message.Should().Contain(CircuitA.ToString());
+        diagnostics[1].Message.Should().Contain(CircuitB.ToString());
+    }
+
+    [Fact]
+    public void A_first_generation_with_no_previous_devices_reports_nothing()
+    {
+        var layout = new PanelLayout(6, 24, [Dimmer("Dimmer 1", CircuitA, null)]);
+
+        OrphanReporter.Report(layout, []).Should().BeEmpty();
     }
 }
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `dotnet test tests/PubInvest.HouseConfig.Domain.Tests --filter LayoutMergerTests`
-Expected: FAIL — `LayoutMerger` does not exist.
+Run: `dotnet test tests/PubInvest.HouseConfig.Domain.Tests --filter OrphanReporterTests`
+Expected: FAIL — `OrphanReporter` does not exist.
 
 - [ ] **Step 3: Write the implementation**
 
-`src/PubInvest.HouseConfig.Domain/Generation/LayoutMerger.cs`:
+`src/PubInvest.HouseConfig.Domain/Generation/OrphanReporter.cs`:
 
 ```csharp
-using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Diagnostics;
 using PubInvest.HouseConfig.Domain.Layout;
 
 namespace PubInvest.HouseConfig.Domain.Generation;
 
-public sealed record ExistingDevice(
-    Guid Id,
-    Guid DeviceTypeId,
-    DeviceCategory Category,
+/// A device as it was stored before re-generation, with the circuits it carried.
+public sealed record ExistingAssignment(
+    Guid DeviceId,
     string Label,
-    string? MacAddress,
-    string? Serial,
-    Guid? PhotoAssetId,
-    DateTimeOffset? CommissionedAt,
-    IReadOnlyList<ChannelAssignment> Channels,
-    TerminalRole TerminalRole);
+    IReadOnlyList<ChannelAssignment> Channels);
 
-public sealed record MergedDevice(
-    PlacedDevice Placed,
-    Guid? ExistingDeviceId,
-    string? MacAddress,
-    string? Serial,
-    Guid? PhotoAssetId,
-    DateTimeOffset? CommissionedAt);
-
-public sealed record MergeResult(
-    IReadOnlyList<MergedDevice> Devices,
-    IReadOnlyList<Diagnostic> Diagnostics);
-
-public static class LayoutMerger
+public static class OrphanReporter
 {
-    public static MergeResult Merge(PanelLayout newLayout, IReadOnlyList<ExistingDevice> existing)
+    public static IReadOnlyList<Diagnostic> Report(
+        PanelLayout newLayout,
+        IReadOnlyList<ExistingAssignment> existing)
     {
-        var byKey = existing
-            .GroupBy(d => (d.Category, d.Label))
-            .ToDictionary(g => g.Key, g => g.First());
+        if (existing.Count == 0) return [];
 
-        var matchedIds = new HashSet<Guid>();
-        var merged = new List<MergedDevice>();
-
-        foreach (var placed in newLayout.Devices)
-        {
-            if (byKey.TryGetValue((placed.Category, placed.Label), out var previous))
-            {
-                matchedIds.Add(previous.Id);
-                merged.Add(new MergedDevice(
-                    placed,
-                    previous.Id,
-                    previous.MacAddress,
-                    previous.Serial,
-                    previous.PhotoAssetId,
-                    previous.CommissionedAt));
-            }
-            else
-            {
-                merged.Add(new MergedDevice(placed, null, null, null, null, null));
-            }
-        }
-
-        var diagnostics = new List<Diagnostic>();
-
-        foreach (var lost in existing.Where(d => !matchedIds.Contains(d.Id)))
-        {
-            diagnostics.Add(new Diagnostic(
-                DiagnosticSeverity.Warning,
-                DiagnosticCodes.OrphanedAssignment,
-                $"'{lost.Label}' is no longer in the design" +
-                (lost.MacAddress is null ? "." : $" and its recorded MAC {lost.MacAddress} has been released."),
-                "Check the device is genuinely surplus before removing it from the panel."));
-        }
-
-        var newCircuits = newLayout.Devices
+        var stillAssigned = newLayout.Devices
             .SelectMany(d => d.Channels)
             .Select(c => c.CircuitId)
             .OfType<Guid>()
             .ToHashSet();
 
-        var lostCircuits = existing
+        return existing
             .SelectMany(d => d.Channels)
             .Select(c => c.CircuitId)
             .OfType<Guid>()
             .Distinct()
-            .Where(id => !newCircuits.Contains(id))
-            .OrderBy(id => id);
-
-        foreach (var circuitId in lostCircuits)
-        {
-            diagnostics.Add(new Diagnostic(
+            .Where(id => !stillAssigned.Contains(id))
+            .OrderBy(id => id)
+            .Select(id => new Diagnostic(
                 DiagnosticSeverity.Warning,
                 DiagnosticCodes.OrphanedAssignment,
-                $"Circuit {circuitId} was assigned to a channel but has no channel in the new layout.",
-                "Re-assign the circuit, or delete it if it is no longer needed."));
-        }
-
-        return new MergeResult(merged, diagnostics);
+                $"Circuit {id} was wired to a channel but has no channel in the new layout.",
+                "Re-add the circuit to the submain, or delete it if it is no longer needed."))
+            .ToList();
     }
 }
 ```
@@ -2069,13 +2004,13 @@ public static class LayoutMerger
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test tests/PubInvest.HouseConfig.Domain.Tests`
-Expected: PASS, 41 tests.
+Expected: PASS, 42 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "feat: merge regenerated layouts without losing captured macs"
+git commit -m "feat: report circuits orphaned by re-generation"
 ```
 
 ---
@@ -2084,7 +2019,7 @@ git commit -m "feat: merge regenerated layouts without losing captured macs"
 
 **Files:**
 - Create: `src/PubInvest.HouseConfig.Data/PubInvest.HouseConfig.Data.csproj`
-- Create: `src/PubInvest.HouseConfig.Data/Entities/Project.cs`, `Submain.cs`, `CircuitRow.cs`, `DeviceInstance.cs`, `DeviceChannelRow.cs`, `PhotoAsset.cs`, `PanelRevision.cs`, `DeviceTypeRow.cs`, `EnclosureTypeRow.cs`, `RuleSetRow.cs`
+- Create: `src/PubInvest.HouseConfig.Data/Entities/Project.cs`, `Submain.cs`, `CircuitRow.cs`, `DeviceInstance.cs`, `DeviceChannelRow.cs`, `PanelRevision.cs`, `DeviceTypeRow.cs`, `EnclosureTypeRow.cs`, `RuleSetRow.cs`
 - Create: `src/PubInvest.HouseConfig.Data/HouseConfigDbContext.cs`
 - Create: `src/PubInvest.HouseConfig.Data/Mapping/DomainMapper.cs`
 - Create: `docker-compose.yml`
@@ -2094,7 +2029,7 @@ git commit -m "feat: merge regenerated layouts without losing captured macs"
 
 **Interfaces:**
 - Consumes: the Domain records (for mapping only — Domain gains no reference to Data).
-- Produces: `HouseConfigDbContext` with `DbSet`s `Projects`, `Submains`, `Circuits`, `DeviceInstances`, `DeviceChannels`, `PhotoAssets`, `PanelRevisions`, `DeviceTypes`, `Enclosures`, `RuleSets`; `DomainMapper.ToDomain(DeviceTypeRow) -> DeviceType`, `ToDomain(EnclosureTypeRow) -> EnclosureType`, `ToDomain(CircuitRow) -> Circuit`, `ToDomain(RuleSetRow) -> RuleSetPayload`, `ToExisting(DeviceInstance) -> ExistingDevice`.
+- Produces: `HouseConfigDbContext` with `DbSet`s `Projects`, `Submains`, `Circuits`, `DeviceInstances`, `DeviceChannels`, `PanelRevisions`, `DeviceTypes`, `Enclosures`, `RuleSets`; `DomainMapper.ToDomain(DeviceTypeRow) -> DeviceType`, `ToDomain(EnclosureTypeRow) -> EnclosureType`, `ToDomain(CircuitRow) -> Circuit`, `ToDomain(RuleSetRow) -> RuleSetPayload`, `ToExisting(DeviceInstance) -> ExistingAssignment`.
 
 - [ ] **Step 1: Create the project and add packages**
 
@@ -2180,11 +2115,6 @@ public class DeviceInstance
     public int ModuleWidth { get; set; }
     public string Label { get; set; } = "";
     public string TerminalRole { get; set; } = "None";
-    public string? MacAddress { get; set; }
-    public string? Serial { get; set; }
-    public Guid? PhotoAssetId { get; set; }
-    public DateTimeOffset? CommissionedAt { get; set; }
-    public string? CommissionedBy { get; set; }
     public List<DeviceChannelRow> Channels { get; set; } = [];
 }
 
@@ -2195,17 +2125,6 @@ public class DeviceChannelRow
     public int ChannelIndex { get; set; }
     public Guid? CircuitId { get; set; }
     public bool IsSpare { get; set; }
-}
-
-public class PhotoAsset
-{
-    public Guid Id { get; set; }
-    public string ObjectKey { get; set; } = "";
-    public string ContentType { get; set; } = "";
-    public long ByteSize { get; set; }
-    public string Sha256 { get; set; } = "";
-    public DateTimeOffset CapturedAt { get; set; }
-    public string CapturedBy { get; set; } = "";
 }
 
 public class PanelRevision
@@ -2273,7 +2192,6 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<CircuitRow> Circuits => Set<CircuitRow>();
     public DbSet<DeviceInstance> DeviceInstances => Set<DeviceInstance>();
     public DbSet<DeviceChannelRow> DeviceChannels => Set<DeviceChannelRow>();
-    public DbSet<PhotoAsset> PhotoAssets => Set<PhotoAsset>();
     public DbSet<PanelRevision> PanelRevisions => Set<PanelRevision>();
     public DbSet<DeviceTypeRow> DeviceTypes => Set<DeviceTypeRow>();
     public DbSet<EnclosureTypeRow> Enclosures => Set<EnclosureTypeRow>();
@@ -2401,7 +2319,6 @@ public class PersistenceTests(PostgresFixture fixture)
                                 Category = "Dimmer240",
                                 RowIndex = 1, StartSlot = 0, ModuleWidth = 2,
                                 Label = "Dimmer 1",
-                                MacAddress = "AA:BB:CC:DD:EE:01",
                                 Channels = [new DeviceChannelRow { Id = Guid.NewGuid(), ChannelIndex = 0, IsSpare = true }]
                             }
                         ]
@@ -2508,21 +2425,8 @@ services:
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: "minio"
-      MINIO_ROOT_PASSWORD: "minio123"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-
 volumes:
   postgres-data:
-  minio-data:
 ```
 
 - [ ] **Step 7: Run the tests to verify they pass**
@@ -2571,15 +2475,13 @@ public static class DomainMapper
         => JsonSerializer.Deserialize<RuleSetPayload>(row.PayloadJson, Json)
            ?? throw new InvalidOperationException($"Ruleset '{row.Name}' v{row.Version} has an unreadable payload.");
 
-    public static ExistingDevice ToExisting(DeviceInstance row) => new(
-        row.Id, row.DeviceTypeId,
-        Enum.Parse<DeviceCategory>(row.Category),
-        row.Label, row.MacAddress, row.Serial, row.PhotoAssetId, row.CommissionedAt,
+    public static ExistingAssignment ToExisting(DeviceInstance row) => new(
+        row.Id,
+        row.Label,
         row.Channels
             .OrderBy(c => c.ChannelIndex)
             .Select(c => new ChannelAssignment(c.ChannelIndex, c.CircuitId, c.IsSpare))
-            .ToList(),
-        Enum.Parse<TerminalRole>(row.TerminalRole));
+            .ToList());
 }
 ```
 
@@ -3294,7 +3196,7 @@ public sealed record UpdateSubmainRequest(
 public sealed record SubmainResponse(
     Guid Id, Guid ProjectId, string Name, string? Reference, string? FeedCableSize,
     int? OriginBreakerAmps, string? Phase, Guid? EnclosureTypeId, Guid? RuleSetId, string? Notes,
-    int LayoutVersion, int CircuitCount, int DeviceCount, int CommissionedDeviceCount);
+    int LayoutVersion, int CircuitCount, int DeviceCount);
 ```
 
 - [ ] **Step 4: Write the endpoints**
@@ -3515,7 +3417,7 @@ public static class SubmainEndpoints
     private static readonly Expression<Func<Submain, SubmainResponse>> ToResponse = s => new SubmainResponse(
         s.Id, s.ProjectId, s.Name, s.Reference, s.FeedCableSize, s.OriginBreakerAmps, s.Phase,
         s.EnclosureTypeId, s.RuleSetId, s.Notes, s.LayoutVersion,
-        s.Circuits.Count, s.Devices.Count, s.Devices.Count(d => d.CommissionedAt != null));
+        s.Circuits.Count, s.Devices.Count);
 }
 ```
 
@@ -3726,7 +3628,6 @@ public sealed record PlacedDeviceResponse(
     int ModuleWidth,
     string Label,
     string TerminalRole,
-    string? MacAddress,
     IReadOnlyList<ChannelResponse> Channels);
 
 public sealed record LayoutResponse(int Rows, int SlotsPerRow, IReadOnlyList<PlacedDeviceResponse> Devices);
@@ -3826,7 +3727,7 @@ public sealed class DesignService(HouseConfigDbContext db)
         int layoutVersion,
         GenerationResult result,
         IReadOnlyList<Circuit> circuits,
-        IReadOnlyDictionary<string, (Guid Id, string? Mac)>? persisted = null)
+        IReadOnlyDictionary<string, Guid>? persisted = null)
     {
         var circuitNames = circuits.ToDictionary(c => c.Id, c => c.Name);
 
@@ -3834,11 +3735,11 @@ public sealed class DesignService(HouseConfigDbContext db)
             .OrderBy(d => d.RowIndex).ThenBy(d => d.StartSlot)
             .Select(d =>
             {
-                (Guid Id, string? Mac)? stored =
+                Guid? storedId =
                     persisted is not null && persisted.TryGetValue(d.Label, out var found) ? found : null;
 
                 return new PlacedDeviceResponse(
-                    stored?.Id,
+                    storedId,
                     d.DeviceTypeId,
                     d.Category.ToString(),
                     d.RowIndex,
@@ -3846,7 +3747,6 @@ public sealed class DesignService(HouseConfigDbContext db)
                     d.ModuleWidth,
                     d.Label,
                     d.TerminalRole.ToString(),
-                    stored?.Mac,
                     d.Channels.Select(c => new ChannelResponse(
                         c.ChannelIndex,
                         c.CircuitId,
@@ -3876,7 +3776,7 @@ public sealed class DesignService(HouseConfigDbContext db)
 }
 ```
 
-`persisted` is null for a preview (nothing is stored yet) and populated by the generate endpoint in Task 15, which is how a saved design's device ids and captured MACs reach the client through the same response shape.
+`persisted` is null for a preview (nothing is stored yet) and populated by the generate endpoint in Task 15, which is how a saved design's device ids reach the client through the same response shape.
 
 - [ ] **Step 5: Write the endpoints**
 
@@ -3950,10 +3850,10 @@ git commit -m "feat: add catalogue endpoints and design preview"
 - Test: `tests/PubInvest.HouseConfig.Api.Tests/DesignGenerateTests.cs`
 
 **Interfaces:**
-- Consumes: `LayoutMerger`, `DomainMapper.ToExisting`, everything from Task 14.
+- Consumes: `OrphanReporter`, `DomainMapper.ToExisting`, everything from Task 14.
 - Produces: `DesignService.GenerateAsync(Guid submainId, PreviewRequest?, CancellationToken) -> Task<(DesignResponse? Response, string? Error, bool HasErrors)>`, and `POST /submains/{id}/design/generate`.
 
-**Behaviour:** generation commits the layout, bumps `LayoutVersion`, and merges commissioning data by device label via `LayoutMerger`. A result with errors is **not** persisted — it comes back with `422 Unprocessable Entity` and its diagnostics so the engineer can pick a bigger enclosure. Circuits sent in the request body replace the stored circuit list first, so the wizard's "generate" is a single call.
+**Behaviour:** generation commits the layout, bumps `LayoutVersion`, and reports any circuit left without a channel via `OrphanReporter`. A result with errors is **not** persisted — it comes back with `422 Unprocessable Entity` and its diagnostics so the engineer can pick a bigger enclosure. Circuits sent in the request body replace the stored circuit list first, so the wizard's "generate" is a single call.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3974,7 +3874,8 @@ public class DesignGenerateTests(HouseConfigApiFactory factory)
 {
     private record ProjectDto(Guid Id);
     private record SubmainDto(Guid Id, int LayoutVersion);
-    private record DeviceDto(Guid? Id, string Category, string Label, string? MacAddress);
+    private record ChannelDto(int ChannelIndex, Guid? CircuitId, string? CircuitName, bool IsSpare);
+    private record DeviceDto(Guid? Id, string Category, string Label, ChannelDto[] Channels);
     private record LayoutDto(int Rows, int SlotsPerRow, DeviceDto[] Devices);
     private record DiagnosticDto(string Severity, string Code, string Message, string? Suggestion);
     private record DesignDto(int LayoutVersion, LayoutDto Layout, DiagnosticDto[] Diagnostics);
@@ -4023,21 +3924,20 @@ public class DesignGenerateTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
-    public async Task Regenerating_keeps_a_captured_mac_on_the_same_device_label()
+    public async Task Regenerating_keeps_circuit_names_and_re_assigns_them()
     {
         var client = factory.CreateClient();
         var submainId = await NewSubmain(client, TestSeed.EnclosureId,
         [
-            new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 }
+            new { type = "DimmedLighting", name = "Kitchen ceiling", sequence = 1 }
         ]);
 
         await client.PostAsJsonAsync($"/submains/{submainId}/design/generate", new { });
 
+        Guid keptCircuitId;
         await using (var db = factory.NewDbContext())
         {
-            var dimmer = await db.DeviceInstances.SingleAsync(d => d.SubmainId == submainId && d.Label == "Dimmer 1");
-            dimmer.MacAddress = "AA:BB:CC:DD:EE:01";
-            await db.SaveChangesAsync();
+            keptCircuitId = (await db.Circuits.SingleAsync(c => c.SubmainId == submainId)).Id;
         }
 
         // Add circuits so the layout genuinely changes.
@@ -4045,20 +3945,50 @@ public class DesignGenerateTests(HouseConfigApiFactory factory)
         {
             circuits = new object[]
             {
-                new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 },
-                new { type = "DimmedLighting", name = "Lighting 2", sequence = 2 },
-                new { type = "DimmedLighting", name = "Lighting 3", sequence = 3 },
-                new { type = "Switched", name = "Switched 1", sequence = 4 }
+                new { id = keptCircuitId, type = "DimmedLighting", name = "Kitchen ceiling", sequence = 1 },
+                new { type = "DimmedLighting", name = "Kitchen island", sequence = 2 },
+                new { type = "DimmedLighting", name = "Hall", sequence = 3 },
+                new { type = "Switched", name = "Immersion", sequence = 4 }
             }
         });
 
         var design = await response.Content.ReadFromJsonAsync<DesignDto>();
         design!.LayoutVersion.Should().Be(2);
-        design.Layout.Devices.Single(d => d.Label == "Dimmer 1").MacAddress.Should().Be("AA:BB:CC:DD:EE:01");
+        design.Diagnostics.Should().NotContain(d => d.Code == "ORPHANED_ASSIGNMENT");
+        design.Layout.Devices
+            .SelectMany(d => d.Channels)
+            .Should().Contain(c => c.CircuitId == keptCircuitId && c.CircuitName == "Kitchen ceiling");
+    }
 
-        await using var check = factory.NewDbContext();
-        (await check.DeviceInstances.SingleAsync(d => d.SubmainId == submainId && d.Label == "Dimmer 1"))
-            .MacAddress.Should().Be("AA:BB:CC:DD:EE:01");
+    [Fact]
+    public async Task Regenerating_without_a_circuit_reports_it_as_orphaned()
+    {
+        var client = factory.CreateClient();
+        var submainId = await NewSubmain(client, TestSeed.EnclosureId,
+        [
+            new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 },
+            new { type = "DimmedLighting", name = "Lighting 2", sequence = 2 }
+        ]);
+
+        await client.PostAsJsonAsync($"/submains/{submainId}/design/generate", new { });
+
+        Guid droppedCircuitId;
+        await using (var db = factory.NewDbContext())
+        {
+            droppedCircuitId = (await db.Circuits
+                .SingleAsync(c => c.SubmainId == submainId && c.Name == "Lighting 2")).Id;
+        }
+
+        var response = await client.PostAsJsonAsync($"/submains/{submainId}/design/generate", new
+        {
+            circuits = new object[] { new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 } }
+        });
+
+        var design = await response.Content.ReadFromJsonAsync<DesignDto>();
+        design!.Diagnostics.Should().Contain(d =>
+            d.Code == "ORPHANED_ASSIGNMENT"
+            && d.Severity == "Warning"
+            && d.Message.Contains(droppedCircuitId.ToString()));
     }
 
     [Fact]
@@ -4148,31 +4078,29 @@ public async Task<(DesignResponse? Response, string? Error, bool HasErrors)> Gen
         .Where(d => d.SubmainId == submainId)
         .ToListAsync(ct);
 
-    var merge = LayoutMerger.Merge(result.Layout, existingDevices.Select(DomainMapper.ToExisting).ToList());
+    var orphans = OrphanReporter.Report(
+        result.Layout,
+        existingDevices.Select(DomainMapper.ToExisting).ToList());
 
     db.DeviceInstances.RemoveRange(existingDevices);
     await db.SaveChangesAsync(ct);
 
-    var persisted = new Dictionary<string, (Guid Id, string? Mac)>();
+    var persisted = new Dictionary<string, Guid>();
 
-    foreach (var merged in merge.Devices)
+    foreach (var placed in result.Layout.Devices)
     {
         var row = new Data.Entities.DeviceInstance
         {
             Id = Guid.NewGuid(),
             SubmainId = submainId,
-            DeviceTypeId = merged.Placed.DeviceTypeId,
-            Category = merged.Placed.Category.ToString(),
-            RowIndex = merged.Placed.RowIndex,
-            StartSlot = merged.Placed.StartSlot,
-            ModuleWidth = merged.Placed.ModuleWidth,
-            Label = merged.Placed.Label,
-            TerminalRole = merged.Placed.TerminalRole.ToString(),
-            MacAddress = merged.MacAddress,
-            Serial = merged.Serial,
-            PhotoAssetId = merged.PhotoAssetId,
-            CommissionedAt = merged.CommissionedAt,
-            Channels = merged.Placed.Channels.Select(c => new Data.Entities.DeviceChannelRow
+            DeviceTypeId = placed.DeviceTypeId,
+            Category = placed.Category.ToString(),
+            RowIndex = placed.RowIndex,
+            StartSlot = placed.StartSlot,
+            ModuleWidth = placed.ModuleWidth,
+            Label = placed.Label,
+            TerminalRole = placed.TerminalRole.ToString(),
+            Channels = placed.Channels.Select(c => new Data.Entities.DeviceChannelRow
             {
                 Id = Guid.NewGuid(),
                 ChannelIndex = c.ChannelIndex,
@@ -4182,20 +4110,20 @@ public async Task<(DesignResponse? Response, string? Error, bool HasErrors)> Gen
         };
 
         db.DeviceInstances.Add(row);
-        persisted[row.Label] = (row.Id, row.MacAddress);
+        persisted[row.Label] = row.Id;
     }
 
     submain.LayoutVersion++;
     await db.SaveChangesAsync(ct);
 
-    var diagnostics = result.Diagnostics.Concat(merge.Diagnostics).ToList();
+    var diagnostics = result.Diagnostics.Concat(orphans).ToList();
     var mergedResult = new GenerationResult(result.Layout, diagnostics, result.Bom);
 
     return (ToResponse(submainId, submain.LayoutVersion, mergedResult, inputs.Circuits, persisted), null, false);
 }
 ```
 
-Deleting and re-inserting device rows keeps the unique `(SubmainId, RowIndex, StartSlot)` index from tripping on a rearrangement; the `SaveChangesAsync` between the delete and the insert is what makes that safe, so do not collapse the two saves into one.
+Deleting and re-inserting device rows keeps the unique `(SubmainId, RowIndex, StartSlot)` index from tripping on a rearrangement; the `SaveChangesAsync` between the delete and the insert is what makes that safe, so do not collapse the two saves into one. Replacing rows outright is only correct while nothing is stored on a device that the engineer created by hand — Plan 2's dragged positions change that, and will need a real merge here.
 
 - [ ] **Step 4: Add the endpoint**
 
@@ -4232,9 +4160,9 @@ git commit -m "feat: persist generated designs with merge and layout versioning"
 ## Done when
 
 - `dotnet test` is green across Domain, Data and Api test projects.
-- `docker compose up` brings up Postgres, MinIO and the API, and `GET /health` returns `Healthy`.
+- `docker compose up` brings up Postgres and the API, and `GET /health` returns `Healthy`.
 - `POST /projects`, `POST /projects/{id}/submains`, `POST /submains/{id}/design/preview` and `.../generate` can be driven end to end with curl, producing a banded layout whose terminals are on row 0.
-- Re-generating a submain after setting a MAC keeps that MAC.
+- Re-generating a submain keeps its circuit names and re-assigns them to channels, and warns about any circuit that no longer has one.
 
 ---
 
@@ -4370,6 +4298,6 @@ ENTRYPOINT ["dotnet", "PubInvest.HouseConfig.Api.dll"]
 Named here so nobody assumes they were forgotten:
 
 - **Device position and channel-name edits** (`PATCH /devices/{id}/position`, `PATCH /devices/{id}/channels/{index}`) and the `409` stale-`layoutVersion` handling — Plan 2, alongside the drag-and-drop UI that is their only consumer.
-- **Photo upload and MAC capture** (`POST /devices/{id}/identity`), MinIO wiring, MAC uniqueness within a project — Plan 3.
+- **Device identification** — dropped from the design entirely: Shelly Pro units carry no printed QR code or serial, so there is nothing to photograph. If matching a physical unit to its slot becomes necessary, LAN discovery via mDNS and `Shelly.GetDeviceInfo` is the route to revisit, and it would be its own plan.
 - **`POST /submains/{id}/revisions`**, PDF export and the BOM export endpoints — Plan 3. The `PanelRevision` table is created in Task 10 so no migration is needed later.
 - **Catalogue write endpoints** and the admin screens — Plan 3. Reads land in Task 14 because preview needs them.

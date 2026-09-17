@@ -10,30 +10,32 @@ submain at a time. An engineer enters how many dimmed lighting circuits,
 switched circuits and LED tape circuits a submain carries; the app works out
 how many Shelly Pro devices that needs, lays them out in a DIN enclosure
 according to house best practice, and draws the result. On site, the engineer
-taps a device to name its channels and photographs its label to capture the
-MAC address. The finished design produces a printable panel drawing with a
-circuit schedule, and a bill of materials.
+taps a device to name its channels. The finished design produces a printable
+panel drawing with a circuit schedule, and a bill of materials.
 
 ## Scope
 
 **In scope:** project and submain management; device and enclosure catalogue;
 rule-driven panel generation; to-scale panel drawing with drag-to-rearrange;
-channel naming; MAC/serial capture by QR scan and photo; PDF drawing and
-circuit schedule; bill of materials.
+channel naming; PDF drawing and circuit schedule; bill of materials.
 
-**Out of scope (deliberately):** label printing (the existing `label-api` /
-`label-ui` can consume design data later if wanted); pushing configuration to
-the Shelly devices themselves; Home Assistant export; offline operation; cable
-and breaker calculations — protection lives upstream of these panels.
+**Out of scope (deliberately):** device identification — Shelly Pro units carry
+no printed QR code or serial, so there is nothing to photograph, and matching a
+physical unit to its slot is deferred until there is a reason to solve it; photo
+capture and storage, which existed only to serve that; label printing (the
+existing `label-api` / `label-ui` can consume design data later if wanted);
+pushing configuration to the Shelly devices themselves; Home Assistant export;
+offline operation; cable and breaker calculations — protection lives upstream of
+these panels.
 
 ## Decisions taken
 
 | Question | Decision |
 |---|---|
-| Persistence | Full server app: API, Postgres, Keycloak auth, object storage for photos |
+| Persistence | Full server app: API, Postgres, Keycloak auth |
 | Catalogue and rules | Postgres rows, seeded from versioned JSON, admin-editable in-app |
 | Hierarchy | House (Project) → Submain → one Panel, 1:1 |
-| MAC capture | In-browser QR/barcode scan, manual fallback, photo always stored |
+| Device identification | Deferred — no printed QR or serial exists on the hardware |
 | Panel drawing | To-scale SVG, drag-to-rearrange, touch-friendly |
 | Outputs | PDF panel drawing + circuit schedule; bill of materials |
 | LED tape | 24V constant-voltage drivers in-panel, dimmed 0/1-10V |
@@ -57,13 +59,13 @@ house-config/
     ...Api.Tests/                   integration tests, Testcontainers Postgres
   ui/                               React 19 + Vite + TypeScript + Tailwind
   docs/
-  docker-compose.yml                Postgres + API + MinIO
+  docker-compose.yml                Postgres + API
 ```
 
 **Stack:** .NET 9 minimal API, EF Core 9, Postgres 17, Keycloak bearer auth
-(`Keycloak.AuthServices.Authentication`), QuestPDF for documents, MinIO/S3 for
-photos. UI is React 19 + Vite + TypeScript + Tailwind, consistent with
-`crm-ui` and `dashboard`.
+(`Keycloak.AuthServices.Authentication`), QuestPDF for documents. UI is
+React 19 + Vite + TypeScript + Tailwind, consistent with `crm-ui` and
+`dashboard`.
 
 **Why server-authoritative:** the generator is the only thing that decides what
 a panel looks like, so the drawing, the schedule and the BOM cannot drift apart,
@@ -137,14 +139,10 @@ circuit exists independently of any device, the generator can re-run and
 re-assign channels without destroying names.
 
 **`DeviceInstance`** — a placed device. `id`, `submainId`, `deviceTypeId`,
-`rowIndex`, `startSlot`, `label`, `macAddress`, `serial`, `photoAssetId`,
-`commissionedAt`, `commissionedBy`.
+`rowIndex`, `startSlot`, `moduleWidth`, `label`, `terminalRole`.
 
 **`DeviceChannel`** — `deviceInstanceId`, `channelIndex`, `circuitId` (nullable),
 `isSpare`. A channel is either assigned to a circuit or explicitly spare.
-
-**`PhotoAsset`** — `id`, `objectKey`, `contentType`, `byteSize`, `sha256`,
-`capturedAt`, `capturedBy`.
 
 **`PanelRevision`** — an immutable JSON snapshot of a submain's layout, taken
 whenever a design is issued. Records the `layoutVersion` it was taken from, the
@@ -194,12 +192,16 @@ catch any rule change that silently moves a device.
 
 ### Re-running on an existing design
 
-Re-generation is a **merge, not a wipe**. Existing channel assignments, circuit
-names, MAC addresses and photos are preserved by circuit identity wherever the
-new layout still has a home for them. Anything orphaned — a circuit whose device
-category changed, a device that no longer exists — is reported in diagnostics
-for the engineer to resolve. Without this, adding one circuit late in a job
-would cost every MAC already scanned.
+Circuits live on the submain, not on devices, so circuit names and rooms survive
+re-generation untouched — the generator simply re-assigns them to channels.
+Anything that cannot be re-assigned — a circuit deleted from the submain, or one
+whose device category no longer exists — is reported as a diagnostic rather than
+vanishing silently.
+
+Once the engineer can drag devices, those manual positions become state worth
+preserving across a re-run, and re-generation becomes a genuine merge. Until
+then there is nothing held on a device worth carrying forward, so re-generation
+replaces the device rows and reports orphaned circuits.
 
 ### Diagnostics
 
@@ -243,7 +245,6 @@ POST   /submains/{id}/revisions         issue an immutable snapshot
 PATCH  /devices/{id}/position           { rowIndex, startSlot, basedOnLayoutVersion }
 PATCH  /devices/{id}/channels/{index}   { circuitId | isSpare }
 PATCH  /circuits/{id}                   { name, room }
-POST   /devices/{id}/identity           multipart: macAddress, serial, photo
 ```
 
 **Outputs**
@@ -273,7 +274,7 @@ Two engineers on one panel is unlikely; a phone left open in a pocket is not.
 Mobile-first. React 19 + Vite + TypeScript + Tailwind.
 
 **Projects → submains list.** Each submain shows its state at a glance:
-not designed / designed / 7 of 12 devices commissioned.
+not designed, or designed with its device and circuit counts.
 
 **New submain wizard.** Supply details → enclosure pick → circuit counts, with
 LED tape taking watts-per-metre and length per circuit. The preview readout
@@ -288,27 +289,14 @@ before release, and the server revalidates on drop, reverting the optimistic
 move on `409`. `touch-action: none` is applied only while a drag is live, so
 normal panning is unaffected.
 
-**Device sheet.** Channel list with editable circuit names and rooms, the
-device's MAC/serial, its photo if captured, and the scan button.
-
-## Photo capture and commissioning
-
-Tap scan → camera opens → decode via `BarcodeDetector` where available
-(Chrome/Android), ZXing-wasm fallback (iOS Safari), manual hex entry always
-available. **The photo is uploaded and retained whether or not the scan
-succeeded** — the photo is the evidence, the decode is a convenience.
-
-MAC addresses are normalised and validated, and checked unique within the
-project: scanning the same unit twice is the easy mistake to make on site.
-
-Uploads are limited by content type and size, stored in MinIO/S3 under a
-content-hash key, and served through the API rather than by public URL.
+**Device sheet.** Channel list with editable circuit names and rooms, and the
+device's type and position.
 
 ## Outputs
 
 **PDF** via QuestPDF, rendered server-side from a `PanelRevision`:
 page 1 the to-scale panel drawing, page 2+ the circuit schedule — submain,
-device, channel, circuit name, room, MAC address.
+device, channel, circuit name, room.
 
 **Bill of materials** aggregated per submain and per house — Shelly units,
 enclosure, terminal blocks, jumper bars, end stops, PSUs, DIN rail — with
@@ -324,22 +312,20 @@ Test-driven throughout.
 
 - **Domain (xUnit):** packing edge cases (exact fit, one slot short, device
   wider than a row); PSU sizing boundaries including the derating factor;
-  merge-preserves-MACs on re-generation; every diagnostic code; golden-file
+  orphaned-circuit reporting on re-generation; every diagnostic code; golden-file
   layout tests that fail loudly when a rule change moves a device.
 - **API (xUnit + Testcontainers Postgres):** auth and role enforcement,
-  generate/merge round trips, `409` on stale edits, photo upload limits.
+  generate round trips, `409` on stale edits.
 - **UI (Vitest + Testing Library):** wizard state and preview, device sheet
   editing, optimistic move and revert.
 - **E2E (Playwright):** the drag interaction, which is the part most likely to
-  break silently under touch, and the manual-entry MAC fallback.
+  break silently under touch.
 
 ## Error handling
 
 - Generation never throws for a domain condition; it returns diagnostics the UI
   presents with suggestions.
 - Stale edits return `409` with current state; the client reverts and reloads.
-- Failed photo upload leaves the MAC entry intact and offers retry; the MAC is
-  saved even if the photo fails.
 - Catalogue or ruleset references that go missing surface as diagnostics at
   generation time, not as 500s.
 
@@ -367,10 +353,10 @@ bar part number and its `bridgeBarWays`, and the end-stop quantity per bridged
 bank. The 2003-7646 is a multi-conductor block; if a single block is ever shared
 between circuits on the line side, step 4 needs revisiting.
 
-**Risk — no offline capability.** A full server app cannot commission a panel in
-a plant room with no signal. If dead spots turn out to be a real problem, the
-remedy is a service worker queuing photo and MAC uploads, added deliberately
-later rather than half-built now.
+**Risk — no offline capability.** A full server app cannot be used in a plant
+room with no signal. If dead spots turn out to be a real problem, the remedy is a
+service worker queuing edits, added deliberately later rather than half-built
+now.
 
 **Risk — drag on touch.** Slot-snapped dragging inside a zoomable SVG is the
 fiddliest part of the build. The Playwright test exists specifically to keep it
@@ -384,6 +370,5 @@ honest.
 4. UI: projects, submains, wizard with live preview.
 5. UI: panel SVG rendering (read-only first).
 6. Editing: drag-to-rearrange, channel naming.
-7. Photo capture and MAC scanning.
-8. PDF and BOM.
-9. Catalogue admin screens.
+7. PDF and BOM.
+8. Catalogue admin screens.

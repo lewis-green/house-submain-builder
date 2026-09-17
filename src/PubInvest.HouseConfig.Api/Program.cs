@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Keycloak.AuthServices.Authentication;
+using PubInvest.HouseConfig.Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Mapping;
@@ -48,6 +49,9 @@ if (authEnabled)
 
 app.MapHealthChecks("/health");
 app.MapOpenApi();
+
+app.MapProjectEndpoints();
+app.MapSubmainEndpoints();
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

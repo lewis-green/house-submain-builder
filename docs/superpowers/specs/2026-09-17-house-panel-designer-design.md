@@ -39,6 +39,7 @@ and breaker calculations — protection lives upstream of these panels.
 | LED tape | 24V constant-voltage drivers in-panel, dimmed 0/1-10V |
 | Layout rules | Function-banded rows; no MCB/RCBO band; 240V circuit terminals on top |
 | Band order | Terminals → Dimmers → Relays → 24V PSUs |
+| Terminals | WAGO TOPJOB S 2003-7646; line un-bridged per circuit, neutral and earth bridged banks |
 | Architecture | Server-authoritative generator; client renders and edits optimistically |
 
 ## Architecture
@@ -98,7 +99,14 @@ payload is validated against a JSON schema on save and carries:
     "Psu24V":     ["<small>", "<medium>", "<large>"],
     "Terminal240":"<deviceTypeId>"
   },
-  "terminalWaysPerCircuit": 3,
+  "terminals": {
+    "line":    { "deviceTypeId": "<wago-2003-7646>", "blocksPerCircuit": 1, "bridged": false },
+    "neutral": { "deviceTypeId": "<wago-2003-7646>", "blocksPerCircuit": 1, "bridged": true  },
+    "earth":   { "deviceTypeId": "<wago-2003-7646-pe>", "blocksPerCircuit": 1, "bridged": true  },
+    "bridgeBarDeviceTypeId": "<wago-jumper-bar>",
+    "bridgeBarWays": 10,
+    "endStopDeviceTypeId": "<wago-end-stop>"
+  },
   "packing": "firstFit"
 }
 ```
@@ -169,9 +177,15 @@ catch any rule change that silently moves a device.
 3. **Size PSUs.** Sum LED tape watts (`wattsPerMetre × lengthMetres` per
    circuit), divide by `psuDeratingFactor`, then select PSU models from the
    catalogue largest-first until the derated load is covered.
-4. **Build the terminal band.** `terminalWaysPerCircuit` ways for each outgoing
-   circuit, plus the incoming twin-and-earth. Terminal blocks are modelled as
-   devices and occupy real slots like anything else.
+4. **Build the terminal band.** Sized per conductor, not by a flat ways-per-circuit
+   number. Line takes one un-bridged block per outgoing circuit. Neutral and earth
+   take banks of blocks of the same count, commoned with jumper bars — bridging
+   changes the *wiring*, not the block count, so all three conductors occupy
+   `circuits × blocksPerCircuit` slots each, plus the incoming twin-and-earth.
+   Jumper bars (`ceil(bankBlocks / bridgeBarWays)` per bridged bank) and end stops
+   are not DIN-slot devices: they add no width but do appear in the BOM.
+   Terminal blocks themselves are modelled as devices and occupy real slots like
+   anything else.
 5. **Band-pack.** Walk `bandOrder`; each band starts on a fresh row; first-fit
    within a row; a device never straddles two rows.
 6. **Validate.** Emit `Diagnostics`, never exceptions. "Needs 5 rows, this
@@ -297,8 +311,9 @@ page 1 the to-scale panel drawing, page 2+ the circuit schedule — submain,
 device, channel, circuit name, room, MAC address.
 
 **Bill of materials** aggregated per submain and per house — Shelly units,
-enclosure, terminal blocks, PSUs, DIN rail — with catalogue costs, exportable
-as CSV.
+enclosure, terminal blocks, jumper bars, end stops, PSUs, DIN rail — with
+catalogue costs, exportable as CSV. Bridging accessories are counted from the
+bridged banks even though they consume no DIN slots.
 
 Both derive from the same layout model the screen draws, so the drawing, the
 schedule and the parts list cannot disagree.
@@ -342,9 +357,15 @@ a way the drawing would hide.
 | Shelly Pro 4PM | `Relay` | 4 | ? | 16A per channel unverified |
 | Shelly Pro 2PM | `Relay` | 2 | ? | alternative relay model |
 | 24V CV PSU (model TBC) | `Psu24V` | — | ? | need the range of wattages actually stocked |
-| DIN terminal block (model TBC) | `Terminal240` | — | ? | ways per block, and whether L/N/E are separate blocks |
+| WAGO TOPJOB S 2003-7646 | `Terminal240` | — | ? | confirmed part number; need block width in T-slots and conductors per block |
+| WAGO earth block (2003-7646 PE equivalent) | `Terminal240` | — | ? | green/yellow PE variant part number to confirm |
+| WAGO jumper bar (part TBC) | `Accessory` | — | 0 | `bridgeBarWays` to confirm; no slot width |
+| WAGO end stop (part TBC) | `Accessory` | — | 0 | quantity per bank to confirm |
 
-Also open: `terminalWaysPerCircuit` is assumed to be 3 (L, N, E). Confirm.
+Also open: whether `blocksPerCircuit` is 1 for all three conductors, the jumper
+bar part number and its `bridgeBarWays`, and the end-stop quantity per bridged
+bank. The 2003-7646 is a multi-conductor block; if a single block is ever shared
+between circuits on the line side, step 4 needs revisiting.
 
 **Risk — no offline capability.** A full server app cannot commission a panel in
 a plant room with no signal. If dead spots turn out to be a real problem, the

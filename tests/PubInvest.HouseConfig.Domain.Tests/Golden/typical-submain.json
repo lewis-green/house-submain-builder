@@ -1,0 +1,616 @@
+{
+  "Layout": {
+    "Rows": 6,
+    "SlotsPerRow": 24,
+    "Devices": [
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 0,
+        "ModuleWidth": 1,
+        "Label": "L1",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 1
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 1,
+        "ModuleWidth": 1,
+        "Label": "L2",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 2
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 2,
+        "ModuleWidth": 1,
+        "Label": "L3",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 3
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 3,
+        "ModuleWidth": 1,
+        "Label": "L4",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 4,
+        "ModuleWidth": 1,
+        "Label": "L5",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 5
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 5,
+        "ModuleWidth": 1,
+        "Label": "L6",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 6
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 6,
+        "ModuleWidth": 1,
+        "Label": "L7",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 7
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 7,
+        "ModuleWidth": 1,
+        "Label": "L8",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 8
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 8,
+        "ModuleWidth": 1,
+        "Label": "L9",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 9
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 9,
+        "ModuleWidth": 1,
+        "Label": "L10",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 10
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 10,
+        "ModuleWidth": 1,
+        "Label": "L11",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 11
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 11,
+        "ModuleWidth": 1,
+        "Label": "L12",
+        "Channels": [],
+        "TerminalRole": "Line",
+        "EndSlotExclusive": 12
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 12,
+        "ModuleWidth": 1,
+        "Label": "N1",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 13
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 13,
+        "ModuleWidth": 1,
+        "Label": "N2",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 14
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 14,
+        "ModuleWidth": 1,
+        "Label": "N3",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 15
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 15,
+        "ModuleWidth": 1,
+        "Label": "N4",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 16
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 16,
+        "ModuleWidth": 1,
+        "Label": "N5",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 17
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 17,
+        "ModuleWidth": 1,
+        "Label": "N6",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 18
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 18,
+        "ModuleWidth": 1,
+        "Label": "N7",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 19
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 19,
+        "ModuleWidth": 1,
+        "Label": "N8",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 20
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 20,
+        "ModuleWidth": 1,
+        "Label": "N9",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 21
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 21,
+        "ModuleWidth": 1,
+        "Label": "N10",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 22
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 22,
+        "ModuleWidth": 1,
+        "Label": "N11",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 23
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
+        "Category": "Terminal240",
+        "RowIndex": 0,
+        "StartSlot": 23,
+        "ModuleWidth": 1,
+        "Label": "N12",
+        "Channels": [],
+        "TerminalRole": "Neutral",
+        "EndSlotExclusive": 24
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 0,
+        "ModuleWidth": 1,
+        "Label": "E1",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 1
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 1,
+        "ModuleWidth": 1,
+        "Label": "E2",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 2
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 2,
+        "ModuleWidth": 1,
+        "Label": "E3",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 3
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 3,
+        "ModuleWidth": 1,
+        "Label": "E4",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 4,
+        "ModuleWidth": 1,
+        "Label": "E5",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 5
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 5,
+        "ModuleWidth": 1,
+        "Label": "E6",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 6
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 6,
+        "ModuleWidth": 1,
+        "Label": "E7",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 7
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 7,
+        "ModuleWidth": 1,
+        "Label": "E8",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 8
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 8,
+        "ModuleWidth": 1,
+        "Label": "E9",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 9
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 9,
+        "ModuleWidth": 1,
+        "Label": "E10",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 10
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 10,
+        "ModuleWidth": 1,
+        "Label": "E11",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 11
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
+        "Category": "Terminal240",
+        "RowIndex": 1,
+        "StartSlot": 11,
+        "ModuleWidth": 1,
+        "Label": "E12",
+        "Channels": [],
+        "TerminalRole": "Earth",
+        "EndSlotExclusive": 12
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
+        "Category": "Dimmer240",
+        "RowIndex": 2,
+        "StartSlot": 0,
+        "ModuleWidth": 2,
+        "Label": "Dimmer 1",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000001",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000002",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 2
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
+        "Category": "Dimmer240",
+        "RowIndex": 2,
+        "StartSlot": 2,
+        "ModuleWidth": 2,
+        "Label": "Dimmer 2",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000003",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000004",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
+        "Category": "Dimmer240",
+        "RowIndex": 2,
+        "StartSlot": 4,
+        "ModuleWidth": 2,
+        "Label": "Dimmer 3",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000005",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": null,
+            "IsSpare": true
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 6
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000002",
+        "Category": "Dimmer0_10V",
+        "RowIndex": 2,
+        "StartSlot": 6,
+        "ModuleWidth": 2,
+        "Label": "Tape Dimmer 1",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000010",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000011",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 8
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000003",
+        "Category": "Relay",
+        "RowIndex": 3,
+        "StartSlot": 0,
+        "ModuleWidth": 4,
+        "Label": "Relay 1",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000006",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000007",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 2,
+            "CircuitId": "33333333-0000-0000-0000-000000000008",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 3,
+            "CircuitId": "33333333-0000-0000-0000-000000000009",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000005",
+        "Category": "Psu24V",
+        "RowIndex": 4,
+        "StartSlot": 0,
+        "ModuleWidth": 6,
+        "Label": "PSU 1",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 6
+      }
+    ],
+    "SlotsUsed": 54,
+    "TotalSlots": 144
+  },
+  "Diagnostics": [],
+  "Bom": {
+    "Lines": [
+      {
+        "CatalogueId": "22222222-0000-0000-0000-000000000002",
+        "PartNumber": "Hager Test 6x24",
+        "Description": "Hager Test 6x24",
+        "Quantity": 1,
+        "UnitCost": 220.00,
+        "LineTotal": 220.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000008",
+        "PartNumber": "TEST-BAR",
+        "Description": "WAGO Jumper bar 10-way",
+        "Quantity": 4,
+        "UnitCost": 3.00,
+        "LineTotal": 12.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000002",
+        "PartNumber": "TEST-DIM10",
+        "Description": "Shelly Pro Dimmer 0/1-10V",
+        "Quantity": 1,
+        "UnitCost": 55.00,
+        "LineTotal": 55.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000001",
+        "PartNumber": "TEST-DIM2",
+        "Description": "Shelly Pro Dimmer 2PM",
+        "Quantity": 3,
+        "UnitCost": 60.00,
+        "LineTotal": 180.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000005",
+        "PartNumber": "TEST-PSU240",
+        "Description": "Mean Well DR-240-24",
+        "Quantity": 1,
+        "UnitCost": 85.00,
+        "LineTotal": 85.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000003",
+        "PartNumber": "TEST-REL4",
+        "Description": "Shelly Pro 4PM",
+        "Quantity": 1,
+        "UnitCost": 95.00,
+        "LineTotal": 95.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000009",
+        "PartNumber": "TEST-STOP",
+        "Description": "WAGO End stop",
+        "Quantity": 4,
+        "UnitCost": 0.80,
+        "LineTotal": 3.20
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000006",
+        "PartNumber": "TEST-TB",
+        "Description": "WAGO TOPJOB S 2.5",
+        "Quantity": 24,
+        "UnitCost": 1.50,
+        "LineTotal": 36.00
+      },
+      {
+        "CatalogueId": "11111111-0000-0000-0000-000000000007",
+        "PartNumber": "TEST-TBPE",
+        "Description": "WAGO TOPJOB S 2.5 PE",
+        "Quantity": 12,
+        "UnitCost": 2.10,
+        "LineTotal": 25.20
+      }
+    ],
+    "Total": 711.40
+  },
+  "HasErrors": false
+}

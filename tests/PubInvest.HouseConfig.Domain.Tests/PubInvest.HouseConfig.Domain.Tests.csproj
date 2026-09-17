@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\src\PubInvest.HouseConfig.Domain\PubInvest.HouseConfig.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Golden\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

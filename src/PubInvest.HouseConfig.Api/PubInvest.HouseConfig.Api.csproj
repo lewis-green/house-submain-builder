@@ -18,4 +18,8 @@
     <PackageReference Include="Keycloak.AuthServices.Authorization" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\seed\catalogue.v1.json" Link="seed\catalogue.v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

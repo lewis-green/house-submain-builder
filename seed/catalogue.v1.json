@@ -1,0 +1,198 @@
+{
+  "_unit": "Every width is in slot units. One slot unit = 1/3 DIN module (T), because three WAGO 2003-7646 fit in one T. Dimmer 1T = 3, relay 3T = 9, terminal 1/3T = 1, a 12-way row = 36.",
+  "_confirmed": "Shelly Pro Dimmer 2 channels at 1T; Shelly Pro relay 4 channels at 3T; WAGO 2003-7646 at 3 per T.",
+  "_assumed": "Everything marked ASSUMED below is a placeholder that has NOT been confirmed against a datasheet: PSU widths and wattages, enclosure sizes, the PE terminal part, jumper bar ways, end stops per bank, and every cost. Replace before ordering anything from a generated BOM.",
+  "version": 1,
+  "deviceTypes": [
+    {
+      "id": "d1000000-0000-4000-8000-000000000001",
+      "manufacturer": "Shelly",
+      "model": "Pro Dimmer 2PM",
+      "partNumber": "SHELLY-PRO-DIMMER-2PM",
+      "category": "Dimmer240",
+      "moduleWidth": 3,
+      "channelCount": 2,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000002",
+      "manufacturer": "Shelly",
+      "model": "Pro Dimmer 0/1-10V",
+      "partNumber": "SHELLY-PRO-DIMMER-0-10V",
+      "category": "Dimmer0_10V",
+      "moduleWidth": 3,
+      "channelCount": 2,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000003",
+      "manufacturer": "Shelly",
+      "model": "Pro relay",
+      "partNumber": "SHELLY-PRO-RELAY-4",
+      "category": "Relay",
+      "moduleWidth": 9,
+      "channelCount": 4,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000004",
+      "manufacturer": "ASSUMED",
+      "model": "24V PSU 240W",
+      "partNumber": "ASSUMED-PSU-240",
+      "category": "Psu24V",
+      "moduleWidth": 18,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": 240,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000005",
+      "manufacturer": "ASSUMED",
+      "model": "24V PSU 100W",
+      "partNumber": "ASSUMED-PSU-100",
+      "category": "Psu24V",
+      "moduleWidth": 9,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": 100,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000006",
+      "manufacturer": "WAGO",
+      "model": "TOPJOB S 2003-7646",
+      "partNumber": "2003-7646",
+      "category": "Terminal240",
+      "moduleWidth": 1,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000007",
+      "manufacturer": "WAGO",
+      "model": "TOPJOB S 2003-7646 PE (ASSUMED part)",
+      "partNumber": "ASSUMED-2003-7646-PE",
+      "category": "Terminal240",
+      "moduleWidth": 1,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000008",
+      "manufacturer": "WAGO",
+      "model": "Jumper bar 10-way (ASSUMED)",
+      "partNumber": "ASSUMED-JUMPER-BAR-10",
+      "category": "Accessory",
+      "moduleWidth": 0,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000009",
+      "manufacturer": "WAGO",
+      "model": "End stop (ASSUMED)",
+      "partNumber": "ASSUMED-END-STOP",
+      "category": "Accessory",
+      "moduleWidth": 0,
+      "channelCount": 0,
+      "maxLoadPerChannelW": null,
+      "maxTotalLoadW": null,
+      "cost": 0.00,
+      "active": true
+    }
+  ],
+  "enclosures": [
+    {
+      "id": "e1000000-0000-4000-8000-000000000001",
+      "manufacturer": "ASSUMED",
+      "model": "3 row x 12 way",
+      "rows": 3,
+      "slotsPerRow": 36,
+      "ipRating": "IP30",
+      "cost": 0.00
+    },
+    {
+      "id": "e1000000-0000-4000-8000-000000000002",
+      "manufacturer": "ASSUMED",
+      "model": "4 row x 18 way",
+      "rows": 4,
+      "slotsPerRow": 54,
+      "ipRating": "IP30",
+      "cost": 0.00
+    },
+    {
+      "id": "e1000000-0000-4000-8000-000000000003",
+      "manufacturer": "ASSUMED",
+      "model": "6 row x 24 way",
+      "rows": 6,
+      "slotsPerRow": 72,
+      "ipRating": "IP30",
+      "cost": 0.00
+    }
+  ],
+  "ruleSets": [
+    {
+      "id": "f1000000-0000-4000-8000-000000000001",
+      "name": "House default",
+      "version": 1,
+      "isDefault": true,
+      "payload": {
+        "bandOrder": ["Terminal240", "Dimmer240", "Relay", "Psu24V"],
+        "bandStartsNewRow": true,
+        "psuDeratingFactor": 0.8,
+        "preferredDevice": {
+          "dimmer240": "d1000000-0000-4000-8000-000000000001",
+          "dimmer0_10V": "d1000000-0000-4000-8000-000000000002",
+          "relay": "d1000000-0000-4000-8000-000000000003",
+          "psu24V": [
+            "d1000000-0000-4000-8000-000000000004",
+            "d1000000-0000-4000-8000-000000000005"
+          ]
+        },
+        "terminals": {
+          "line": {
+            "deviceTypeId": "d1000000-0000-4000-8000-000000000006",
+            "blocksPerCircuit": 1,
+            "bridged": false
+          },
+          "neutral": {
+            "deviceTypeId": "d1000000-0000-4000-8000-000000000006",
+            "blocksPerCircuit": 1,
+            "bridged": true
+          },
+          "earth": {
+            "deviceTypeId": "d1000000-0000-4000-8000-000000000007",
+            "blocksPerCircuit": 1,
+            "bridged": true
+          },
+          "bridgeBarDeviceTypeId": "d1000000-0000-4000-8000-000000000008",
+          "bridgeBarWays": 10,
+          "endStopDeviceTypeId": "d1000000-0000-4000-8000-000000000009",
+          "endStopsPerBank": 2
+        },
+        "packing": "firstFit"
+      }
+    }
+  ]
+}

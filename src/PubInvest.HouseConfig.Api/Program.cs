@@ -21,6 +21,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddProblemDetails();
+builder.Services.AddScoped<PubInvest.HouseConfig.Api.Services.DesignService>();
 builder.Services.AddHealthChecks().AddDbContextCheck<HouseConfigDbContext>();
 builder.Services.AddOpenApi();
 
@@ -52,6 +53,8 @@ app.MapOpenApi();
 
 app.MapProjectEndpoints();
 app.MapSubmainEndpoints();
+app.MapCatalogueEndpoints();
+app.MapDesignEndpoints();
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

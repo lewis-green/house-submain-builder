@@ -10,9 +10,27 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-17-house-panel-designer-design.md`
 
+## Amendments during execution (2026-09-17)
+
+Two corrections found when the toolchain was checked, before Task 1:
+
+1. **`net10.0`, not `net9.0`.** No .NET 9 SDK or runtime is installed on this
+   machine (6.0, 8.0 and 10.0 are), and `label-api` — the project this
+   architecture follows — is already on `net10.0`. Package versions match it:
+   EF Core and ASP.NET Core `10.0.9`, `Npgsql.EntityFrameworkCore.PostgreSQL`
+   `10.0.2`, `Testcontainers.PostgreSql` `4.12.0`, `xunit` `2.9.3`,
+   `xunit.runner.visualstudio` `3.1.4`.
+2. **Plain xUnit `Assert`, not FluentAssertions.** No sibling project uses an
+   assertion library, and FluentAssertions v8+ requires a paid commercial
+   licence. The test code in the tasks below is written in FluentAssertions
+   style; implement each assertion with its plain `Assert` equivalent. The
+   assertions' *meaning* is the specification — the syntax is not.
+
+Everything else in this plan stands as written.
+
 ## Global Constraints
 
-- Target framework `net9.0`; `<Nullable>enable</Nullable>` and `<ImplicitUsings>enable</ImplicitUsings>` on every project.
+- Target framework `net10.0`; `<Nullable>enable</Nullable>` and `<ImplicitUsings>enable</ImplicitUsings>` on every project.
 - Central package management: all versions in `Directory.Packages.props`, `PackageReference` entries carry no `Version` attribute.
 - `PubInvest.HouseConfig.Domain` must have **zero** package references beyond the BCL. No EF Core, no ASP.NET, no JSON attributes on domain types. Any task adding a dependency there is wrong.
 - The generator must be deterministic: no `Guid.NewGuid()`, no `DateTime.Now`, no dictionary-order-dependent output inside `Domain`. Device identity in a layout is `(RowIndex, StartSlot)`; database ids are assigned by the persistence layer.

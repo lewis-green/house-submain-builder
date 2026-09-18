@@ -53,7 +53,7 @@ public static class BandPacker
 
         if (mustMerge)
         {
-            var dense = PackMerged(fits, enclosure.SlotsPerRow, rules);
+            var dense = PackMerged(fits, enclosure.SlotsPerRow, enclosure.Rows, rules);
             if (rules.Packing == "dense" || RowsUsed(dense) < RowsUsed(banded))
             {
                 placed = dense;
@@ -127,34 +127,43 @@ public static class BandPacker
         return placed;
     }
 
-    /// Shared rows: left-packed categories grow rightwards, right-packed ones grow
-    /// leftwards, and a row is full when the two fronts would meet.
+    /// Shared rows, but still one band per row for as long as rows remain: only
+    /// the bands that will not fit that way get merged into rows already in use.
+    /// Left-packed categories grow rightwards, right-packed ones grow leftwards,
+    /// and a row is full when the two fronts would meet.
     private static List<PlacedDevice> PackMerged(
         IReadOnlyList<RequiredDevice> devices,
         int slotsPerRow,
+        int maxRows,
         RuleSetPayload rules)
     {
         var placed = new List<PlacedDevice>();
         var left = new List<int>();   // next free slot from the left, per row
         var right = new List<int>();  // next free boundary from the right, per row
+        var used = new List<bool>();  // has any band started on this row?
 
         foreach (var band in BandsInOrder(devices, rules))
         {
-            foreach (var device in devices.Where(d => BandOf(d.Category) == band))
+            var inBand = devices.Where(d => BandOf(d.Category) == band).ToList();
+            if (inBand.Count == 0) continue;
+
+            // Take a fresh row if one is still going spare, so merging is the
+            // exception rather than the habit.
+            var startRow = used.Count(u => u) < maxRows ? FirstUnusedRow() : 0;
+
+            foreach (var device in inBand)
             {
-                var row = 0;
+                var row = startRow;
 
                 while (true)
                 {
-                    if (row == left.Count)
-                    {
-                        left.Add(0);
-                        right.Add(slotsPerRow);
-                    }
-
+                    EnsureRow(row);
                     if (right[row] - left[row] >= device.ModuleWidth) break;
                     row++;
                 }
+
+                EnsureRow(row);
+                used[row] = true;
 
                 if (FromRight.Contains(device.Category))
                 {
@@ -171,6 +180,26 @@ public static class BandPacker
         }
 
         return placed;
+
+        void EnsureRow(int row)
+        {
+            while (row >= left.Count)
+            {
+                left.Add(0);
+                right.Add(slotsPerRow);
+                used.Add(false);
+            }
+        }
+
+        int FirstUnusedRow()
+        {
+            for (var row = 0; row < used.Count; row++)
+            {
+                if (!used[row]) return row;
+            }
+
+            return used.Count;
+        }
     }
 
     private static PlacedDevice Place(RequiredDevice device, int row, int slot) => new(
@@ -199,7 +228,7 @@ public static class BandPacker
             {
                 if (devices.Any(d => d.ModuleWidth > e.SlotsPerRow)) return false;
                 if (RowsUsed(PackBanded(devices, e.SlotsPerRow, rules)) <= e.Rows) return true;
-                return RowsUsed(PackMerged(devices, e.SlotsPerRow, rules)) <= e.Rows;
+                return RowsUsed(PackMerged(devices, e.SlotsPerRow, e.Rows, rules)) <= e.Rows;
             });
 
     /// Tape dimmers share the mains dimmer band, and the -24V block sits with

@@ -65,12 +65,15 @@ public class BomExportTests(HouseConfigApiFactory factory)
         new { type = "Switched", name = "Immersion", sequence = 3 }
     ];
 
+    private async Task Seed()
+    {
+        await using var db = factory.NewDbContext();
+        await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
+    }
+
     private async Task<(Guid ProjectId, Guid SubmainId)> Issued(HttpClient client)
     {
-        await using (var db = factory.NewDbContext())
-        {
-            await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
-        }
+        await Seed();
 
         var project = await (await client.PostAsJsonAsync("/projects", new { name = $"Bom {Guid.NewGuid()}" }))
             .Content.ReadFromJsonAsync<ProjectDto>();
@@ -164,6 +167,22 @@ public class BomExportTests(HouseConfigApiFactory factory)
         Assert.False(bom!.Priced);
         Assert.Null(bom.Total);
         Assert.True(bom.UnpricedLines > 0);
+    }
+
+    [Fact]
+    public async Task A_house_with_nothing_issued_is_not_reported_as_priced()
+    {
+        var client = factory.CreateClient();
+        await Seed();
+
+        var project = await (await client.PostAsJsonAsync("/projects", new { name = $"Empty {Guid.NewGuid()}" }))
+            .Content.ReadFromJsonAsync<ProjectDto>();
+
+        var bom = await client.GetFromJsonAsync<BomDto>($"/projects/{project!.Id}/bom");
+
+        Assert.Empty(bom!.Lines);
+        Assert.False(bom.Priced);
+        Assert.Null(bom.Total);
     }
 
     [Fact]

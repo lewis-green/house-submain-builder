@@ -107,3 +107,28 @@ export interface CircuitInput {
   wattsPerMetre?: number | null
   lengthMetres?: number | null
 }
+
+export interface BomLineView {
+  catalogueId: string
+  partNumber: string
+  description: string
+  quantity: number
+  unitCost: number
+  lineTotal: number
+}
+
+export interface BomView {
+  lines: BomLineView[]
+  /** null while any part is unpriced: a confident zero would be a different claim. */
+  total: number | null
+  unpricedLines: number
+  priced: boolean
+}
+
+export interface RevisionView {
+  id: string
+  submainId: string
+  layoutVersion: number
+  issuedAt: string
+  issuedBy: string
+}

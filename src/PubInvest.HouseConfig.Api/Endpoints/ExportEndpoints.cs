@@ -154,15 +154,19 @@ public static class ExportEndpoints
     {
         var unpriced = bom.Lines.Count(l => l.UnitCost <= 0m);
 
+        // An empty BOM is not a priced one. Saying "priced: true, total: 0" for a
+        // house with nothing issued is the same lie as printing a confident zero.
+        var priced = bom.Lines.Count > 0 && unpriced == 0;
+
         return new
         {
             lines = bom.Lines.Select(l => new
             {
                 l.CatalogueId, l.PartNumber, l.Description, l.Quantity, l.UnitCost, l.LineTotal,
             }),
-            total = unpriced > 0 ? (decimal?)null : bom.Total,
+            total = priced ? bom.Total : (decimal?)null,
             unpricedLines = unpriced,
-            priced = unpriced == 0,
+            priced,
         };
     }
 

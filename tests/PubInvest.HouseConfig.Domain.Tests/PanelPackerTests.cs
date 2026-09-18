@@ -24,6 +24,14 @@ public class PanelPackerTests
         return devices;
     }
 
+    /// Termination takes one row, leaving one for three kinds of device, so the
+    /// ladder has to fall to its last rung.
+    private static EnclosureType TwoRows() =>
+        new(new Guid("22222222-0000-0000-0000-000000000004"), "Test", "2x8", 2, 24, "IP30", 100m);
+
+    private static EnclosureType OneRow() =>
+        new(new Guid("22222222-0000-0000-0000-000000000005"), "Test", "1x8", 1, 24, "IP30", 100m);
+
     private static PackResult Packed() =>
         PanelPacker.Pack(Panel(), CatalogueFixture.LargeEnclosure(),
             CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures());
@@ -79,16 +87,44 @@ public class PanelPackerTests
     }
 
     [Fact]
-    public void Dimmers_fill_from_the_left_and_relays_from_the_right()
+    public void With_rows_to_spare_each_kind_of_device_gets_its_own()
     {
+        // The finest layout in the ladder: dimmers, tape dimmers and relays apart.
         var layout = Packed().Layout;
+
+        var dimmerRow = layout.Devices.First(d => d.Category == DeviceCategory.Dimmer240).RowIndex;
+        var relayRow = layout.Devices.First(d => d.Category == DeviceCategory.Relay).RowIndex;
+
+        Assert.NotEqual(dimmerRow, relayRow);
+    }
+
+    [Fact]
+    public void Dimmers_fill_from_the_left_and_relays_from_the_right_once_they_share()
+    {
+        var layout = PanelPacker.Pack(Panel(), TwoRows(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
 
         var dimmer = layout.Devices.Single(d => d.Label == "Dimmer 1");
         var relay = layout.Devices.Single(d => d.Label == "Relay 1");
 
+        Assert.Equal(dimmer.RowIndex, relay.RowIndex);
         Assert.Equal(0, dimmer.StartSlot);
         Assert.Equal(layout.SlotsPerRow, relay.EndSlotExclusive);
-        Assert.Equal(dimmer.RowIndex, relay.RowIndex);
+    }
+
+    [Fact]
+    public void The_ladder_prefers_separation_over_leaving_a_row_spare()
+    {
+        var roomy = Packed().Layout;
+        var cramped = PanelPacker.Pack(Panel(), TwoRows(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        var roomyRows = roomy.Devices.Select(d => d.RowIndex).Distinct().Count();
+        var crampedRows = cramped.Devices.Select(d => d.RowIndex).Distinct().Count();
+
+        // A spare row is worth more as separation than as spare.
+        Assert.True(roomyRows > crampedRows,
+            $"roomy used {roomyRows} rows, cramped used {crampedRows}");
     }
 
     [Fact]
@@ -166,7 +202,7 @@ public class PanelPackerTests
     }
 
     [Fact]
-    public void Tape_dimmers_sit_with_the_mains_dimmers()
+    public void Tape_dimmers_join_the_mains_dimmers_only_when_rows_run_short()
     {
         var devices = new List<RequiredDevice>
         {
@@ -174,10 +210,13 @@ public class PanelPackerTests
             Device(DeviceCategory.Dimmer0_10V, 3, "Tape Dimmer 1"),
         };
 
-        var result = PanelPacker.Pack(devices, CatalogueFixture.LargeEnclosure(),
-            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures());
+        var roomy = PanelPacker.Pack(devices, CatalogueFixture.LargeEnclosure(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+        var cramped = PanelPacker.Pack(devices, OneRow(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
 
-        Assert.Equal(1, result.Layout.Devices.Select(d => d.RowIndex).Distinct().Count());
+        Assert.Equal(2, roomy.Devices.Select(d => d.RowIndex).Distinct().Count());
+        Assert.Equal(1, cramped.Devices.Select(d => d.RowIndex).Distinct().Count());
     }
 
     [Fact]
@@ -214,7 +253,8 @@ public class PanelPackerTests
         var rules = CatalogueFixture.Rules();
         var withoutRelays = rules with
         {
-            Zones = [new PackingZone([DeviceCategory.Terminal240], [DeviceCategory.Isolator])],
+            Layouts = [new PanelLayoutOption(
+                [new PackingZone([DeviceCategory.Terminal240], [DeviceCategory.Isolator])])],
         };
 
         var result = PanelPacker.Pack(

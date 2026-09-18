@@ -256,18 +256,22 @@ public static class CatalogueAdminEndpoints
             problems["psuDeratingFactor"] = ["The derating factor must be greater than 0 and at most 1."];
         }
 
-        // A payload that omits zones deserialises them as null. That must read as
-        // "you forgot the zones", not as a 500.
-        if (request.Payload.Zones is null || request.Payload.Zones.Count == 0)
+        // A payload that omits its layouts deserialises them as null. That must
+        // read as "you forgot the layouts", not as a 500.
+        if (request.Payload.Layouts is null || request.Payload.Layouts.Count == 0)
         {
-            problems["zones"] = ["A ruleset needs at least one packing zone."];
+            problems["layouts"] = ["A ruleset needs at least one panel layout to try."];
         }
-        else if (request.Payload.Zones.All(z =>
-                     (z.FromLeft?.Count ?? 0) == 0 && (z.FromRight?.Count ?? 0) == 0))
+        else if (request.Payload.Layouts.Any(l => (l.Zones?.Count ?? 0) == 0))
+        {
+            problems["layouts"] = ["Every layout needs at least one packing zone."];
+        }
+        else if (request.Payload.Layouts.All(l => l.Zones.All(z =>
+                     (z.FromLeft?.Count ?? 0) == 0 && (z.FromRight?.Count ?? 0) == 0)))
         {
             // A zone that names no category places nothing, so a ruleset made
             // only of empty zones would draw an empty panel with no complaint.
-            problems["zones"] = ["A packing zone must name at least one device category."];
+            problems["layouts"] = ["A packing zone must name at least one device category."];
         }
 
         // The same referential check the shipped-seed test makes, enforced at

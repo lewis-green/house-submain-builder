@@ -45,19 +45,40 @@ public static class CatalogueFixture
     public static IReadOnlyList<EnclosureType> AllEnclosures() =>
         [SmallEnclosure(), LargeEnclosure()];
 
-    public static RuleSetPayload Rules() => new(
-        Zones:
-        [
-            // Termination across the top: circuit terminals then the 24V pair
-            // from the left, the isolator hard against the right.
-            new PackingZone(
-                FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
-                FromRight: [DeviceCategory.Isolator]),
+    /// Termination stays on the top row whatever else moves: circuit terminals
+    /// then the 24V pair from the left, the isolator hard against the right.
+    private static PackingZone Termination => new(
+        FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+        FromRight: [DeviceCategory.Isolator]);
 
-            // Shelly kit below, dimmers from the left and relays from the right.
-            new PackingZone(
-                FromLeft: [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
-                FromRight: [DeviceCategory.Relay]),
+    public static RuleSetPayload Rules() => new(
+        Layouts:
+        [
+            // Finest: a row for every kind of device.
+            new PanelLayoutOption(
+            [
+                Termination,
+                new PackingZone([DeviceCategory.Dimmer240], []),
+                new PackingZone([DeviceCategory.Dimmer0_10V], []),
+                new PackingZone([], [DeviceCategory.Relay]),
+            ]),
+
+            // Then: the two sorts of dimmer share a row, relays keep their own.
+            new PanelLayoutOption(
+            [
+                Termination,
+                new PackingZone([DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V], []),
+                new PackingZone([], [DeviceCategory.Relay]),
+            ]),
+
+            // Last: everything in one zone, dimmers left and relays right.
+            new PanelLayoutOption(
+            [
+                Termination,
+                new PackingZone(
+                    [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                    [DeviceCategory.Relay]),
+            ]),
         ],
         PsuDeratingFactor: 0.8m,
         PreferredDevice: new PreferredDevices(

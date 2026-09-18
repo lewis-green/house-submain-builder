@@ -31,11 +31,18 @@ public sealed record PackingZone(
     IReadOnlyList<DeviceCategory> FromLeft,
     IReadOnlyList<DeviceCategory> FromRight);
 
+/// One way of dividing a panel into zones, top to bottom.
+public sealed record PanelLayoutOption(IReadOnlyList<PackingZone> Zones);
+
 public sealed record RuleSetPayload(
-    /// Top zone first. The house default is termination on top — circuit
-    /// terminals then the 24V pair from the left, isolator from the right — and
-    /// the Shelly kit below it.
-    IReadOnlyList<PackingZone> Zones,
+    /// Tried in order, finest first: the first that fits the enclosure wins.
+    ///
+    /// The house default starts with a row for every kind of device, falls back
+    /// to putting the two sorts of dimmer together, and finally lets the relays
+    /// share the dimmer row from the other end. Termination stays on the top row
+    /// throughout — circuit terminals and the 24V pair from the left, the
+    /// isolator hard against the right.
+    IReadOnlyList<PanelLayoutOption> Layouts,
     decimal PsuDeratingFactor,
     PreferredDevices PreferredDevice,
     TerminalRules Terminals);

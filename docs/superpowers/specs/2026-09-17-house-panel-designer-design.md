@@ -46,7 +46,7 @@ these panels.
 | Neutral | Commoned with a jumper bar; live loops out to the Shelly |
 | Incoming feed | Lands on a two-pole isolator at the head of the top row |
 | LED drivers | Not DIN mount: sized and costed but never placed. The panel carries 12-way +24V and −24V blocks, one way per tape circuit |
-| Row packing | Each zone starts on a fresh row; within a zone the two ends grow toward each other and a row is full when they meet |
+| Row packing | Layouts are tried finest first — a row per kind of device, then dimmers together, then everything together — and the first that fits the enclosure wins |
 | Architecture | Server-authoritative generator; client renders and edits optimistically |
 
 ## Architecture
@@ -100,9 +100,22 @@ and is active — and carries:
 
 ```jsonc
 {
-  "zones": [
-    { "fromLeft": ["Terminal240", "Dc24VPositive", "Dc24VNegative"], "fromRight": ["Isolator"] },
-    { "fromLeft": ["Dimmer240", "Dimmer0_10V"], "fromRight": ["Relay"] }
+  "layouts": [
+    { "zones": [
+      { "fromLeft": ["Terminal240", "Dc24VPositive", "Dc24VNegative"], "fromRight": ["Isolator"] },
+      { "fromLeft": ["Dimmer240"], "fromRight": [] },
+      { "fromLeft": ["Dimmer0_10V"], "fromRight": [] },
+      { "fromLeft": [], "fromRight": ["Relay"] }
+    ] },
+    { "zones": [
+      { "fromLeft": ["Terminal240", "Dc24VPositive", "Dc24VNegative"], "fromRight": ["Isolator"] },
+      { "fromLeft": ["Dimmer240", "Dimmer0_10V"], "fromRight": [] },
+      { "fromLeft": [], "fromRight": ["Relay"] }
+    ] },
+    { "zones": [
+      { "fromLeft": ["Terminal240", "Dc24VPositive", "Dc24VNegative"], "fromRight": ["Isolator"] },
+      { "fromLeft": ["Dimmer240", "Dimmer0_10V"], "fromRight": ["Relay"] }
+    ] }
   ],
   "psuDeratingFactor": 0.8,
   "preferredDevice": {
@@ -125,8 +138,10 @@ and is active — and carries:
 }
 ```
 
-Zones run top to bottom and each starts on a fresh row, so the Shelly kit never
-shares a rail with the terminations. `ExternalDriver` appears in no zone, because
+Layouts are tried in order and the first that fits the enclosure wins, so a spare
+row is spent on separation rather than left spare. Within a layout, zones run top
+to bottom and each starts on a fresh row, so the Shelly kit never shares a rail
+with the terminations. `ExternalDriver` appears in no zone, because
 it is never placed. Zones are expressed by device category, so adding a category
 later is a data change rather than a code change; a category no zone mentions is
 still placed, in a zone of its own at the bottom, rather than silently vanishing
@@ -203,11 +218,13 @@ catch any rule change that silently moves a device.
    per-circuit and loops out to its Shelly channel. **No block is spent on the
    incoming feed** — it lands on the isolator. Bars and stops add no width but do
    appear in the BOM.
-5. **Pack.** Walk the zones top to bottom, each starting on a fresh row. Within a
-   zone, right-hand devices are placed first so the isolator is guaranteed the
-   top-right corner even when the terminals run onto a second row; then left-hand
-   devices fill from the left. A row is full when the two fronts would meet, and
-   the next row of the same zone takes the overflow.
+5. **Pack.** Try each layout in `layouts` in turn and keep the first that fits
+   the enclosure's rows; if none do, keep the densest and report the overflow
+   against it. Within a layout, walk the zones top to bottom, each starting on a
+   fresh row. Right-hand devices are placed first so the isolator is guaranteed
+   the top-right corner even when the terminals run onto a second row; then
+   left-hand devices fill from the left. A row is full when the two fronts would
+   meet, and the next row of the same zone takes the overflow.
 6. **Validate.** Emit `Diagnostics`, never exceptions. "Needs 5 rows, this
    enclosure has 4" is an ordinary result, shown in the UI with the smallest
    catalogue enclosure that would fit.

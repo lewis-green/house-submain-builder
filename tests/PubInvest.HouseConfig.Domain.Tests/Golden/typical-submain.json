@@ -158,38 +158,6 @@
         "EndSlotExclusive": 4
       },
       {
-        "DeviceTypeId": "11111111-0000-0000-0000-000000000003",
-        "Category": "Relay",
-        "RowIndex": 2,
-        "StartSlot": 20,
-        "ModuleWidth": 4,
-        "Label": "Relay 1",
-        "Channels": [
-          {
-            "ChannelIndex": 0,
-            "CircuitId": "33333333-0000-0000-0000-000000000006",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 1,
-            "CircuitId": "33333333-0000-0000-0000-000000000007",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 2,
-            "CircuitId": "33333333-0000-0000-0000-000000000008",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 3,
-            "CircuitId": "33333333-0000-0000-0000-000000000009",
-            "IsSpare": false
-          }
-        ],
-        "TerminalRole": "None",
-        "EndSlotExclusive": 24
-      },
-      {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
         "Category": "Dimmer240",
         "RowIndex": 2,
@@ -258,8 +226,8 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000002",
         "Category": "Dimmer0_10V",
-        "RowIndex": 2,
-        "StartSlot": 6,
+        "RowIndex": 3,
+        "StartSlot": 0,
         "ModuleWidth": 2,
         "Label": "Tape Dimmer 1",
         "Channels": [
@@ -275,7 +243,39 @@
           }
         ],
         "TerminalRole": "None",
-        "EndSlotExclusive": 8
+        "EndSlotExclusive": 2
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000003",
+        "Category": "Relay",
+        "RowIndex": 4,
+        "StartSlot": 20,
+        "ModuleWidth": 4,
+        "Label": "Relay 1",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000006",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000007",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 2,
+            "CircuitId": "33333333-0000-0000-0000-000000000008",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 3,
+            "CircuitId": "33333333-0000-0000-0000-000000000009",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 24
       }
     ],
     "SlotsUsed": 37,

@@ -9,10 +9,10 @@ public sealed record PackResult(PanelLayout Layout, IReadOnlyList<Diagnostic> Di
 
 /// Lays a panel out in zones, top to bottom.
 ///
-/// The house default is two: a termination zone across the top — circuit
-/// terminals and then the 24V pair growing from the left, the isolator hard
-/// against the right — and a control zone below it carrying the Shelly kit,
-/// dimmers from the left and relays from the right.
+/// The ruleset offers several layouts, finest first, and the packer takes the
+/// first that fits the enclosure: a row for every kind of device if the rows are
+/// there, then the two sorts of dimmer together, then the relays sharing that row
+/// from the other end. A spare row is worth more as separation than as spare.
 ///
 /// Every zone starts on a fresh row, so the Shelly gear never shares a rail with
 /// the terminations. Within a zone the two ends grow toward each other and a row
@@ -39,7 +39,7 @@ public static class PanelPacker
         }
 
         var fits = placeable.Where(d => d.ModuleWidth <= enclosure.SlotsPerRow).ToList();
-        var placed = Place(fits, enclosure.SlotsPerRow, rules);
+        var placed = BestFitting(fits, enclosure, rules);
         var rowsUsed = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
 
         if (rowsUsed > enclosure.Rows)
@@ -59,15 +59,37 @@ public static class PanelPacker
         return new PackResult(new PanelLayout(enclosure.Rows, enclosure.SlotsPerRow, placed), diagnostics);
     }
 
+    /// The finest layout that fits, or the densest one if none of them do —
+    /// in which case Pack reports the overflow against the best attempt.
+    private static List<PlacedDevice> BestFitting(
+        IReadOnlyList<RequiredDevice> devices,
+        EnclosureType enclosure,
+        RuleSetPayload rules)
+    {
+        List<PlacedDevice>? densest = null;
+
+        foreach (var option in rules.Layouts)
+        {
+            var placed = Place(devices, enclosure.SlotsPerRow, option.Zones, devices);
+            var rows = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
+
+            if (rows <= enclosure.Rows) return placed;
+            densest = placed;
+        }
+
+        return densest ?? [];
+    }
+
     private static List<PlacedDevice> Place(
         IReadOnlyList<RequiredDevice> devices,
         int slotsPerRow,
-        RuleSetPayload rules)
+        IReadOnlyList<PackingZone> zones,
+        IReadOnlyList<RequiredDevice> all)
     {
         var placed = new List<PlacedDevice>();
         var nextZoneRow = 0;
 
-        foreach (var zone in ZonesInOrder(devices, rules))
+        foreach (var zone in ZonesInOrder(all, zones))
         {
             var rows = new Rows(nextZoneRow, slotsPerRow);
 
@@ -99,13 +121,13 @@ public static class PanelPacker
 
     private static IEnumerable<PackingZone> ZonesInOrder(
         IReadOnlyList<RequiredDevice> devices,
-        RuleSetPayload rules)
+        IReadOnlyList<PackingZone> zones)
     {
-        foreach (var zone in rules.Zones) yield return zone;
+        foreach (var zone in zones) yield return zone;
 
         // Anything the ruleset forgot still has to go somewhere, rather than
         // silently vanishing from the drawing.
-        var placedCategories = rules.Zones
+        var placedCategories = zones
             .SelectMany(z => z.FromLeft.Concat(z.FromRight))
             .ToHashSet();
 
@@ -184,8 +206,11 @@ public static class PanelPacker
             {
                 if (devices.Any(d => d.ModuleWidth > e.SlotsPerRow)) return false;
 
-                var trial = Place(devices, e.SlotsPerRow, rules);
-                var rows = trial.Count == 0 ? 0 : trial.Max(d => d.RowIndex) + 1;
-                return rows <= e.Rows;
+                return rules.Layouts.Any(option =>
+                {
+                    var trial = Place(devices, e.SlotsPerRow, option.Zones, devices);
+                    var rows = trial.Count == 0 ? 0 : trial.Max(d => d.RowIndex) + 1;
+                    return rows <= e.Rows;
+                });
             });
 }

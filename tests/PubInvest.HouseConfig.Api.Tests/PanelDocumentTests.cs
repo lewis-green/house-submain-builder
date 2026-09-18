@@ -43,8 +43,11 @@ public class PanelDocumentTests
             ],
             new RuleSetPayload(
                 [
-                    new PackingZone([DeviceCategory.Terminal240], [DeviceCategory.Isolator]),
-                    new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Relay]),
+                    new PanelLayoutOption(
+                    [
+                        new PackingZone([DeviceCategory.Terminal240], [DeviceCategory.Isolator]),
+                        new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Relay]),
+                    ]),
                 ],
                 0.8m,
                 new PreferredDevices(DimmerType, DimmerType, DimmerType, RelayType, DimmerType, DimmerType, [DimmerType]),

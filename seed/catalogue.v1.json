@@ -175,24 +175,87 @@
       "version": 1,
       "isDefault": true,
       "payload": {
-        "zones": [
+        "layouts": [
           {
-            "fromLeft": [
-              "Terminal240",
-              "Dc24VPositive",
-              "Dc24VNegative"
-            ],
-            "fromRight": [
-              "Isolator"
+            "zones": [
+              {
+                "fromLeft": [
+                  "Terminal240",
+                  "Dc24VPositive",
+                  "Dc24VNegative"
+                ],
+                "fromRight": [
+                  "Isolator"
+                ]
+              },
+              {
+                "fromLeft": [
+                  "Dimmer240"
+                ],
+                "fromRight": []
+              },
+              {
+                "fromLeft": [
+                  "Dimmer0_10V"
+                ],
+                "fromRight": []
+              },
+              {
+                "fromLeft": [],
+                "fromRight": [
+                  "Relay"
+                ]
+              }
             ]
           },
           {
-            "fromLeft": [
-              "Dimmer240",
-              "Dimmer0_10V"
-            ],
-            "fromRight": [
-              "Relay"
+            "zones": [
+              {
+                "fromLeft": [
+                  "Terminal240",
+                  "Dc24VPositive",
+                  "Dc24VNegative"
+                ],
+                "fromRight": [
+                  "Isolator"
+                ]
+              },
+              {
+                "fromLeft": [
+                  "Dimmer240",
+                  "Dimmer0_10V"
+                ],
+                "fromRight": []
+              },
+              {
+                "fromLeft": [],
+                "fromRight": [
+                  "Relay"
+                ]
+              }
+            ]
+          },
+          {
+            "zones": [
+              {
+                "fromLeft": [
+                  "Terminal240",
+                  "Dc24VPositive",
+                  "Dc24VNegative"
+                ],
+                "fromRight": [
+                  "Isolator"
+                ]
+              },
+              {
+                "fromLeft": [
+                  "Dimmer240",
+                  "Dimmer0_10V"
+                ],
+                "fromRight": [
+                  "Relay"
+                ]
+              }
             ]
           }
         ],
@@ -220,5 +283,5 @@
       }
     }
   ],
-  "_layout": "Termination across the top row: circuit terminals then the 24V pair from the left, the two-pole isolator hard against the right. All Shelly kit on the rows below, dimmers from the left and relays from the right."
+  "_layout": "Layouts are tried finest first and the first that fits the enclosure wins: a row for every kind of device, then the two sorts of dimmer together, then the relays sharing that row from the other end. Termination stays on the top row throughout - circuit terminals then the 24V pair from the left, the two-pole isolator hard against the right."
 }

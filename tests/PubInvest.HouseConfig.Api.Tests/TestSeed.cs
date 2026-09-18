@@ -48,10 +48,14 @@ public static class TestSeed
         RuleSets:
         [
             new SeedRuleSet(RuleSetId, "Test rules", 1, true, new RuleSetPayload(
-                BandOrder:
+                Zones:
                 [
-                    DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240,
-                    DeviceCategory.Relay, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative,
+                    new PackingZone(
+                        FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+                        FromRight: [DeviceCategory.Isolator]),
+                    new PackingZone(
+                        FromLeft: [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                        FromRight: [DeviceCategory.Relay]),
                 ],
                 PsuDeratingFactor: 0.8m,
                 PreferredDevice: new PreferredDevices(
@@ -68,7 +72,6 @@ public static class TestSeed
                     BridgeBarDeviceTypeId: BridgeId,
                     BridgeBarWays: 10,
                     EndStopDeviceTypeId: EndStopId,
-                    EndStopsPerBank: 2),
-                Packing: "bandPerRow"))
+                    EndStopsPerBank: 2)))
         ]);
 }

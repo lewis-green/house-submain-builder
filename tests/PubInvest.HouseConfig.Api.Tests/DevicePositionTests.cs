@@ -39,9 +39,10 @@ public class DevicePositionTests(HouseConfigApiFactory factory)
         return (submain.Id, design!);
     }
 
-    /// TestSeed's enclosure is 6 rows of 24 slots, and its dimmer is 2 slots wide,
-    /// so slot 20 is inside the row and clear of the generated dimmer band at 0-6.
-    private const int FreeSlot = 20;
+    /// TestSeed's enclosure is 6 rows of 24 slots and its dimmer is 2 slots wide.
+    /// Slot 12 is clear of the dimmers packing from the left at 0-6 and of the
+    /// 4-slot relay packing from the right at 20-23.
+    private const int FreeSlot = 12;
 
     private static object[] ThreeDimmed =>
     [

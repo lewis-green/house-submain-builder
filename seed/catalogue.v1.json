@@ -175,13 +175,26 @@
       "version": 1,
       "isDefault": true,
       "payload": {
-        "bandOrder": [
-          "Isolator",
-          "Terminal240",
-          "Dimmer240",
-          "Relay",
-          "Dc24VPositive",
-          "Dc24VNegative"
+        "zones": [
+          {
+            "fromLeft": [
+              "Terminal240",
+              "Dc24VPositive",
+              "Dc24VNegative"
+            ],
+            "fromRight": [
+              "Isolator"
+            ]
+          },
+          {
+            "fromLeft": [
+              "Dimmer240",
+              "Dimmer0_10V"
+            ],
+            "fromRight": [
+              "Relay"
+            ]
+          }
         ],
         "psuDeratingFactor": 0.8,
         "preferredDevice": {
@@ -203,9 +216,9 @@
           "bridgeBarWays": 10,
           "endStopDeviceTypeId": "d1000000-0000-4000-8000-000000000009",
           "endStopsPerBank": 2
-        },
-        "packing": "bandPerRow"
+        }
       }
     }
-  ]
+  ],
+  "_layout": "Termination across the top row: circuit terminals then the 24V pair from the left, the two-pole isolator hard against the right. All Shelly kit on the rows below, dimmers from the left and relays from the right."
 }

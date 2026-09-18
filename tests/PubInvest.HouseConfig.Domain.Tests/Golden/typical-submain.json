@@ -7,17 +7,17 @@
         "DeviceTypeId": "11111111-0000-0000-0000-000000000007",
         "Category": "Isolator",
         "RowIndex": 0,
-        "StartSlot": 0,
+        "StartSlot": 18,
         "ModuleWidth": 6,
         "Label": "Isolator",
         "Channels": [],
         "TerminalRole": "None",
-        "EndSlotExclusive": 6
+        "EndSlotExclusive": 24
       },
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 0,
         "ModuleWidth": 1,
         "Label": "C1",
@@ -28,7 +28,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 1,
         "ModuleWidth": 1,
         "Label": "C2",
@@ -39,7 +39,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 2,
         "ModuleWidth": 1,
         "Label": "C3",
@@ -50,7 +50,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 3,
         "ModuleWidth": 1,
         "Label": "C4",
@@ -61,7 +61,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 4,
         "ModuleWidth": 1,
         "Label": "C5",
@@ -72,7 +72,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 5,
         "ModuleWidth": 1,
         "Label": "C6",
@@ -83,7 +83,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 6,
         "ModuleWidth": 1,
         "Label": "C7",
@@ -94,7 +94,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 7,
         "ModuleWidth": 1,
         "Label": "C8",
@@ -105,7 +105,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 8,
         "ModuleWidth": 1,
         "Label": "C9",
@@ -116,7 +116,7 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 9,
         "ModuleWidth": 1,
         "Label": "C10",
@@ -127,13 +127,67 @@
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000006",
         "Category": "Terminal240",
-        "RowIndex": 1,
+        "RowIndex": 0,
         "StartSlot": 10,
         "ModuleWidth": 1,
         "Label": "C11",
         "Channels": [],
         "TerminalRole": "All",
         "EndSlotExclusive": 11
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
+        "Category": "Dc24VPositive",
+        "RowIndex": 0,
+        "StartSlot": 11,
+        "ModuleWidth": 4,
+        "Label": "\u002B24V",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 15
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
+        "Category": "Dc24VNegative",
+        "RowIndex": 1,
+        "StartSlot": 0,
+        "ModuleWidth": 4,
+        "Label": "-24V",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-000000000003",
+        "Category": "Relay",
+        "RowIndex": 2,
+        "StartSlot": 20,
+        "ModuleWidth": 4,
+        "Label": "Relay 1",
+        "Channels": [
+          {
+            "ChannelIndex": 0,
+            "CircuitId": "33333333-0000-0000-0000-000000000006",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 1,
+            "CircuitId": "33333333-0000-0000-0000-000000000007",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 2,
+            "CircuitId": "33333333-0000-0000-0000-000000000008",
+            "IsSpare": false
+          },
+          {
+            "ChannelIndex": 3,
+            "CircuitId": "33333333-0000-0000-0000-000000000009",
+            "IsSpare": false
+          }
+        ],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 24
       },
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
@@ -220,60 +274,6 @@
             "IsSpare": false
           }
         ],
-        "TerminalRole": "None",
-        "EndSlotExclusive": 8
-      },
-      {
-        "DeviceTypeId": "11111111-0000-0000-0000-000000000003",
-        "Category": "Relay",
-        "RowIndex": 3,
-        "StartSlot": 0,
-        "ModuleWidth": 4,
-        "Label": "Relay 1",
-        "Channels": [
-          {
-            "ChannelIndex": 0,
-            "CircuitId": "33333333-0000-0000-0000-000000000006",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 1,
-            "CircuitId": "33333333-0000-0000-0000-000000000007",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 2,
-            "CircuitId": "33333333-0000-0000-0000-000000000008",
-            "IsSpare": false
-          },
-          {
-            "ChannelIndex": 3,
-            "CircuitId": "33333333-0000-0000-0000-000000000009",
-            "IsSpare": false
-          }
-        ],
-        "TerminalRole": "None",
-        "EndSlotExclusive": 4
-      },
-      {
-        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
-        "Category": "Dc24VPositive",
-        "RowIndex": 4,
-        "StartSlot": 0,
-        "ModuleWidth": 4,
-        "Label": "\u002B24V",
-        "Channels": [],
-        "TerminalRole": "None",
-        "EndSlotExclusive": 4
-      },
-      {
-        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
-        "Category": "Dc24VNegative",
-        "RowIndex": 4,
-        "StartSlot": 4,
-        "ModuleWidth": 4,
-        "Label": "-24V",
-        "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 8
       }

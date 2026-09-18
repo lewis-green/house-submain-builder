@@ -40,13 +40,13 @@ these panels.
 | Outputs | PDF panel drawing + circuit schedule; bill of materials |
 | LED tape | 24V constant-voltage drivers in-panel, dimmed 0/1-10V |
 | Layout rules | Function-banded rows; no MCB/RCBO band; 240V circuit terminals on top |
-| Band order | Isolator → Terminals → Dimmers → Relays → 24V distribution |
+| Row zones | Termination on top (terminals then ±24V from the left, isolator hard right); Shelly kit below (dimmers left, relays right) |
 | Terminals | One WAGO 2003-7646 per circuit, carrying L, N and E on a single slice |
 | Earth | Commons through the DIN rail: no bar, no separate PE part |
 | Neutral | Commoned with a jumper bar; live loops out to the Shelly |
 | Incoming feed | Lands on a two-pole isolator at the head of the top row |
 | LED drivers | Not DIN mount: sized and costed but never placed. The panel carries 12-way +24V and −24V blocks, one way per tape circuit |
-| Row packing | A band keeps a row to itself when the design fits that way; otherwise bands merge, dimmers from the left and relays from the right |
+| Row packing | Each zone starts on a fresh row; within a zone the two ends grow toward each other and a row is full when they meet |
 | Architecture | Server-authoritative generator; client renders and edits optimistically |
 
 ## Architecture
@@ -100,7 +100,10 @@ and is active — and carries:
 
 ```jsonc
 {
-  "bandOrder": ["Isolator", "Terminal240", "Dimmer240", "Relay", "Dc24VPositive", "Dc24VNegative"],
+  "zones": [
+    { "fromLeft": ["Terminal240", "Dc24VPositive", "Dc24VNegative"], "fromRight": ["Isolator"] },
+    { "fromLeft": ["Dimmer240", "Dimmer0_10V"], "fromRight": ["Relay"] }
+  ],
   "psuDeratingFactor": 0.8,
   "preferredDevice": {
     "Dimmer240":  "<deviceTypeId>",
@@ -119,17 +122,15 @@ and is active — and carries:
     "bridgeBarWays": 10,
     "endStopDeviceTypeId": "<wago-end-stop>"
   },
-  "packing": "bandPerRow"
 }
 ```
 
-`Dimmer0_10V` is placed in the `Dimmer240` band, and `Dc24VNegative` in the
-`Dc24VPositive` band — a ± pair belongs side by side. `ExternalDriver` is in no
-band at all, because it is never placed. The band order is expressed by device
-category so that adding a category later is a data change, not a code change.
-
-`packing` is `"bandPerRow"` (a row each, merging only when that will not fit) or
-`"dense"` (always merge).
+Zones run top to bottom and each starts on a fresh row, so the Shelly kit never
+shares a rail with the terminations. `ExternalDriver` appears in no zone, because
+it is never placed. Zones are expressed by device category, so adding a category
+later is a data change rather than a code change; a category no zone mentions is
+still placed, in a zone of its own at the bottom, rather than silently vanishing
+from the drawing.
 
 ### Design
 
@@ -202,12 +203,11 @@ catch any rule change that silently moves a device.
    per-circuit and loops out to its Shelly channel. **No block is spent on the
    incoming feed** — it lands on the isolator. Bars and stops add no width but do
    appear in the BOM.
-5. **Pack.** First try one band per row, walking `bandOrder`, first-fit within a
-   row, never straddling. If that fits the enclosure, keep it — a banded drawing
-   reads better. If it does not, re-pack merged: bands share rows, with dimmers
-   growing from the left and relays and distribution blocks from the right, and a
-   row full when the two fronts meet. A merged layout is reported with an `Info`
-   diagnostic so the drawing is known to be dense on purpose.
+5. **Pack.** Walk the zones top to bottom, each starting on a fresh row. Within a
+   zone, right-hand devices are placed first so the isolator is guaranteed the
+   top-right corner even when the terminals run onto a second row; then left-hand
+   devices fill from the left. A row is full when the two fronts would meet, and
+   the next row of the same zone takes the overflow.
 6. **Validate.** Emit `Diagnostics`, never exceptions. "Needs 5 rows, this
    enclosure has 4" is an ordinary result, shown in the UI with the smallest
    catalogue enclosure that would fit.
@@ -233,8 +233,6 @@ Each diagnostic carries `severity` (`Error` | `Warning` | `Info`), `code`,
 - `ENCLOSURE_TOO_SMALL` — rows or slots exceeded; suggests a larger enclosure.
 - `NO_PREFERRED_DEVICE` — ruleset names a device type that is inactive or absent,
   including a missing isolator or 24V distribution block.
-- `BANDS_MERGED` — informational: rows carry more than one kind of device because
-  a row each would not have fitted.
 - `PSU_UNSIZED` — LED tape load exceeds the largest catalogue PSU.
 - `ORPHANED_ASSIGNMENT` — a previously assigned circuit has no home in the new layout.
 - `TAPE_LOAD_MISSING` — an LED tape circuit has no watts/length, so PSU sizing is a guess.

@@ -42,11 +42,13 @@ public class PanelDocumentTests
                 new CircuitSnapshot(CircuitB, "Switched", "Immersion", "Airing cupboard", 2),
             ],
             new RuleSetPayload(
-                [DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240, DeviceCategory.Relay],
+                [
+                    new PackingZone([DeviceCategory.Terminal240], [DeviceCategory.Isolator]),
+                    new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Relay]),
+                ],
                 0.8m,
                 new PreferredDevices(DimmerType, DimmerType, DimmerType, RelayType, DimmerType, DimmerType, [DimmerType]),
-                new TerminalRules(DimmerType, 1, DimmerType, 10, DimmerType, 2),
-                "bandPerRow"),
+                new TerminalRules(DimmerType, 1, DimmerType, 10, DimmerType, 2)),
             [
                 new DeviceType(DimmerType, "Shelly", "Pro Dimmer 2PM", "PH-DIM", DeviceCategory.Dimmer240, 3, 2, null, null, dimmerCost, true),
                 new DeviceType(RelayType, "Shelly", "Pro relay", "PH-REL", DeviceCategory.Relay, 9, 4, null, null, 95m, true),

@@ -48,7 +48,7 @@ public static class PanelGenerator
             .Concat(tape.Blocks)
             .ToList();
 
-        var packed = BandPacker.Pack(allDevices, request.Enclosure, request.Rules, request.AllEnclosures);
+        var packed = PanelPacker.Pack(allDevices, request.Enclosure, request.Rules, request.AllEnclosures);
         diagnostics.AddRange(packed.Diagnostics);
 
         // Overrides run after packing and before the BOM, so the parts list counts

@@ -24,11 +24,18 @@ public sealed record PreferredDevices(
     /// Not panel-mounted. Sized from the tape load and costed, never placed.
     IReadOnlyList<Guid> ExternalDriver);
 
+/// A horizontal zone of the panel. Every zone starts on a fresh row; within it,
+/// `FromLeft` categories grow rightwards from the left-hand end and `FromRight`
+/// ones grow leftwards from the right, meeting in the middle.
+public sealed record PackingZone(
+    IReadOnlyList<DeviceCategory> FromLeft,
+    IReadOnlyList<DeviceCategory> FromRight);
+
 public sealed record RuleSetPayload(
-    IReadOnlyList<DeviceCategory> BandOrder,
+    /// Top zone first. The house default is termination on top — circuit
+    /// terminals then the 24V pair from the left, isolator from the right — and
+    /// the Shelly kit below it.
+    IReadOnlyList<PackingZone> Zones,
     decimal PsuDeratingFactor,
     PreferredDevices PreferredDevice,
-    TerminalRules Terminals,
-    /// "bandPerRow" tries a row per band and merges only if that will not fit;
-    /// "dense" always merges, packing relays from the right.
-    string Packing);
+    TerminalRules Terminals);

@@ -46,10 +46,18 @@ public static class CatalogueFixture
         [SmallEnclosure(), LargeEnclosure()];
 
     public static RuleSetPayload Rules() => new(
-        BandOrder:
+        Zones:
         [
-            DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240,
-            DeviceCategory.Relay, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative,
+            // Termination across the top: circuit terminals then the 24V pair
+            // from the left, the isolator hard against the right.
+            new PackingZone(
+                FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+                FromRight: [DeviceCategory.Isolator]),
+
+            // Shelly kit below, dimmers from the left and relays from the right.
+            new PackingZone(
+                FromLeft: [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                FromRight: [DeviceCategory.Relay]),
         ],
         PsuDeratingFactor: 0.8m,
         PreferredDevice: new PreferredDevices(
@@ -66,6 +74,5 @@ public static class CatalogueFixture
             BridgeBarDeviceTypeId: BridgeId,
             BridgeBarWays: 10,
             EndStopDeviceTypeId: EndStopId,
-            EndStopsPerBank: 2),
-        Packing: "bandPerRow");
+            EndStopsPerBank: 2));
 }

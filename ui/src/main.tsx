@@ -4,7 +4,7 @@ import { AuthProvider } from 'react-oidc-context'
 import { BrowserRouter } from 'react-router'
 import { App } from './App'
 import { AuthGate } from './auth/AuthGate'
-import { authEnabled, oidcConfig } from './auth/config'
+import { authEnabled, loadRuntimeConfig, oidcSettings } from './auth/runtimeConfig'
 import './index.css'
 
 const routed = (
@@ -13,10 +13,18 @@ const routed = (
   </BrowserRouter>
 )
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {authEnabled
-      ? <AuthProvider {...oidcConfig}><AuthGate>{routed}</AuthGate></AuthProvider>
-      : routed}
-  </StrictMode>,
-)
+// Settings arrive before the first render, so nobody is shown a signed-out app
+// for a moment while the identity provider is still being looked up.
+void loadRuntimeConfig().then((config) => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      {authEnabled(config)
+        ? (
+          <AuthProvider {...oidcSettings(config)}>
+            <AuthGate>{routed}</AuthGate>
+          </AuthProvider>
+        )
+        : routed}
+    </StrictMode>,
+  )
+})

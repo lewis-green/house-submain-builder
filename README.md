@@ -37,10 +37,36 @@ cd ui && npm install && npm run dev
 
 Then open **http://localhost:5173**.
 
-Auth is off in development (`HouseConfig:AuthEnabled` is `false` in
-`appsettings.Development.json`), so there is nothing to sign in to. If your
-`docker compose` is the plugin subcommand rather than the standalone
+If your `docker compose` is the plugin subcommand rather than the standalone
 `docker-compose` binary, use whichever you have.
+
+### Signing in
+
+Auth is off by default, at both ends: `HouseConfig__AuthEnabled` is `false` on
+the API and the UI is given no identity provider, so the app opens straight onto
+the houses list.
+
+To turn it on, give the UI container a realm and a client and bring it up again:
+
+```bash
+OIDC_AUTHORITY=https://keycloak.example/realms/house \
+OIDC_CLIENT_ID=panel-ui \
+docker-compose up -d ui
+```
+
+plus `HouseConfig__AuthEnabled=true` and the matching `Keycloak` settings on the
+API. The UI reads its two settings **when the container starts**, not when the
+image was built: `docker-entrypoint.d/30-runtime-config.sh` writes them to
+`/config.json` and the app fetches that before its first render. So the image
+published from `main` is the one every environment runs — a new realm is a
+restart, not a rebuild. nginx serves `/config.json` with `Cache-Control:
+no-store`, because a stale copy would point a redeployed app at an identity
+provider it no longer uses.
+
+Leaving either variable blank leaves sign-in off, which is what development
+does: `ui/public/config.json` ships blank and Vite serves it as-is. To exercise
+sign-in against a local Keycloak with `npm run dev`, fill that file in — but
+don't commit it filled.
 
 ## Seeing it work
 
@@ -83,7 +109,7 @@ units.
 
 ```bash
 dotnet test          # 173 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 84 tests
+cd ui && npm test    # 92 tests
 cd ui && npm run build   # the real typecheck: `tsc -b` is stricter than `tsc --noEmit`
 ```
 

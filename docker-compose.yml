@@ -32,6 +32,11 @@ services:
   ui:
     build:
       context: ./ui
+    environment:
+      # Read on start and served as /config.json. Leave both blank and the UI
+      # runs without sign-in, which pairs with HouseConfig__AuthEnabled above.
+      OIDC_AUTHORITY: "${OIDC_AUTHORITY:-}"
+      OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-}"
     ports:
       - "8080:8080"
     depends_on:

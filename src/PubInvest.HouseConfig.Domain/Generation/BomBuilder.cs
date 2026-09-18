@@ -44,7 +44,8 @@ public static class BomBuilder
                 deviceType.PartNumber,
                 deviceType.Description,
                 quantity,
-                deviceType.Cost));
+                deviceType.Cost,
+                PanelMounted: deviceType.Category is not DeviceCategory.ExternalDriver));
         }
 
         return new BillOfMaterials(

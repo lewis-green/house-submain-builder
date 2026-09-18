@@ -290,6 +290,7 @@
         "Description": "Hager Test 6x24",
         "Quantity": 1,
         "UnitCost": 220.00,
+        "PanelMounted": true,
         "LineTotal": 220.00
       },
       {
@@ -298,6 +299,7 @@
         "Description": "WAGO Jumper bar 10-way",
         "Quantity": 2,
         "UnitCost": 3.00,
+        "PanelMounted": true,
         "LineTotal": 6.00
       },
       {
@@ -306,6 +308,7 @@
         "Description": "WAGO 12-way \u002B24V",
         "Quantity": 1,
         "UnitCost": 7.00,
+        "PanelMounted": true,
         "LineTotal": 7.00
       },
       {
@@ -314,6 +317,7 @@
         "Description": "WAGO 12-way -24V",
         "Quantity": 1,
         "UnitCost": 7.00,
+        "PanelMounted": true,
         "LineTotal": 7.00
       },
       {
@@ -322,6 +326,7 @@
         "Description": "Shelly Pro Dimmer 0/1-10V",
         "Quantity": 1,
         "UnitCost": 55.00,
+        "PanelMounted": true,
         "LineTotal": 55.00
       },
       {
@@ -330,6 +335,7 @@
         "Description": "Shelly Pro Dimmer 2PM",
         "Quantity": 3,
         "UnitCost": 60.00,
+        "PanelMounted": true,
         "LineTotal": 180.00
       },
       {
@@ -338,6 +344,7 @@
         "Description": "Test 2-pole isolator",
         "Quantity": 1,
         "UnitCost": 18.00,
+        "PanelMounted": true,
         "LineTotal": 18.00
       },
       {
@@ -346,6 +353,7 @@
         "Description": "Mean Well DR-240-24",
         "Quantity": 1,
         "UnitCost": 85.00,
+        "PanelMounted": false,
         "LineTotal": 85.00
       },
       {
@@ -354,6 +362,7 @@
         "Description": "Shelly Pro 4PM",
         "Quantity": 1,
         "UnitCost": 95.00,
+        "PanelMounted": true,
         "LineTotal": 95.00
       },
       {
@@ -362,6 +371,7 @@
         "Description": "WAGO End stop",
         "Quantity": 2,
         "UnitCost": 0.80,
+        "PanelMounted": true,
         "LineTotal": 1.60
       },
       {
@@ -370,6 +380,7 @@
         "Description": "WAGO TOPJOB S 2.5",
         "Quantity": 11,
         "UnitCost": 1.50,
+        "PanelMounted": true,
         "LineTotal": 16.50
       }
     ],

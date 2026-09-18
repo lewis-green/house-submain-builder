@@ -65,6 +65,30 @@ public class PanelGeneratorTests
     }
 
     [Fact]
+    public void The_external_driver_reaches_the_bom_but_never_the_rail()
+    {
+        // A bill of materials you could order from and still have no way to
+        // light the tape would be worse than no bill at all.
+        var result = PanelGenerator.Generate(TypicalSubmain());
+
+        var driver = result.Bom.Lines.Single(l => l.CatalogueId == CatalogueFixture.Psu240Id);
+        Assert.False(driver.PanelMounted);
+        Assert.DoesNotContain(result.Layout.Devices, d => d.DeviceTypeId == CatalogueFixture.Psu240Id);
+    }
+
+    [Fact]
+    public void Everything_on_the_rail_is_marked_panel_mounted()
+    {
+        var result = PanelGenerator.Generate(TypicalSubmain());
+
+        foreach (var device in result.Layout.Devices)
+        {
+            var line = result.Bom.Lines.Single(l => l.CatalogueId == device.DeviceTypeId);
+            Assert.True(line.PanelMounted, $"'{device.Label}' is on the rail but not marked panel-mounted");
+        }
+    }
+
+    [Fact]
     public void Generation_is_deterministic()
     {
         var first = JsonSerializer.Serialize(PanelGenerator.Generate(TypicalSubmain()), GoldenJson);

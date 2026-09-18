@@ -148,7 +148,8 @@ public sealed class PanelDocument(
                 foreach (var line in bom.Lines)
                 {
                     table.Cell().Element(BodyCell).Text(line.PartNumber);
-                    table.Cell().Element(BodyCell).Text(line.Description);
+                    table.Cell().Element(BodyCell).Text(
+                        line.PanelMounted ? line.Description : $"{line.Description} (external)");
                     table.Cell().Element(BodyCell).Text(line.Quantity.ToString(CultureInfo.InvariantCulture));
                     table.Cell().Element(BodyCell).Text(
                         line.UnitCost <= 0m

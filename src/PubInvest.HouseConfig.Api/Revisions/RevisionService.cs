@@ -81,7 +81,12 @@ public sealed class RevisionService(HouseConfigDbContext db)
 
         var rules = DomainMapper.ToDomain(ruleSetRow);
         var domainCircuits = submain.Circuits.Select(DomainMapper.ToDomain).ToList();
-        var accessories = TerminalBandBuilder.Build(domainCircuits, rules, fullCatalogue).Accessories;
+        // Everything costed but not placed: jumper bars and end stops, and the
+        // external LED driver. Missing the driver here would ship a bill of
+        // materials you could order from and still have no way to light the tape.
+        var accessories = TerminalBandBuilder.Build(domainCircuits, rules, fullCatalogue).Accessories
+            .Concat(TapeSupplySizer.Size(domainCircuits, rules, fullCatalogue).ExternalParts)
+            .ToList();
 
         var bom = BomBuilder.Build(layout, accessories, DomainMapper.ToDomain(enclosureRow), fullCatalogue);
 

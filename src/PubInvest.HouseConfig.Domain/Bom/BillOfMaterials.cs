@@ -5,7 +5,10 @@ public sealed record BomLine(
     string PartNumber,
     string Description,
     int Quantity,
-    decimal UnitCost)
+    decimal UnitCost,
+    /// False for anything that is bought but never mounted on the rail — the LED
+    /// driver above all — so nobody goes looking for it in the panel.
+    bool PanelMounted = true)
 {
     public decimal LineTotal => Quantity * UnitCost;
 }

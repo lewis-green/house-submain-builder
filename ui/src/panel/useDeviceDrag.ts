@@ -22,9 +22,16 @@ export function useDeviceDrag({ layout, onCommit, toPanelPoint }: Options) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const origin = useRef<{ x: number; y: number; deviceId: string } | null>(null)
   const armed = useRef(false)
+  const captured = useRef<{ element: Element; pointerId: number } | null>(null)
 
   const cancel = useCallback(() => {
     clearTimeout(timer.current)
+    if (captured.current) {
+      const { element, pointerId } = captured.current
+      ;(element as Element & { releasePointerCapture?: (id: number) => void })
+        .releasePointerCapture?.(pointerId)
+      captured.current = null
+    }
     origin.current = null
     armed.current = false
     setDragging(null)
@@ -38,10 +45,20 @@ export function useDeviceDrag({ layout, onCommit, toPanelPoint }: Options) {
     origin.current = { x: e.clientX, y: e.clientY, deviceId }
     armed.current = false
 
+    // Capture only once the drag actually arms. Capturing on every pointerdown
+    // retargets the following click to the capturing element, so a plain tap
+    // would never reach the device and the sheet would never open.
+    const element = e.currentTarget as Element
+    const { pointerId } = e
+
     timer.current = setTimeout(() => {
       armed.current = true
       const device = layout.devices.find(d => d.id === deviceId)
       if (!device) return
+
+      ;(element as Element & { setPointerCapture?: (id: number) => void }).setPointerCapture?.(pointerId)
+      captured.current = { element, pointerId }
+
       setDragging({
         deviceId,
         rowIndex: device.rowIndex,
@@ -49,8 +66,6 @@ export function useDeviceDrag({ layout, onCommit, toPanelPoint }: Options) {
         valid: true,
       })
     }, LONG_PRESS_MS)
-
-    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
   }, [layout])
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {

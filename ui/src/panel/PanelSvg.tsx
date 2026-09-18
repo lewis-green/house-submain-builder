@@ -80,10 +80,36 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging }: Props) {
       viewBox={`0 0 ${size.width} ${size.height}`}
       width={size.width}
       height={size.height}
-      role="img"
+      // Not role="img": that makes the SVG a leaf in the accessibility tree and
+      // hides every device button inside it from assistive tech and keyboard users.
+      role="group"
       aria-label={`Panel, ${layout.rows} rows of ${layout.slotsPerRow / SLOT_UNITS_PER_MODULE} modules`}
       className="select-none"
     >
+      {/* Clip paths live in defs: a clipPath inside a device's <g> has no
+          rendered box, but it still stretches that group's geometric bounding
+          box back to the origin, which throws off hit-testing. */}
+      <defs>
+        {groups.map(group => {
+          const rect = deviceRect(group)
+          return (
+            <clipPath key={group.key} id={`clip-${group.key}`}>
+              <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={3} />
+            </clipPath>
+          )
+        })}
+        {others.map(device => {
+          const drag = dragging?.deviceId === device.id ? dragging : null
+          const rect = deviceRect(drag ? { ...device, rowIndex: drag.rowIndex, startSlot: drag.startSlot } : device)
+          const key = device.id ?? `${device.rowIndex}-${device.startSlot}`
+          return (
+            <clipPath key={key} id={`clip-${key}`}>
+              <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={4} />
+            </clipPath>
+          )
+        })}
+      </defs>
+
       {Array.from({ length: layout.rows }, (_, row) => (
         <g key={`row-${row}`}>
           <rect
@@ -130,6 +156,7 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging }: Props) {
               y={rect.y + ROW_PX / 2}
               textAnchor="middle"
               dominantBaseline="middle"
+              clipPath={`url(#clip-${group.key})`}
               className={`${style.text} text-[10px]`}
             >
               {group.label}
@@ -143,10 +170,17 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging }: Props) {
         const rect = deviceRect(drag ? { ...device, rowIndex: drag.rowIndex, startSlot: drag.startSlot } : device)
         const style = deviceStyle(device.category)
         const invalid = drag && !drag.valid
+        const key = device.id ?? `${device.rowIndex}-${device.startSlot}`
+        const clipId = `clip-${key}`
+
+        // A 1T device is 24px wide — no horizontal text fits. Narrow devices get a
+        // rotated label, the way a real panel schedule does; the detail lives in
+        // the device sheet.
+        const narrow = rect.width < 64
 
         return (
           <g
-            key={device.id ?? `${device.rowIndex}-${device.startSlot}`}
+            key={key}
             role="button"
             tabIndex={0}
             aria-label={describe(device)}
@@ -165,26 +199,39 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging }: Props) {
               className={invalid ? 'fill-red-200 stroke-red-500' : `${style.fill} ${style.stroke}`}
               strokeWidth={device.id === selectedId ? 3 : 1.5}
             />
-            <text
-              x={rect.x + 6}
-              y={rect.y + 20}
-              className={`${style.text} text-[11px] font-medium`}
-            >
-              {device.label}
-            </text>
-            <text x={rect.x + 6} y={rect.y + 36} className="fill-slate-500 text-[9px]">
-              {style.kind}
-            </text>
-            {device.channels.filter(c => c.circuitName).map((c, i) => (
-              <text
-                key={c.channelIndex}
-                x={rect.x + 6}
-                y={rect.y + 50 + i * 11}
-                className="fill-slate-600 text-[9px]"
-              >
-                {c.circuitName}
-              </text>
-            ))}
+
+            {/* Clipped so a long name can never bleed over the device next door. */}
+            <g clipPath={`url(#${clipId})`}>
+              {narrow ? (
+                <text
+                  x={rect.x + rect.width / 2}
+                  y={rect.y + rect.height - 6}
+                  transform={`rotate(-90 ${rect.x + rect.width / 2} ${rect.y + rect.height - 6})`}
+                  className={`${style.text} text-[10px] font-medium`}
+                >
+                  {device.label}
+                </text>
+              ) : (
+                <>
+                  <text x={rect.x + 6} y={rect.y + 18} className={`${style.text} text-[11px] font-medium`}>
+                    {device.label}
+                  </text>
+                  <text x={rect.x + 6} y={rect.y + 32} className="fill-slate-500 text-[9px]">
+                    {style.kind}
+                  </text>
+                  {device.channels.filter(c => c.circuitName).slice(0, 3).map((c, i) => (
+                    <text
+                      key={c.channelIndex}
+                      x={rect.x + 6}
+                      y={rect.y + 46 + i * 11}
+                      className="fill-slate-600 text-[9px]"
+                    >
+                      {c.circuitName}
+                    </text>
+                  ))}
+                </>
+              )}
+            </g>
           </g>
         )
       })}

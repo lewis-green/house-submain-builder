@@ -6,7 +6,9 @@ const kinds: { category: DeviceCategory; one: string; many: string }[] = [
   { category: 'Dimmer240', one: 'dimmer', many: 'dimmers' },
   { category: 'Dimmer0_10V', one: 'tape dimmer', many: 'tape dimmers' },
   { category: 'Relay', one: 'relay', many: 'relays' },
-  { category: 'Psu24V', one: 'PSU', many: 'PSUs' },
+  { category: 'Isolator', one: 'isolator', many: 'isolators' },
+  { category: 'Dc24VPositive', one: '+24V block', many: '+24V blocks' },
+  { category: 'Dc24VNegative', one: '-24V block', many: '-24V blocks' },
   { category: 'Terminal240', one: 'terminal', many: 'terminals' },
 ]
 

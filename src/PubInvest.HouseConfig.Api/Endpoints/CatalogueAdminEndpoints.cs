@@ -160,13 +160,14 @@ public static class CatalogueAdminEndpoints
 
     private static IEnumerable<Guid> Referenced(RuleSetPayload payload)
     {
+        yield return payload.PreferredDevice.Isolator;
         yield return payload.PreferredDevice.Dimmer240;
         yield return payload.PreferredDevice.Dimmer0_10V;
         yield return payload.PreferredDevice.Relay;
-        foreach (var psu in payload.PreferredDevice.Psu24V) yield return psu;
-        yield return payload.Terminals.Line.DeviceTypeId;
-        yield return payload.Terminals.Neutral.DeviceTypeId;
-        yield return payload.Terminals.Earth.DeviceTypeId;
+        yield return payload.PreferredDevice.Dc24VPositive;
+        yield return payload.PreferredDevice.Dc24VNegative;
+        foreach (var driver in payload.PreferredDevice.ExternalDriver) yield return driver;
+        yield return payload.Terminals.DeviceTypeId;
         yield return payload.Terminals.BridgeBarDeviceTypeId;
         yield return payload.Terminals.EndStopDeviceTypeId;
     }
@@ -190,11 +191,14 @@ public static class CatalogueAdminEndpoints
         {
             problems["moduleWidth"] = ["Width cannot be negative."];
         }
-        else if (request.ModuleWidth == 0 && category != DeviceCategory.Accessory)
+        else if (request.ModuleWidth == 0
+                 && category is not (DeviceCategory.Accessory or DeviceCategory.ExternalDriver))
         {
             // A zero-width rail device would let the packer fit an unlimited
-            // number of them into one row.
-            problems["moduleWidth"] = ["Only accessories may have no width; a rail device must be at least one slot."];
+            // number of them into one row. Accessories and external drivers are
+            // never placed, so they are allowed no width.
+            problems["moduleWidth"] =
+                ["Only accessories and external parts may have no width; a rail device must be at least one slot."];
         }
 
         if (request.ChannelCount < 0)

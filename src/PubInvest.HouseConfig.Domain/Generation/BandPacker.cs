@@ -7,8 +7,23 @@ namespace PubInvest.HouseConfig.Domain.Generation;
 
 public sealed record PackResult(PanelLayout Layout, IReadOnlyList<Diagnostic> Diagnostics);
 
+/// Packs devices into rows, preferring one band per row.
+///
+/// A banded layout reads better — you can see at a glance what is termination,
+/// what is control — but it costs a whole row whenever a band is small. So: pack
+/// banded; if that fits, keep it. If it does not, re-pack merged, with dimmers
+/// running from the left and relays from the right, and say so in a diagnostic
+/// rather than leaving the engineer wondering why the drawing looks dense.
 public static class BandPacker
 {
+    /// Categories packed from the right-hand end of a shared row.
+    private static readonly HashSet<DeviceCategory> FromRight =
+    [
+        DeviceCategory.Relay,
+        DeviceCategory.Dc24VPositive,
+        DeviceCategory.Dc24VNegative,
+    ];
+
     public static PackResult Pack(
         IReadOnlyList<RequiredDevice> devices,
         EnclosureType enclosure,
@@ -16,16 +31,54 @@ public static class BandPacker
         IReadOnlyList<EnclosureType> allEnclosures)
     {
         var diagnostics = new List<Diagnostic>();
-        var placed = Place(devices, enclosure.SlotsPerRow, rules, diagnostics);
-        var rowsUsed = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
+        var placeable = devices.Where(d => d.ModuleWidth > 0).ToList();
+
+        foreach (var tooWide in placeable.Where(d => d.ModuleWidth > enclosure.SlotsPerRow))
+        {
+            diagnostics.Add(new Diagnostic(
+                DiagnosticSeverity.Error,
+                DiagnosticCodes.DeviceWiderThanRow,
+                $"'{tooWide.Label}' is {DinUnits.ToModules(tooWide.ModuleWidth):0.#} modules wide " +
+                $"but a row holds {DinUnits.ToModules(enclosure.SlotsPerRow):0.#}.",
+                "Choose a wider enclosure or a narrower device."));
+        }
+
+        var fits = placeable.Where(d => d.ModuleWidth <= enclosure.SlotsPerRow).ToList();
+
+        var banded = PackBanded(fits, enclosure.SlotsPerRow, rules);
+        var placed = banded;
+        var merged = false;
+
+        var mustMerge = rules.Packing == "dense" || RowsUsed(banded) > enclosure.Rows;
+
+        if (mustMerge)
+        {
+            var dense = PackMerged(fits, enclosure.SlotsPerRow, rules);
+            if (rules.Packing == "dense" || RowsUsed(dense) < RowsUsed(banded))
+            {
+                placed = dense;
+                merged = true;
+            }
+        }
+
+        var rowsUsed = RowsUsed(placed);
+
+        if (merged && rowsUsed <= enclosure.Rows)
+        {
+            diagnostics.Add(new Diagnostic(
+                DiagnosticSeverity.Info,
+                DiagnosticCodes.BandsMerged,
+                "Some rows carry more than one kind of device, packed from both ends, " +
+                "because a row each would not fit this enclosure.",
+                "Use a larger enclosure if you would rather keep one kind per row."));
+        }
 
         if (rowsUsed > enclosure.Rows)
         {
-            var suggestion = SuggestEnclosure(devices, rules, allEnclosures, enclosure);
+            var suggestion = SuggestEnclosure(fits, rules, allEnclosures, enclosure);
             diagnostics.Add(new Diagnostic(
                 DiagnosticSeverity.Error,
                 DiagnosticCodes.EnclosureTooSmall,
-                // Slot units are an internal unit; a person reads DIN modules.
                 $"This design needs {rowsUsed} rows of {DinUnits.ToModules(enclosure.SlotsPerRow):0.#} modules; " +
                 $"{enclosure.Description} has {enclosure.Rows}.",
                 suggestion is null
@@ -37,11 +90,11 @@ public static class BandPacker
         return new PackResult(new PanelLayout(enclosure.Rows, enclosure.SlotsPerRow, placed), diagnostics);
     }
 
-    private static List<PlacedDevice> Place(
+    /// One band per row: each band starts on a fresh rail.
+    private static List<PlacedDevice> PackBanded(
         IReadOnlyList<RequiredDevice> devices,
         int slotsPerRow,
-        RuleSetPayload rules,
-        List<Diagnostic>? diagnostics)
+        RuleSetPayload rules)
     {
         var placed = new List<PlacedDevice>();
         var row = 0;
@@ -52,7 +105,7 @@ public static class BandPacker
             var inBand = devices.Where(d => BandOf(d.Category) == band).ToList();
             if (inBand.Count == 0) continue;
 
-            if (rules.BandStartsNewRow && slot > 0)
+            if (slot > 0)
             {
                 row++;
                 slot = 0;
@@ -60,41 +113,78 @@ public static class BandPacker
 
             foreach (var device in inBand)
             {
-                if (device.ModuleWidth <= 0) continue;
-
-                if (device.ModuleWidth > slotsPerRow)
-                {
-                    diagnostics?.Add(new Diagnostic(
-                        DiagnosticSeverity.Error,
-                        DiagnosticCodes.DeviceWiderThanRow,
-                        $"'{device.Label}' is {DinUnits.ToModules(device.ModuleWidth):0.#} modules wide " +
-                        $"but a row holds {DinUnits.ToModules(slotsPerRow):0.#}.",
-                        "Choose a wider enclosure or a narrower device."));
-                    continue;
-                }
-
                 if (slot + device.ModuleWidth > slotsPerRow)
                 {
                     row++;
                     slot = 0;
                 }
 
-                placed.Add(new PlacedDevice(
-                    device.DeviceTypeId,
-                    device.Category,
-                    row,
-                    slot,
-                    device.ModuleWidth,
-                    device.Label,
-                    device.Channels,
-                    device.TerminalRole));
-
+                placed.Add(Place(device, row, slot));
                 slot += device.ModuleWidth;
             }
         }
 
         return placed;
     }
+
+    /// Shared rows: left-packed categories grow rightwards, right-packed ones grow
+    /// leftwards, and a row is full when the two fronts would meet.
+    private static List<PlacedDevice> PackMerged(
+        IReadOnlyList<RequiredDevice> devices,
+        int slotsPerRow,
+        RuleSetPayload rules)
+    {
+        var placed = new List<PlacedDevice>();
+        var left = new List<int>();   // next free slot from the left, per row
+        var right = new List<int>();  // next free boundary from the right, per row
+
+        foreach (var band in BandsInOrder(devices, rules))
+        {
+            foreach (var device in devices.Where(d => BandOf(d.Category) == band))
+            {
+                var row = 0;
+
+                while (true)
+                {
+                    if (row == left.Count)
+                    {
+                        left.Add(0);
+                        right.Add(slotsPerRow);
+                    }
+
+                    if (right[row] - left[row] >= device.ModuleWidth) break;
+                    row++;
+                }
+
+                if (FromRight.Contains(device.Category))
+                {
+                    var start = right[row] - device.ModuleWidth;
+                    placed.Add(Place(device, row, start));
+                    right[row] = start;
+                }
+                else
+                {
+                    placed.Add(Place(device, row, left[row]));
+                    left[row] += device.ModuleWidth;
+                }
+            }
+        }
+
+        return placed;
+    }
+
+    private static PlacedDevice Place(RequiredDevice device, int row, int slot) => new(
+        device.DeviceTypeId,
+        device.Category,
+        row,
+        slot,
+        device.ModuleWidth,
+        device.Label,
+        device.Channels,
+        device.TerminalRole);
+
+    private static int RowsUsed(List<PlacedDevice> placed) =>
+        placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
 
     private static EnclosureType? SuggestEnclosure(
         IReadOnlyList<RequiredDevice> devices,
@@ -107,19 +197,26 @@ public static class BandPacker
             .ThenBy(e => e.Description, StringComparer.Ordinal)
             .FirstOrDefault(e =>
             {
-                var trial = Place(devices, e.SlotsPerRow, rules, diagnostics: null);
-                var rows = trial.Count == 0 ? 0 : trial.Max(d => d.RowIndex) + 1;
-                return trial.Count == devices.Count(d => d.ModuleWidth > 0) && rows <= e.Rows;
+                if (devices.Any(d => d.ModuleWidth > e.SlotsPerRow)) return false;
+                if (RowsUsed(PackBanded(devices, e.SlotsPerRow, rules)) <= e.Rows) return true;
+                return RowsUsed(PackMerged(devices, e.SlotsPerRow, rules)) <= e.Rows;
             });
 
-    private static DeviceCategory BandOf(DeviceCategory category)
-        => category == DeviceCategory.Dimmer0_10V ? DeviceCategory.Dimmer240 : category;
+    /// Tape dimmers share the mains dimmer band, and the -24V block sits with
+    /// the +24V one: they are a pair and belong next to each other.
+    private static DeviceCategory BandOf(DeviceCategory category) => category switch
+    {
+        DeviceCategory.Dimmer0_10V => DeviceCategory.Dimmer240,
+        DeviceCategory.Dc24VNegative => DeviceCategory.Dc24VPositive,
+        _ => category,
+    };
 
     private static IEnumerable<DeviceCategory> BandsInOrder(
         IReadOnlyList<RequiredDevice> devices,
         RuleSetPayload rules)
     {
         var seen = new HashSet<DeviceCategory>();
+
         foreach (var band in rules.BandOrder)
         {
             if (seen.Add(BandOf(band))) yield return BandOf(band);

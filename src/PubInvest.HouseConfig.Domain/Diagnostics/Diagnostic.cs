@@ -17,4 +17,5 @@ public static class DiagnosticCodes
     public const string TapeLoadMissing = "TAPE_LOAD_MISSING";
     public const string DeviceWiderThanRow = "DEVICE_WIDER_THAN_ROW";
     public const string PositionOverrideDropped = "POSITION_OVERRIDE_DROPPED";
+    public const string BandsMerged = "BANDS_MERGED";
 }

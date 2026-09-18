@@ -37,11 +37,11 @@ public class ShippedSeedTests(PostgresFixture fixture)
 
         var referenced = new List<Guid>
         {
-            p.PreferredDevice.Dimmer240, p.PreferredDevice.Dimmer0_10V, p.PreferredDevice.Relay,
-            p.Terminals.Line.DeviceTypeId, p.Terminals.Neutral.DeviceTypeId, p.Terminals.Earth.DeviceTypeId,
-            p.Terminals.BridgeBarDeviceTypeId, p.Terminals.EndStopDeviceTypeId
+            p.PreferredDevice.Isolator, p.PreferredDevice.Dimmer240, p.PreferredDevice.Dimmer0_10V,
+            p.PreferredDevice.Relay, p.PreferredDevice.Dc24VPositive, p.PreferredDevice.Dc24VNegative,
+            p.Terminals.DeviceTypeId, p.Terminals.BridgeBarDeviceTypeId, p.Terminals.EndStopDeviceTypeId
         };
-        referenced.AddRange(p.PreferredDevice.Psu24V);
+        referenced.AddRange(p.PreferredDevice.ExternalDriver);
 
         Assert.All(referenced, id => Assert.Contains(id, known));
     }
@@ -72,13 +72,35 @@ public class ShippedSeedTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public void Accessories_take_no_rail_space()
+    public void Nothing_that_is_never_placed_claims_rail_space()
     {
         var seed = Load();
 
         Assert.All(
-            seed.DeviceTypes.Where(d => d.Category == "Accessory"),
+            seed.DeviceTypes.Where(d => d.Category is "Accessory" or "ExternalDriver"),
             d => Assert.Equal(0, d.ModuleWidth));
+    }
+
+    [Fact]
+    public void The_seed_carries_the_parts_the_wiring_rules_need()
+    {
+        var seed = Load();
+        var byCategory = seed.DeviceTypes.ToLookup(d => d.Category);
+
+        Assert.NotEmpty(byCategory["Isolator"]);
+        Assert.NotEmpty(byCategory["Dc24VPositive"]);
+        Assert.NotEmpty(byCategory["Dc24VNegative"]);
+        Assert.NotEmpty(byCategory["ExternalDriver"]);
+    }
+
+    [Fact]
+    public void One_three_tier_block_serves_one_circuit()
+    {
+        var seed = Load();
+        var p = seed.RuleSets.Single(r => r.IsDefault).Payload;
+
+        Assert.Equal(1, p.Terminals.BlocksPerCircuit);
+        Assert.Contains(seed.DeviceTypes, d => d.Id == p.Terminals.DeviceTypeId);
     }
 
     [Fact]

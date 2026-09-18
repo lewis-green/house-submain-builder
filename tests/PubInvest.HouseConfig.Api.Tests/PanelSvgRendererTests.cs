@@ -13,25 +13,35 @@ public class PanelSvgRendererTests
     private static readonly Guid CircuitA = new("55555555-0000-4000-8000-000000000001");
     private static readonly Guid CircuitB = new("55555555-0000-4000-8000-000000000002");
 
-    private static PlacedDevice Terminal(int n, int slot, TerminalRole role, string prefix) =>
+    /// One 3-tier block per circuit, carrying L, N and E on a single slice.
+    private static PlacedDevice Terminal(int n, int slot) =>
         new(new Guid("66666666-0000-4000-8000-000000000001"), DeviceCategory.Terminal240,
-            0, slot, 1, $"{prefix}{n}", [], role);
+            1, slot, 1, $"C{n}", [], TerminalRole.All);
 
     private static PanelLayout Layout()
     {
-        var devices = new List<PlacedDevice>();
-        for (var n = 1; n <= 4; n++) devices.Add(Terminal(n, n - 1, TerminalRole.Line, "L"));
-        for (var n = 1; n <= 4; n++) devices.Add(Terminal(n, 3 + n, TerminalRole.Neutral, "N"));
+        var devices = new List<PlacedDevice>
+        {
+            // The isolator leads: the incoming feed lands here, not on a terminal.
+            new(new Guid("66666666-0000-4000-8000-000000000004"), DeviceCategory.Isolator,
+                0, 0, 6, "Isolator", [], TerminalRole.None),
+        };
+
+        for (var n = 1; n <= 4; n++) devices.Add(Terminal(n, n - 1));
 
         devices.Add(new PlacedDevice(
-            new Guid("66666666-0000-4000-8000-000000000002"), DeviceCategory.Dimmer240, 1, 0, 3, "Dimmer 1",
+            new Guid("66666666-0000-4000-8000-000000000002"), DeviceCategory.Dimmer240, 2, 0, 3, "Dimmer 1",
             [new ChannelAssignment(0, CircuitA, false), new ChannelAssignment(1, null, true)], TerminalRole.None));
 
         devices.Add(new PlacedDevice(
-            new Guid("66666666-0000-4000-8000-000000000003"), DeviceCategory.Relay, 2, 0, 9, "Relay 1",
+            new Guid("66666666-0000-4000-8000-000000000003"), DeviceCategory.Relay, 3, 0, 9, "Relay 1",
             [new ChannelAssignment(0, CircuitB, false)], TerminalRole.None));
 
-        return new PanelLayout(3, 54, devices);
+        devices.Add(new PlacedDevice(
+            new Guid("66666666-0000-4000-8000-000000000005"), DeviceCategory.Dc24VPositive, 4, 0, 4, "+24V",
+            [], TerminalRole.None));
+
+        return new PanelLayout(5, 54, devices);
     }
 
     private static Dictionary<Guid, string> Names() => new()
@@ -55,22 +65,21 @@ public class PanelSvgRendererTests
     {
         var svg = PanelSvgRenderer.Render(Layout(), Names());
 
-        // Relay 1 sits at row 2, slot 0, nine slot units wide.
+        // Relay 1 sits at row 3, slot 0, nine slot units wide.
         var x = PanelGeometry.SlotToX(0).ToString("0.##", CultureInfo.InvariantCulture);
-        var y = PanelGeometry.RowToY(2).ToString("0.##", CultureInfo.InvariantCulture);
+        var y = PanelGeometry.RowToY(3).ToString("0.##", CultureInfo.InvariantCulture);
         var w = PanelGeometry.SlotToX(9).ToString("0.##", CultureInfo.InvariantCulture);
 
         Assert.Contains($"x=\"{x}\" y=\"{y}\" width=\"{w}\"", svg);
     }
 
     [Fact]
-    public void A_run_of_terminals_becomes_one_labelled_block_per_conductor()
+    public void A_run_of_terminals_becomes_one_labelled_block()
     {
         var svg = PanelSvgRenderer.Render(Layout(), Names());
 
-        Assert.Contains(">L1–L4<", svg);
-        Assert.Contains(">N1–N4<", svg);
-        Assert.DoesNotContain(">L2<", svg);
+        Assert.Contains(">C1–C4<", svg);
+        Assert.DoesNotContain(">C2<", svg);
     }
 
     [Fact]
@@ -135,7 +144,7 @@ public class PanelSvgRendererTests
 
         Assert.Contains(">Dimmer 1<", svg);
         Assert.Contains(">Relay 1<", svg);
-        Assert.Contains(">L1\u2013L4<", svg);
+        Assert.Contains(">C1\u2013C4<", svg);
     }
 
     [Fact]

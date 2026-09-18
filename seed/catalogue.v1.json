@@ -143,9 +143,9 @@
     },
     {
       "id": "e1000000-0000-4000-8000-000000000003",
-      "manufacturer": "ASSUMED",
-      "model": "6 row x 24 way",
-      "rows": 6,
+      "manufacturer": "NETWORK-CABS",
+      "model": "3 row x 24 way",
+      "rows": 3,
       "slotsPerRow": 72,
       "ipRating": "IP30",
       "cost": 0.00

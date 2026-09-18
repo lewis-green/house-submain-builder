@@ -63,15 +63,18 @@ public static class CatalogueFixture
                 new PackingZone([], [DeviceCategory.Relay]),
             ]),
 
-            // Then: the two sorts of dimmer share a row, relays keep their own.
+            // Then: the two sorts of dimmer share a row, but from opposite ends
+            // rather than one running straight on from the other. Relays keep
+            // their own row.
             new PanelLayoutOption(
             [
                 Termination,
-                new PackingZone([DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V], []),
+                new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Dimmer0_10V]),
                 new PackingZone([], [DeviceCategory.Relay]),
             ]),
 
-            // Last: everything in one zone, dimmers left and relays right.
+            // Last resort: all three on one row. A row has only two ends, so the
+            // two sorts of dimmer do share the left one here.
             new PanelLayoutOption(
             [
                 Termination,

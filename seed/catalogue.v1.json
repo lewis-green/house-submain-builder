@@ -222,10 +222,11 @@
               },
               {
                 "fromLeft": [
-                  "Dimmer240",
-                  "Dimmer0_10V"
+                  "Dimmer240"
                 ],
-                "fromRight": []
+                "fromRight": [
+                  "Dimmer0_10V"
+                ]
               },
               {
                 "fromLeft": [],
@@ -283,5 +284,5 @@
       }
     }
   ],
-  "_layout": "Layouts are tried finest first and the first that fits the enclosure wins: a row for every kind of device, then the two sorts of dimmer together, then the relays sharing that row from the other end. Termination stays on the top row throughout - circuit terminals then the 24V pair from the left, the two-pole isolator hard against the right."
+  "_layout": "Layouts are tried finest first and the first that fits wins. When two kinds of device share a row they start from opposite ends and work inwards, never one running straight on from the other. Termination stays on the top row: circuit terminals then the 24V joints from the left, the two-pole isolator hard right. Each tape run gets its own +24V and -24V block, since those are the joints where that tape's output is made off."
 }

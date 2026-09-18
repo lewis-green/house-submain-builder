@@ -202,6 +202,29 @@ public class PanelPackerTests
     }
 
     [Fact]
+    public void Two_kinds_sharing_a_row_each_start_from_an_end()
+    {
+        // Never one type running straight on from another: each works inwards
+        // from its own end of the rail.
+        var devices = new List<RequiredDevice>
+        {
+            Device(DeviceCategory.Dimmer240, 3, "Dimmer 1"),
+            Device(DeviceCategory.Dimmer0_10V, 3, "Tape Dimmer 1"),
+        };
+
+        // Two rows: one for termination, one shared by the two sorts of dimmer.
+        var layout = PanelPacker.Pack(devices, TwoRows(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        var mains = layout.Devices.Single(d => d.Category == DeviceCategory.Dimmer240);
+        var tape = layout.Devices.Single(d => d.Category == DeviceCategory.Dimmer0_10V);
+
+        Assert.Equal(mains.RowIndex, tape.RowIndex);
+        Assert.Equal(0, mains.StartSlot);
+        Assert.Equal(layout.SlotsPerRow, tape.EndSlotExclusive);
+    }
+
+    [Fact]
     public void Tape_dimmers_join_the_mains_dimmers_only_when_rows_run_short()
     {
         var devices = new List<RequiredDevice>

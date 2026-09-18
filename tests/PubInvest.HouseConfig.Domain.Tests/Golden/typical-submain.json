@@ -141,21 +141,43 @@
         "RowIndex": 0,
         "StartSlot": 11,
         "ModuleWidth": 4,
-        "Label": "\u002B24V",
+        "Label": "\u002B24V 1",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 15
       },
       {
-        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
-        "Category": "Dc24VNegative",
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
+        "Category": "Dc24VPositive",
         "RowIndex": 1,
         "StartSlot": 0,
         "ModuleWidth": 4,
-        "Label": "-24V",
+        "Label": "\u002B24V 2",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
+        "Category": "Dc24VNegative",
+        "RowIndex": 1,
+        "StartSlot": 4,
+        "ModuleWidth": 4,
+        "Label": "-24V 1",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 8
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
+        "Category": "Dc24VNegative",
+        "RowIndex": 1,
+        "StartSlot": 8,
+        "ModuleWidth": 4,
+        "Label": "-24V 2",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 12
       },
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
@@ -278,7 +300,7 @@
         "EndSlotExclusive": 24
       }
     ],
-    "SlotsUsed": 37,
+    "SlotsUsed": 45,
     "TotalSlots": 144
   },
   "Diagnostics": [],
@@ -306,19 +328,19 @@
         "CatalogueId": "11111111-0000-0000-0000-00000000000a",
         "PartNumber": "TEST-DC\u002B",
         "Description": "WAGO 12-way \u002B24V",
-        "Quantity": 1,
+        "Quantity": 2,
         "UnitCost": 7.00,
         "PanelMounted": true,
-        "LineTotal": 7.00
+        "LineTotal": 14.00
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-00000000000b",
         "PartNumber": "TEST-DC-",
         "Description": "WAGO 12-way -24V",
-        "Quantity": 1,
+        "Quantity": 2,
         "UnitCost": 7.00,
         "PanelMounted": true,
-        "LineTotal": 7.00
+        "LineTotal": 14.00
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000002",
@@ -384,7 +406,7 @@
         "LineTotal": 16.50
       }
     ],
-    "Total": 691.10
+    "Total": 705.10
   },
   "HasErrors": false
 }

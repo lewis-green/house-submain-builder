@@ -13,7 +13,8 @@ public sealed record TapeSupply(
     IReadOnlyList<Diagnostic> Diagnostics);
 
 /// LED drivers are not DIN mount: they sit outside the panel. What the panel
-/// carries is a +24V and a -24V distribution block, one way per tape circuit.
+/// carries is a +24V and a -24V block for each tape circuit — they are the
+/// joints where that tape's output is made off, so every run needs its own pair.
 public static class TapeSupplySizer
 {
     public static TapeSupply Size(
@@ -62,23 +63,20 @@ public static class TapeSupplySizer
                 diagnostics.Add(new Diagnostic(
                     DiagnosticSeverity.Error,
                     DiagnosticCodes.NoPreferredDevice,
-                    $"No active catalogue device for the {prefix} distribution block (id {deviceTypeId}).",
+                    $"No active catalogue device for the {prefix} block (id {deviceTypeId}).",
                     "Choose an active distribution block in the ruleset."));
                 return;
             }
 
-            // Ways per block is catalogue data, not a constant: a 12-way block
-            // says 12 in its channel count.
-            var ways = Math.Max(deviceType.ChannelCount, 1);
-            var needed = (int)Math.Ceiling(tapeCircuits / (double)ways);
-
-            for (var i = 0; i < needed; i++)
+            // One pair per tape run, not one pair shared between them: each block
+            // is the joint where that tape's output is made off.
+            for (var i = 0; i < tapeCircuits; i++)
             {
                 devices.Add(new RequiredDevice(
                     deviceType.Id,
                     deviceType.Category,
                     deviceType.ModuleWidth,
-                    needed == 1 ? prefix : $"{prefix} {i + 1}",
+                    tapeCircuits == 1 ? prefix : $"{prefix} {i + 1}",
                     []));
             }
         }

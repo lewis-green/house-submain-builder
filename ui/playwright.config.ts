@@ -13,6 +13,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     ...devices['Pixel 7'],
     trace: 'retain-on-failure',
+    // PW_CHANNEL=chrome runs against a locally installed Chrome, for machines
+    // where the bundled chromium download is blocked. CI leaves it unset.
+    channel: process.env.PW_CHANNEL,
   },
   webServer: {
     command: 'npm run dev',

@@ -4,8 +4,42 @@ import { seedSubmain, threeDimmed } from './fixtures'
 const SLOT_PX = 8
 const MODULE_PX = SLOT_PX * 3
 
-/** Long-press, move, release — the gesture a thumb makes. */
+/**
+ * Long-press, move, release — the gesture a thumb makes.
+ *
+ * Waits for the save to land before returning: the move is applied optimistically
+ * and saved in the background, so a test that reloads the moment the button comes
+ * up will abort its own request and see the drag undone.
+ */
 async function dragDevice(page: import('@playwright/test').Page, label: string, byModules: number) {
+  const device = page.getByRole('button', { name: new RegExp(`^${label}`) })
+  const box = await device.boundingBox()
+  if (!box) throw new Error(`${label} has no bounding box`)
+
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+
+  const saved = page.waitForResponse(r =>
+    r.request().method() === 'PATCH' && r.url().includes('/position'))
+
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.waitForTimeout(450)            // past the long-press threshold
+  await page.mouse.move(x + byModules * MODULE_PX, y, { steps: 8 })
+  await page.mouse.up()
+
+  const response = await saved
+  if (!response.ok()) {
+    throw new Error(`the move was refused: ${response.status()} ${await response.text()}`)
+  }
+}
+
+/** For drags that are meant to be refused, where no request should be sent. */
+async function dragDeviceExpectingNoSave(
+  page: import('@playwright/test').Page,
+  label: string,
+  byModules: number,
+) {
   const device = page.getByRole('button', { name: new RegExp(`^${label}`) })
   const box = await device.boundingBox()
   if (!box) throw new Error(`${label} has no bounding box`)
@@ -15,9 +49,10 @@ async function dragDevice(page: import('@playwright/test').Page, label: string, 
 
   await page.mouse.move(x, y)
   await page.mouse.down()
-  await page.waitForTimeout(450)            // past the long-press threshold
+  await page.waitForTimeout(450)
   await page.mouse.move(x + byModules * MODULE_PX, y, { steps: 8 })
   await page.mouse.up()
+  await page.waitForTimeout(300)
 }
 
 test('a panel generated from the wizard is drawn to scale', async ({ page, request }) => {
@@ -27,7 +62,7 @@ test('a panel generated from the wizard is drawn to scale', async ({ page, reque
 
   await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Relay 1/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /L1/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /C1/ })).toBeVisible()
 })
 
 test('tapping a device opens its channels', async ({ page, request }) => {
@@ -37,7 +72,7 @@ test('tapping a device opens its channels', async ({ page, request }) => {
   await page.getByRole('button', { name: /^Dimmer 1/ }).click()
 
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.getByDisplayValue('Kitchen ceiling')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Circuit name' }).first()).toHaveValue('Kitchen ceiling')
 })
 
 test('a device can be dragged to a free slot and stays there after a reload', async ({ page, request }) => {
@@ -60,8 +95,8 @@ test('a drag onto an occupied slot leaves the device where it was', async ({ pag
   await page.goto(`/submains/${submainId}/panel`)
   const before = await page.getByRole('button', { name: /^Dimmer 2/ }).boundingBox()
 
-  // One module left puts Dimmer 2 on top of Dimmer 1.
-  await dragDevice(page, 'Dimmer 2', -1)
+  // One module left puts Dimmer 2 on top of Dimmer 1, so nothing should be sent.
+  await dragDeviceExpectingNoSave(page, 'Dimmer 2', -1)
 
   await page.reload()
   const after = await page.getByRole('button', { name: /^Dimmer 2/ }).boundingBox()

@@ -22,7 +22,7 @@ public class PanelDocumentTests
     private static readonly Guid DimmerType = new("77777777-0000-4000-8000-000000000010");
     private static readonly Guid RelayType = new("77777777-0000-4000-8000-000000000011");
 
-    private static RevisionSnapshot Snapshot(decimal dimmerCost = 60m)
+    private static RevisionSnapshot Snapshot()
     {
         var devices = new List<PlacedDevice>
         {
@@ -53,21 +53,21 @@ public class PanelDocumentTests
                 new PreferredDevices(DimmerType, DimmerType, DimmerType, RelayType, DimmerType, DimmerType, [DimmerType]),
                 new TerminalRules(DimmerType, 1, DimmerType, 10, DimmerType, 2)),
             [
-                new DeviceType(DimmerType, "Shelly", "Pro Dimmer 2PM", "PH-DIM", DeviceCategory.Dimmer240, 3, 2, null, null, dimmerCost, true),
-                new DeviceType(RelayType, "Shelly", "Pro relay", "PH-REL", DeviceCategory.Relay, 9, 4, null, null, 95m, true),
+                new DeviceType(DimmerType, "Shelly", "Pro Dimmer 2PM", "PH-DIM", DeviceCategory.Dimmer240, 3, 2, null, null, true),
+                new DeviceType(RelayType, "Shelly", "Pro relay", "PH-REL", DeviceCategory.Relay, 9, 4, null, null, true),
             ],
-            new EnclosureType(Guid.NewGuid(), "NETWORK-CABS", "3 row x 24 way", 3, 72, "IP30", 260m),
-            Bom(dimmerCost));
+            new EnclosureType(Guid.NewGuid(), "NETWORK-CABS", "3 row x 24 way", 3, 72, "IP30"),
+            Bom());
     }
 
-    private static BillOfMaterials Bom(decimal dimmerCost = 60m) => new(
+    private static BillOfMaterials Bom() => new(
     [
-        new BomLine(DimmerType, "PH-DIM", "Shelly Pro Dimmer 2PM", 1, dimmerCost),
-        new BomLine(RelayType, "PH-REL", "Shelly Pro relay", 1, 95m),
+        new BomLine(DimmerType, "PH-DIM", "Shelly Pro Dimmer 2PM", 1),
+        new BomLine(RelayType, "PH-REL", "Shelly Pro relay", 1, PanelMounted: false),
     ]);
 
-    private static PanelDocument Document(decimal dimmerCost = 60m, bool withBom = true) =>
-        new(Snapshot(dimmerCost), DateTimeOffset.UnixEpoch, "tester", withBom ? Bom(dimmerCost) : null);
+    private static PanelDocument Document(bool withBom = true) =>
+        new(Snapshot(), DateTimeOffset.UnixEpoch, "tester", withBom ? Bom() : null);
 
     private static string PdfText(byte[] bytes)
     {
@@ -122,21 +122,22 @@ public class PanelDocumentTests
     }
 
     [Fact]
-    public void A_priced_bom_shows_its_total()
+    public void The_bill_of_materials_lists_parts_with_no_money_in_it()
     {
         var text = PdfText(Document().GeneratePdf());
 
-        Assert.Contains("Total", text);
-        Assert.DoesNotContain("Not priced", text);
+        Assert.Contains("Bill of materials", text);
+        Assert.Contains("PH-DIM", text);
+        Assert.DoesNotContain("Total", text);
+        Assert.DoesNotContain("£", text);
     }
 
     [Fact]
-    public void An_unpriced_catalogue_is_not_reported_as_a_zero_total()
+    public void A_part_that_is_not_panel_mounted_says_so()
     {
-        var text = PdfText(Document(dimmerCost: 0m).GeneratePdf());
+        var text = PdfText(Document().GeneratePdf());
 
-        Assert.Contains("Not priced", text);
-        Assert.DoesNotContain("Total ", text);
+        Assert.Contains("external", text);
     }
 
     [Fact]

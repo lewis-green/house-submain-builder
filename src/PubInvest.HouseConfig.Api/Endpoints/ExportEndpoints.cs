@@ -143,7 +143,6 @@ public static class ExportEndpoints
                 g.First().PartNumber,
                 g.First().Description,
                 g.Sum(l => l.Quantity),
-                g.First().UnitCost,
                 g.First().PanelMounted))
             .OrderBy(l => l.PartNumber, StringComparer.Ordinal)
             .ToList();
@@ -151,25 +150,13 @@ public static class ExportEndpoints
         return (new BillOfMaterials(merged), null);
     }
 
-    private static object Describe(BillOfMaterials bom)
+    private static object Describe(BillOfMaterials bom) => new
     {
-        var unpriced = bom.Lines.Count(l => l.UnitCost <= 0m);
-
-        // An empty BOM is not a priced one. Saying "priced: true, total: 0" for a
-        // house with nothing issued is the same lie as printing a confident zero.
-        var priced = bom.Lines.Count > 0 && unpriced == 0;
-
-        return new
+        lines = bom.Lines.Select(l => new
         {
-            lines = bom.Lines.Select(l => new
-            {
-                l.CatalogueId, l.PartNumber, l.Description, l.Quantity, l.UnitCost, l.LineTotal, l.PanelMounted,
-            }),
-            total = priced ? bom.Total : (decimal?)null,
-            unpricedLines = unpriced,
-            priced,
-        };
-    }
+            l.CatalogueId, l.PartNumber, l.Description, l.Quantity, l.PanelMounted,
+        }),
+    };
 
     private static IResult Pdf(Data.Entities.PanelRevision revision)
     {

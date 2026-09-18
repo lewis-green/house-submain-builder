@@ -27,14 +27,34 @@ public class PanelPackerTests
     /// Termination takes one row, leaving one for three kinds of device, so the
     /// ladder has to fall to its last rung.
     private static EnclosureType TwoRows() =>
-        new(new Guid("22222222-0000-0000-0000-000000000004"), "Test", "2x8", 2, 24, "IP30", 100m);
+        new(new Guid("22222222-0000-0000-0000-000000000004"), "Test", "2x8", 2, 24, "IP30");
 
     private static EnclosureType OneRow() =>
-        new(new Guid("22222222-0000-0000-0000-000000000005"), "Test", "1x8", 1, 24, "IP30", 100m);
+        new(new Guid("22222222-0000-0000-0000-000000000005"), "Test", "1x8", 1, 24, "IP30");
 
     private static PackResult Packed() =>
         PanelPacker.Pack(Panel(), CatalogueFixture.LargeEnclosure(),
             CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures());
+
+    [Fact]
+    public void The_24V_joints_stay_in_their_pairs_along_the_rail()
+    {
+        // +1, -1, +2, -2 — each run's two joints side by side, not all the
+        // positives followed by all the negatives.
+        var devices = new List<RequiredDevice> { Device(DeviceCategory.Isolator, 6, "Isolator") };
+        for (var n = 1; n <= 2; n++)
+        {
+            devices.Add(Device(DeviceCategory.Dc24VPositive, 1, $"+24V {n}"));
+            devices.Add(Device(DeviceCategory.Dc24VNegative, 1, $"-24V {n}"));
+        }
+
+        var layout = PanelPacker.Pack(devices, CatalogueFixture.LargeEnclosure(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        Assert.Equal(
+            ["+24V 1", "-24V 1", "+24V 2", "-24V 2"],
+            layout.DevicesInRow(0).Where(d => d.Label.Contains("24V")).Select(d => d.Label));
+    }
 
     [Fact]
     public void Terminals_are_on_the_top_row_starting_at_the_left()
@@ -199,6 +219,29 @@ public class PanelPackerTests
         Assert.Equal(result.Layout.SlotsPerRow, isolator.EndSlotExclusive);
 
         Assert.Contains(result.Layout.Devices, d => d.Category == DeviceCategory.Terminal240 && d.RowIndex == 1);
+    }
+
+    [Fact]
+    public void Two_kinds_sharing_a_row_each_start_from_an_end()
+    {
+        // Never one type running straight on from another: each works inwards
+        // from its own end of the rail.
+        var devices = new List<RequiredDevice>
+        {
+            Device(DeviceCategory.Dimmer240, 3, "Dimmer 1"),
+            Device(DeviceCategory.Dimmer0_10V, 3, "Tape Dimmer 1"),
+        };
+
+        // Two rows: one for termination, one shared by the two sorts of dimmer.
+        var layout = PanelPacker.Pack(devices, TwoRows(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        var mains = layout.Devices.Single(d => d.Category == DeviceCategory.Dimmer240);
+        var tape = layout.Devices.Single(d => d.Category == DeviceCategory.Dimmer0_10V);
+
+        Assert.Equal(mains.RowIndex, tape.RowIndex);
+        Assert.Equal(0, mains.StartSlot);
+        Assert.Equal(layout.SlotsPerRow, tape.EndSlotExclusive);
     }
 
     [Fact]

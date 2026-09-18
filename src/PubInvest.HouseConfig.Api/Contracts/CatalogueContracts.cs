@@ -11,7 +11,6 @@ public sealed record SaveDeviceTypeRequest(
     int ChannelCount,
     int? MaxLoadPerChannelW,
     int? MaxTotalLoadW,
-    decimal Cost,
     bool Active);
 
 public sealed record SaveEnclosureRequest(
@@ -19,8 +18,7 @@ public sealed record SaveEnclosureRequest(
     string Model,
     int Rows,
     int SlotsPerRow,
-    string IpRating,
-    decimal Cost);
+    string IpRating);
 
 public sealed record SaveRuleSetRequest(
     string Name,

@@ -141,7 +141,7 @@
         "RowIndex": 0,
         "StartSlot": 11,
         "ModuleWidth": 4,
-        "Label": "\u002B24V",
+        "Label": "\u002B24V 1",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 15
@@ -152,10 +152,32 @@
         "RowIndex": 1,
         "StartSlot": 0,
         "ModuleWidth": 4,
-        "Label": "-24V",
+        "Label": "-24V 1",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 4
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
+        "Category": "Dc24VPositive",
+        "RowIndex": 1,
+        "StartSlot": 4,
+        "ModuleWidth": 4,
+        "Label": "\u002B24V 2",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 8
+      },
+      {
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
+        "Category": "Dc24VNegative",
+        "RowIndex": 1,
+        "StartSlot": 8,
+        "ModuleWidth": 4,
+        "Label": "-24V 2",
+        "Channels": [],
+        "TerminalRole": "None",
+        "EndSlotExclusive": 12
       },
       {
         "DeviceTypeId": "11111111-0000-0000-0000-000000000001",
@@ -278,7 +300,7 @@
         "EndSlotExclusive": 24
       }
     ],
-    "SlotsUsed": 37,
+    "SlotsUsed": 45,
     "TotalSlots": 144
   },
   "Diagnostics": [],
@@ -289,102 +311,79 @@
         "PartNumber": "Hager Test 6x24",
         "Description": "Hager Test 6x24",
         "Quantity": 1,
-        "UnitCost": 220.00,
-        "PanelMounted": true,
-        "LineTotal": 220.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000008",
         "PartNumber": "TEST-BAR",
         "Description": "WAGO Jumper bar 10-way",
         "Quantity": 2,
-        "UnitCost": 3.00,
-        "PanelMounted": true,
-        "LineTotal": 6.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-00000000000a",
         "PartNumber": "TEST-DC\u002B",
         "Description": "WAGO 12-way \u002B24V",
-        "Quantity": 1,
-        "UnitCost": 7.00,
-        "PanelMounted": true,
-        "LineTotal": 7.00
+        "Quantity": 2,
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-00000000000b",
         "PartNumber": "TEST-DC-",
         "Description": "WAGO 12-way -24V",
-        "Quantity": 1,
-        "UnitCost": 7.00,
-        "PanelMounted": true,
-        "LineTotal": 7.00
+        "Quantity": 2,
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000002",
         "PartNumber": "TEST-DIM10",
         "Description": "Shelly Pro Dimmer 0/1-10V",
         "Quantity": 1,
-        "UnitCost": 55.00,
-        "PanelMounted": true,
-        "LineTotal": 55.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000001",
         "PartNumber": "TEST-DIM2",
         "Description": "Shelly Pro Dimmer 2PM",
         "Quantity": 3,
-        "UnitCost": 60.00,
-        "PanelMounted": true,
-        "LineTotal": 180.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000007",
         "PartNumber": "TEST-ISO",
         "Description": "Test 2-pole isolator",
         "Quantity": 1,
-        "UnitCost": 18.00,
-        "PanelMounted": true,
-        "LineTotal": 18.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000005",
         "PartNumber": "TEST-PSU240",
         "Description": "Mean Well DR-240-24",
         "Quantity": 1,
-        "UnitCost": 85.00,
-        "PanelMounted": false,
-        "LineTotal": 85.00
+        "PanelMounted": false
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000003",
         "PartNumber": "TEST-REL4",
         "Description": "Shelly Pro 4PM",
         "Quantity": 1,
-        "UnitCost": 95.00,
-        "PanelMounted": true,
-        "LineTotal": 95.00
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000009",
         "PartNumber": "TEST-STOP",
         "Description": "WAGO End stop",
         "Quantity": 2,
-        "UnitCost": 0.80,
-        "PanelMounted": true,
-        "LineTotal": 1.60
+        "PanelMounted": true
       },
       {
         "CatalogueId": "11111111-0000-0000-0000-000000000006",
         "PartNumber": "TEST-TB",
         "Description": "WAGO TOPJOB S 2.5",
         "Quantity": 11,
-        "UnitCost": 1.50,
-        "PanelMounted": true,
-        "LineTotal": 16.50
+        "PanelMounted": true
       }
-    ],
-    "Total": 691.10
+    ]
   },
   "HasErrors": false
 }

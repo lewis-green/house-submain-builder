@@ -27,7 +27,7 @@ public static class BomBuilder
 
         var lines = new List<BomLine>
         {
-            new(enclosure.Id, enclosure.Description, enclosure.Description, 1, enclosure.Cost)
+            new(enclosure.Id, enclosure.Description, enclosure.Description, 1)
         };
 
         foreach (var (deviceTypeId, quantity) in quantities)
@@ -44,7 +44,6 @@ public static class BomBuilder
                 deviceType.PartNumber,
                 deviceType.Description,
                 quantity,
-                deviceType.Cost,
                 PanelMounted: deviceType.Category is not DeviceCategory.ExternalDriver));
         }
 

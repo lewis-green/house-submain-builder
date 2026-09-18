@@ -6,8 +6,7 @@ public sealed record EnclosureType(
     string Model,
     int Rows,
     int SlotsPerRow,
-    string IpRating,
-    decimal Cost)
+    string IpRating)
 {
     public int TotalSlots => Rows * SlotsPerRow;
 

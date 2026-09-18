@@ -5,8 +5,6 @@ import type { BomView } from '../api/types'
 import { ErrorNote } from '../components/ErrorNote'
 import { Spinner } from '../components/Spinner'
 
-const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
-
 export function BomPage() {
   const { projectId, submainId } = useParams()
   const scope = submainId ? `/submains/${submainId}` : `/projects/${projectId}`
@@ -50,19 +48,11 @@ export function BomPage() {
             </div>
             <div className="flex items-baseline justify-between gap-3 text-sm text-slate-500">
               <span>{line.partNumber}</span>
-              <span className="tabular-nums">
-                {line.unitCost > 0 ? money.format(line.lineTotal) : '—'}
-              </span>
+              {!line.panelMounted && <span className="shrink-0">external</span>}
             </div>
           </li>
         ))}
       </ul>
-
-      <p className="text-right font-semibold">
-        {bom.priced
-          ? `Total ${money.format(bom.total ?? 0)}`
-          : `Not priced (${bom.unpricedLines} of ${bom.lines.length} parts have no cost)`}
-      </p>
 
       <a
         href={`/api${scope}/bom.csv`}

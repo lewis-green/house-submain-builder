@@ -215,13 +215,12 @@ public sealed class DesignService(HouseConfigDbContext db)
             result.Diagnostics.Select(d => new DiagnosticResponse(
                 d.Severity.ToString(), d.Code, d.Message, d.Suggestion)).ToList(),
             result.Bom.Lines.Select(l => new BomLineResponse(
-                l.CatalogueId, l.PartNumber, l.Description, l.Quantity, l.UnitCost, l.LineTotal)).ToList(),
+                l.CatalogueId, l.PartNumber, l.Description, l.Quantity, l.PanelMounted)).ToList(),
             new DesignSummary(
                 rowsUsed,
                 result.Layout.SlotsUsed,
                 result.Layout.TotalSlots,
                 result.Layout.Devices.Count,
-                result.Layout.Devices.SelectMany(d => d.Channels).Count(c => c.IsSpare),
-                result.Bom.Total));
+                result.Layout.Devices.SelectMany(d => d.Channels).Count(c => c.IsSpare)));
     }
 }

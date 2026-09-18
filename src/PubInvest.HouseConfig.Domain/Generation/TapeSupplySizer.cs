@@ -13,7 +13,8 @@ public sealed record TapeSupply(
     IReadOnlyList<Diagnostic> Diagnostics);
 
 /// LED drivers are not DIN mount: they sit outside the panel. What the panel
-/// carries is a +24V and a -24V distribution block, one way per tape circuit.
+/// carries is a +24V and a -24V block for each tape circuit — they are the
+/// joints where that tape's output is made off, so every run needs its own pair.
 public static class TapeSupplySizer
 {
     public static TapeSupply Size(
@@ -41,20 +42,30 @@ public static class TapeSupplySizer
         return new TapeSupply(blocks, drivers, diagnostics);
     }
 
+    /// Emitted as pairs — +1, -1, +2, -2 — so each run's two joints end up side
+    /// by side on the rail rather than all the positives followed by all the
+    /// negatives.
     private static List<RequiredDevice> BuildBlocks(
         int tapeCircuits,
         RuleSetPayload rules,
         DeviceCatalogue catalogue,
         List<Diagnostic> diagnostics)
     {
+        var positive = Resolve(rules.PreferredDevice.Dc24VPositive, "+24V");
+        var negative = Resolve(rules.PreferredDevice.Dc24VNegative, "-24V");
+
         var devices = new List<RequiredDevice>();
 
-        Add(rules.PreferredDevice.Dc24VPositive, "+24V");
-        Add(rules.PreferredDevice.Dc24VNegative, "-24V");
+        for (var i = 0; i < tapeCircuits; i++)
+        {
+            var suffix = tapeCircuits == 1 ? "" : $" {i + 1}";
+            if (positive is not null) devices.Add(Block(positive, $"+24V{suffix}"));
+            if (negative is not null) devices.Add(Block(negative, $"-24V{suffix}"));
+        }
 
         return devices;
 
-        void Add(Guid deviceTypeId, string prefix)
+        DeviceType? Resolve(Guid deviceTypeId, string what)
         {
             var deviceType = catalogue.FindActive(deviceTypeId);
             if (deviceType is null)
@@ -62,26 +73,15 @@ public static class TapeSupplySizer
                 diagnostics.Add(new Diagnostic(
                     DiagnosticSeverity.Error,
                     DiagnosticCodes.NoPreferredDevice,
-                    $"No active catalogue device for the {prefix} distribution block (id {deviceTypeId}).",
+                    $"No active catalogue device for the {what} block (id {deviceTypeId}).",
                     "Choose an active distribution block in the ruleset."));
-                return;
             }
 
-            // Ways per block is catalogue data, not a constant: a 12-way block
-            // says 12 in its channel count.
-            var ways = Math.Max(deviceType.ChannelCount, 1);
-            var needed = (int)Math.Ceiling(tapeCircuits / (double)ways);
-
-            for (var i = 0; i < needed; i++)
-            {
-                devices.Add(new RequiredDevice(
-                    deviceType.Id,
-                    deviceType.Category,
-                    deviceType.ModuleWidth,
-                    needed == 1 ? prefix : $"{prefix} {i + 1}",
-                    []));
-            }
+            return deviceType;
         }
+
+        static RequiredDevice Block(DeviceType deviceType, string label) =>
+            new(deviceType.Id, deviceType.Category, deviceType.ModuleWidth, label, []);
     }
 
     private static List<AccessoryLine> SizeDrivers(

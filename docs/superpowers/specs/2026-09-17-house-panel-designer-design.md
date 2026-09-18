@@ -82,8 +82,7 @@ trip per what-if, which is immaterial for a sub-millisecond pure function.
 ### Catalogue (admin-editable, seeded from versioned JSON)
 
 **`DeviceType`** — `id`, `manufacturer`, `model`, `partNumber`, `category`,
-`moduleWidth` (T-slots), `channelCount`, `maxLoadPerChannelW`, `maxTotalLoadW`,
-`cost`, `active`.
+`moduleWidth` (T-slots), `channelCount`, `maxLoadPerChannelW`, `maxTotalLoadW`, `active`.
 
 `category` is one of: `Terminal240`, `Isolator`, `Dimmer240`, `Dimmer0_10V`,
 `Relay`, `Dc24VPositive`, `Dc24VNegative`, `ExternalDriver`, `Accessory`.
@@ -92,7 +91,7 @@ trip per what-if, which is immaterial for a sub-millisecond pure function.
 `moduleWidth` of zero and appear only on the bill of materials.
 
 **`EnclosureType`** — `id`, `manufacturer`, `model`, `rows`, `slotsPerRow`,
-`ipRating`, `cost`.
+`ipRating`.
 
 **`RuleSet`** — `id`, `name`, `version`, `payload` (JSON), `isDefault`. The
 payload is validated on save — including that every device it references exists
@@ -339,9 +338,11 @@ page 1 the to-scale panel drawing, page 2+ the circuit schedule — submain,
 device, channel, circuit name, room.
 
 **Bill of materials** aggregated per submain and per house — Shelly units,
-enclosure, terminal blocks, jumper bars, end stops, PSUs, DIN rail — with
-catalogue costs, exportable as CSV. Bridging accessories are counted from the
-bridged banks even though they consume no DIN slots.
+enclosure, terminal blocks, jumper bars, end stops, 24V joints and the external
+driver — exportable as CSV. It is a parts list and carries **no prices**:
+costing happens wherever your pricing actually lives. Accessories are counted
+even though they consume no DIN slots, and anything not mounted on the rail is
+marked so nobody hunts for it in the panel.
 
 Both derive from the same layout model the screen draws, so the drawing, the
 schedule and the parts list cannot disagree.

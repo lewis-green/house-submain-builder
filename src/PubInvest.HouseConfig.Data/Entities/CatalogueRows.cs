@@ -11,7 +11,6 @@ public class DeviceTypeRow
     public int ChannelCount { get; set; }
     public int? MaxLoadPerChannelW { get; set; }
     public int? MaxTotalLoadW { get; set; }
-    public decimal Cost { get; set; }
     public bool Active { get; set; }
 }
 
@@ -23,7 +22,6 @@ public class EnclosureTypeRow
     public int Rows { get; set; }
     public int SlotsPerRow { get; set; }
     public string IpRating { get; set; } = "";
-    public decimal Cost { get; set; }
 }
 
 public class RuleSetRow

@@ -48,7 +48,7 @@ public class BomBuilderTests
     }
 
     [Fact]
-    public void Lines_are_ordered_by_part_number_and_total_is_the_sum()
+    public void Lines_are_ordered_by_part_number()
     {
         var layout = new PanelLayout(6, 24, [
             Placed(CatalogueFixture.RelayId, DeviceCategory.Relay, 0, 0, 4, "Relay 1"),
@@ -60,6 +60,5 @@ public class BomBuilderTests
         Assert.Equal(
             bom.Lines.Select(l => l.PartNumber).OrderBy(p => p, StringComparer.Ordinal),
             bom.Lines.Select(l => l.PartNumber));
-        Assert.Equal(60.00m + 95.00m + 220.00m, bom.Total);
     }
 }

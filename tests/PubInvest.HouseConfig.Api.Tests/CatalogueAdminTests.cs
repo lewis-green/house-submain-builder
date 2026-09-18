@@ -8,7 +8,7 @@ namespace PubInvest.HouseConfig.Api.Tests;
 [Collection("api")]
 public class CatalogueAdminTests(HouseConfigApiFactory factory)
 {
-    private record DeviceTypeDto(Guid Id, string PartNumber, int ModuleWidth, int ChannelCount, decimal Cost, bool Active);
+    private record DeviceTypeDto(Guid Id, string PartNumber, int ModuleWidth, int ChannelCount, bool Active);
     private record EnclosureDto(Guid Id, string Model, int Rows, int SlotsPerRow);
 
     private async Task Seed()
@@ -22,7 +22,6 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
         string category = "Dimmer240",
         int moduleWidth = 3,
         int channelCount = 2,
-        decimal cost = 60m,
         bool active = true) => new
     {
         manufacturer = "Shelly",
@@ -33,7 +32,6 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
         channelCount,
         maxLoadPerChannelW = (int?)null,
         maxTotalLoadW = (int?)null,
-        cost,
         active,
     };
 
@@ -109,30 +107,20 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
-    public async Task A_negative_cost_is_rejected()
+    public async Task A_device_type_can_be_edited()
     {
         var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/catalogue/device-types",
-            DeviceType($"NEG-{Guid.NewGuid():N}", cost: -1m));
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task A_device_type_can_be_repriced()
-    {
-        var client = factory.CreateClient();
-        var part = $"PRICE-{Guid.NewGuid():N}";
+        var part = $"EDIT-{Guid.NewGuid():N}";
         var created = await (await client.PostAsJsonAsync("/catalogue/device-types", DeviceType(part)))
             .Content.ReadFromJsonAsync<DeviceTypeDto>();
 
         var response = await client.PatchAsJsonAsync($"/catalogue/device-types/{created!.Id}",
-            DeviceType(part, cost: 72.50m));
+            DeviceType(part, moduleWidth: 6, channelCount: 4));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updated = await response.Content.ReadFromJsonAsync<DeviceTypeDto>();
-        Assert.Equal(72.50m, updated!.Cost);
+        Assert.Equal(6, updated!.ModuleWidth);
+        Assert.Equal(4, updated.ChannelCount);
     }
 
     [Fact]
@@ -155,7 +143,7 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
 
         var response = await client.PostAsJsonAsync("/catalogue/enclosures", new
         {
-            manufacturer = "Test", model = "Odd", rows = 3, slotsPerRow = 25, ipRating = "IP30", cost = 100m,
+            manufacturer = "Test", model = "Odd", rows = 3, slotsPerRow = 25, ipRating = "IP30",
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -170,7 +158,7 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
         var response = await client.PostAsJsonAsync("/catalogue/enclosures", new
         {
             manufacturer = "Test", model = $"Box {Guid.NewGuid():N}", rows = 3, slotsPerRow = 36,
-            ipRating = "IP30", cost = 100m,
+            ipRating = "IP30",
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

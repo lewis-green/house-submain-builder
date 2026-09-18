@@ -26,13 +26,15 @@ public class LayoutTests
     }
 
     [Fact]
-    public void BillOfMaterials_total_is_the_sum_of_line_totals()
+    public void A_bill_of_materials_is_a_parts_list_and_nothing_more()
     {
         var bom = new BillOfMaterials([
-            new BomLine(Guid.NewGuid(), "SPDM-002PE", "Shelly Pro Dimmer 2PM", 3, 60.00m),
-            new BomLine(Guid.NewGuid(), "2003-7646", "WAGO TOPJOB S", 24, 1.50m)
+            new BomLine(Guid.NewGuid(), "SPDM-002PE", "Shelly Pro Dimmer 2PM", 3),
+            new BomLine(Guid.NewGuid(), "2003-7646", "WAGO TOPJOB S", 24)
         ]);
 
-        Assert.Equal(216.00m, bom.Total);
+        Assert.Equal(2, bom.Lines.Count);
+        Assert.Equal(24, bom.Lines[1].Quantity);
+        Assert.True(bom.Lines[0].PanelMounted);
     }
 }

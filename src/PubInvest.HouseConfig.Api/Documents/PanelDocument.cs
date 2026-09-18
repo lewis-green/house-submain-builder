@@ -123,8 +123,6 @@ public sealed class PanelDocument(
     private void BomTable(IContainer container) =>
         container.Column(column =>
         {
-            var unpriced = bom!.Lines.Count(l => l.UnitCost <= 0m);
-
             column.Item().PaddingBottom(3, Unit.Millimetre).Text("Bill of materials").SemiBold().FontSize(12);
 
             column.Item().Table(table =>
@@ -132,38 +130,26 @@ public sealed class PanelDocument(
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(3);
-                    columns.RelativeColumn(4);
+                    columns.RelativeColumn(5);
                     columns.RelativeColumn(1);
-                    columns.RelativeColumn(2);
                 });
 
                 table.Header(header =>
                 {
-                    foreach (var heading in new[] { "Part", "Description", "Qty", "Line total" })
+                    foreach (var heading in new[] { "Part", "Description", "Qty" })
                     {
                         header.Cell().Element(HeaderCell).Text(heading).SemiBold();
                     }
                 });
 
-                foreach (var line in bom.Lines)
+                foreach (var line in bom!.Lines)
                 {
                     table.Cell().Element(BodyCell).Text(line.PartNumber);
                     table.Cell().Element(BodyCell).Text(
                         line.PanelMounted ? line.Description : $"{line.Description} (external)");
                     table.Cell().Element(BodyCell).Text(line.Quantity.ToString(CultureInfo.InvariantCulture));
-                    table.Cell().Element(BodyCell).Text(
-                        line.UnitCost <= 0m
-                            ? "—"
-                            : line.LineTotal.ToString("C", Money));
                 }
             });
-
-            // A confident "£0.00" on an unpriced catalogue reads as a priced
-            // document that came to nothing, which is worse than saying nothing.
-            column.Item().PaddingTop(2, Unit.Millimetre).Text(
-                unpriced > 0
-                    ? $"Not priced ({unpriced} of {bom.Lines.Count} parts have no cost)"
-                    : $"Total {bom.Total.ToString("C", Money)}").SemiBold();
         });
 
     private void Footer(IContainer container) =>
@@ -187,8 +173,6 @@ public sealed class PanelDocument(
 
     private static IContainer BodyCell(IContainer container) =>
         container.BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(2);
-
-    private static readonly CultureInfo Money = CultureInfo.GetCultureInfo("en-GB");
 
     private static string Modules(int slotUnits) =>
         DinUnits.ToModules(slotUnits).ToString("0.##", CultureInfo.InvariantCulture);

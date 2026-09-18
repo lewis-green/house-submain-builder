@@ -18,7 +18,6 @@ interface DeviceTypeView {
   channelCount: number
   maxLoadPerChannelW: number | null
   maxTotalLoadW: number | null
-  cost: number
   active: boolean
 }
 
@@ -70,14 +69,7 @@ export function CataloguePage() {
                     : formatModules(device.moduleWidth)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between gap-3 text-sm text-slate-500">
-                <span>{device.partNumber}</span>
-                <span>
-                  {device.cost > 0
-                    ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(device.cost)
-                    : 'No price'}
-                </span>
-              </div>
+              <p className="text-sm text-slate-500">{device.partNumber}</p>
               {!device.active && <p className="text-sm text-amber-700">Inactive</p>}
               <Button variant="ghost" className="mt-1" onClick={() => setEditing(device)}>Edit</Button>
             </li>
@@ -126,7 +118,6 @@ export function DeviceTypeForm({
       ? String(SLOT_UNITS_PER_MODULE / device.moduleWidth)
       : String(device.moduleWidth / SLOT_UNITS_PER_MODULE))
   const [channels, setChannels] = useState(String(device.channelCount))
-  const [cost, setCost] = useState(String(device.cost))
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [saving, setSaving] = useState(false)
 
@@ -149,7 +140,6 @@ export function DeviceTypeForm({
         channelCount: Number(channels) || 0,
         maxLoadPerChannelW: device.maxLoadPerChannelW,
         maxTotalLoadW: device.maxTotalLoadW,
-        cost: Number(cost) || 0,
         active: device.active,
       })
       onSaved()
@@ -188,8 +178,6 @@ export function DeviceTypeForm({
           errors={fieldErrors.channelCount}
         />
       )}
-
-      <Field label="Cost (£)" value={cost} onChange={setCost} type="number" inputMode="decimal" errors={fieldErrors.cost} />
 
       {fieldErrors.form && <p role="alert" className="text-sm text-red-600">{fieldErrors.form[0]}</p>}
 

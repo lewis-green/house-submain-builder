@@ -34,22 +34,22 @@ public static class TestSeed
         Version: 1,
         DeviceTypes:
         [
-            new SeedDeviceType(DimmerId,   "Shelly", "Test Dimmer 2",   "T-DIM2",   "Dimmer240",   2, 2, 200, 400, 60.00m, true),
-            new SeedDeviceType(TapeDimId,  "Shelly", "Test Dimmer 10V", "T-DIM10",  "Dimmer0_10V", 2, 2, null, null, 55.00m, true),
-            new SeedDeviceType(RelayId,    "Shelly", "Test Relay 4",    "T-REL4",   "Relay",       4, 4, 3680, 7360, 95.00m, true),
-            new SeedDeviceType(Psu240Id,   "Test",   "Driver 240",      "T-PSU240", "ExternalDriver", 0, 0, null, 240, 85.00m, true),
-            new SeedDeviceType(Psu100Id,   "Test",   "Driver 100",      "T-PSU100", "ExternalDriver", 0, 0, null, 100, 45.00m, true),
-            new SeedDeviceType(IsolatorId, "Test",   "2-pole isolator", "T-ISO",    "Isolator",    6, 0, null, null, 18.00m, true),
-            new SeedDeviceType(DcPosId,    "WAGO",   "12-way +24V",     "T-DC+",    "Dc24VPositive", 4, 12, null, null, 7.00m, true),
-            new SeedDeviceType(DcNegId,    "WAGO",   "12-way -24V",     "T-DC-",    "Dc24VNegative", 4, 12, null, null, 7.00m, true),
-            new SeedDeviceType(TerminalId, "Test",   "Terminal",        "T-TB",     "Terminal240", 1, 0, null, null, 1.50m, true),
-            new SeedDeviceType(BridgeId,   "Test",   "Jumper bar",      "T-BAR",    "Accessory",   0, 0, null, null, 3.00m, true),
-            new SeedDeviceType(EndStopId,  "Test",   "End stop",        "T-STOP",   "Accessory",   0, 0, null, null, 0.80m, true)
+            new SeedDeviceType(DimmerId,   "Shelly", "Test Dimmer 2",   "T-DIM2",   "Dimmer240",   2, 2, 200, 400, true),
+            new SeedDeviceType(TapeDimId,  "Shelly", "Test Dimmer 10V", "T-DIM10",  "Dimmer0_10V", 2, 2, null, null, true),
+            new SeedDeviceType(RelayId,    "Shelly", "Test Relay 4",    "T-REL4",   "Relay",       4, 4, 3680, 7360, true),
+            new SeedDeviceType(Psu240Id,   "Test",   "Driver 240",      "T-PSU240", "ExternalDriver", 0, 0, null, 240, true),
+            new SeedDeviceType(Psu100Id,   "Test",   "Driver 100",      "T-PSU100", "ExternalDriver", 0, 0, null, 100, true),
+            new SeedDeviceType(IsolatorId, "Test",   "2-pole isolator", "T-ISO",    "Isolator",    6, 0, null, null, true),
+            new SeedDeviceType(DcPosId,    "WAGO",   "12-way +24V",     "T-DC+",    "Dc24VPositive", 4, 12, null, null, true),
+            new SeedDeviceType(DcNegId,    "WAGO",   "12-way -24V",     "T-DC-",    "Dc24VNegative", 4, 12, null, null, true),
+            new SeedDeviceType(TerminalId, "Test",   "Terminal",        "T-TB",     "Terminal240", 1, 0, null, null, true),
+            new SeedDeviceType(BridgeId,   "Test",   "Jumper bar",      "T-BAR",    "Accessory",   0, 0, null, null, true),
+            new SeedDeviceType(EndStopId,  "Test",   "End stop",        "T-STOP",   "Accessory",   0, 0, null, null, true)
         ],
         Enclosures:
         [
-            new SeedEnclosure(EnclosureId,     "Test", "Box 6x24", 6, 24, "IP30", 220.00m),
-            new SeedEnclosure(TinyEnclosureId, "Test", "Box 1x6",  1,  6, "IP30",  40.00m)
+            new SeedEnclosure(EnclosureId,     "Test", "Box 6x24", 6, 24, "IP30"),
+            new SeedEnclosure(TinyEnclosureId, "Test", "Box 1x6",  1,  6, "IP30")
         ],
         RuleSets:
         [
@@ -59,27 +59,30 @@ public static class TestSeed
                     // Finest: a row for every kind of device.
                     new PanelLayoutOption(
                     [
-                                Termination,
-                                new PackingZone([DeviceCategory.Dimmer240], []),
-                                new PackingZone([DeviceCategory.Dimmer0_10V], []),
-                                new PackingZone([], [DeviceCategory.Relay]),
+                        Termination,
+                        new PackingZone([DeviceCategory.Dimmer240], []),
+                        new PackingZone([DeviceCategory.Dimmer0_10V], []),
+                        new PackingZone([], [DeviceCategory.Relay]),
                     ]),
 
-                    // Then: the two sorts of dimmer share a row, relays keep their own.
+                    // Then: the two sorts of dimmer share a row, but from opposite ends
+                    // rather than one running straight on from the other. Relays keep
+                    // their own row.
                     new PanelLayoutOption(
                     [
-                                Termination,
-                                new PackingZone([DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V], []),
-                                new PackingZone([], [DeviceCategory.Relay]),
+                        Termination,
+                        new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Dimmer0_10V]),
+                        new PackingZone([], [DeviceCategory.Relay]),
                     ]),
 
-                    // Last: everything in one zone, dimmers left and relays right.
+                    // Last resort: all three on one row. A row has only two ends, so the
+                    // two sorts of dimmer do share the left one here.
                     new PanelLayoutOption(
                     [
-                                Termination,
-                                new PackingZone(
-                                    [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
-                                    [DeviceCategory.Relay]),
+                        Termination,
+                        new PackingZone(
+                            [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                            [DeviceCategory.Relay]),
                     ]),
                 ],
                 PsuDeratingFactor: 0.8m,

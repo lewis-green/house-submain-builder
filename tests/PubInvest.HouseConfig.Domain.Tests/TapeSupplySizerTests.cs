@@ -33,14 +33,36 @@ public class TapeSupplySizerTests
     }
 
     [Fact]
-    public void A_thirteenth_tape_circuit_needs_a_second_pair_of_blocks()
+    public void Every_tape_run_gets_its_own_pair_of_joints()
     {
-        var circuits = Enumerable.Range(1, 13).Select(n => Tape(n)).ToList();
+        // Each block is where that tape's output is made off, so three runs need
+        // three + blocks and three - blocks, not three ways on one pair.
+        var circuits = Enumerable.Range(1, 3).Select(n => Tape(n)).ToList();
 
         var supply = TapeSupplySizer.Size(circuits, CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(2, supply.Blocks.Count(b => b.Category == DeviceCategory.Dc24VPositive));
-        Assert.Equal(2, supply.Blocks.Count(b => b.Category == DeviceCategory.Dc24VNegative));
+        Assert.Equal(3, supply.Blocks.Count(b => b.Category == DeviceCategory.Dc24VPositive));
+        Assert.Equal(3, supply.Blocks.Count(b => b.Category == DeviceCategory.Dc24VNegative));
+    }
+
+    [Fact]
+    public void Joints_come_out_in_pairs_rather_than_all_positives_then_all_negatives()
+    {
+        var circuits = Enumerable.Range(1, 3).Select(n => Tape(n)).ToList();
+
+        var supply = TapeSupplySizer.Size(circuits, CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+
+        Assert.Equal(
+            ["+24V 1", "-24V 1", "+24V 2", "-24V 2", "+24V 3", "-24V 3"],
+            supply.Blocks.Select(b => b.Label));
+    }
+
+    [Fact]
+    public void A_single_tape_run_needs_no_numbering()
+    {
+        var supply = TapeSupplySizer.Size([Tape(1)], CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+
+        Assert.Equal(["+24V", "-24V"], supply.Blocks.Select(b => b.Label));
     }
 
     [Fact]

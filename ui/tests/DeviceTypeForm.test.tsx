@@ -9,7 +9,7 @@ const json = (body: unknown, status = 200) =>
 const dimmer = {
   id: 'd1', manufacturer: 'Shelly', model: 'Pro Dimmer 2PM', partNumber: 'SHELLY-DIM',
   category: 'Dimmer240' as const, moduleWidth: 3, channelCount: 2,
-  maxLoadPerChannelW: null, maxTotalLoadW: null, cost: 60, active: true,
+  maxLoadPerChannelW: null, maxTotalLoadW: null, active: true,
 }
 
 const terminal = { ...dimmer, id: 't1', category: 'Terminal240' as const, moduleWidth: 1, channelCount: 0, partNumber: '2003-7646' }

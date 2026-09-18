@@ -37,6 +37,26 @@ public class PanelPackerTests
             CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures());
 
     [Fact]
+    public void The_24V_joints_stay_in_their_pairs_along_the_rail()
+    {
+        // +1, -1, +2, -2 — each run's two joints side by side, not all the
+        // positives followed by all the negatives.
+        var devices = new List<RequiredDevice> { Device(DeviceCategory.Isolator, 6, "Isolator") };
+        for (var n = 1; n <= 2; n++)
+        {
+            devices.Add(Device(DeviceCategory.Dc24VPositive, 1, $"+24V {n}"));
+            devices.Add(Device(DeviceCategory.Dc24VNegative, 1, $"-24V {n}"));
+        }
+
+        var layout = PanelPacker.Pack(devices, CatalogueFixture.LargeEnclosure(),
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        Assert.Equal(
+            ["+24V 1", "-24V 1", "+24V 2", "-24V 2"],
+            layout.DevicesInRow(0).Where(d => d.Label.Contains("24V")).Select(d => d.Label));
+    }
+
+    [Fact]
     public void Terminals_are_on_the_top_row_starting_at_the_left()
     {
         var layout = Packed().Layout;

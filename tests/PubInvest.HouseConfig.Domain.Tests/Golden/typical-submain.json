@@ -147,23 +147,23 @@
         "EndSlotExclusive": 15
       },
       {
-        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
-        "Category": "Dc24VPositive",
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
+        "Category": "Dc24VNegative",
         "RowIndex": 1,
         "StartSlot": 0,
         "ModuleWidth": 4,
-        "Label": "\u002B24V 2",
+        "Label": "-24V 1",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 4
       },
       {
-        "DeviceTypeId": "11111111-0000-0000-0000-00000000000b",
-        "Category": "Dc24VNegative",
+        "DeviceTypeId": "11111111-0000-0000-0000-00000000000a",
+        "Category": "Dc24VPositive",
         "RowIndex": 1,
         "StartSlot": 4,
         "ModuleWidth": 4,
-        "Label": "-24V 1",
+        "Label": "\u002B24V 2",
         "Channels": [],
         "TerminalRole": "None",
         "EndSlotExclusive": 8

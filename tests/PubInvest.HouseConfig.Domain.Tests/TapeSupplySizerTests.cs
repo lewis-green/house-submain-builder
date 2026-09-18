@@ -46,16 +46,15 @@ public class TapeSupplySizerTests
     }
 
     [Fact]
-    public void Joints_are_numbered_so_a_run_can_be_matched_to_its_pair()
+    public void Joints_come_out_in_pairs_rather_than_all_positives_then_all_negatives()
     {
         var circuits = Enumerable.Range(1, 3).Select(n => Tape(n)).ToList();
 
         var supply = TapeSupplySizer.Size(circuits, CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(["+24V 1", "+24V 2", "+24V 3"],
-            supply.Blocks.Where(b => b.Category == DeviceCategory.Dc24VPositive).Select(b => b.Label));
-        Assert.Equal(["-24V 1", "-24V 2", "-24V 3"],
-            supply.Blocks.Where(b => b.Category == DeviceCategory.Dc24VNegative).Select(b => b.Label));
+        Assert.Equal(
+            ["+24V 1", "-24V 1", "+24V 2", "-24V 2", "+24V 3", "-24V 3"],
+            supply.Blocks.Select(b => b.Label));
     }
 
     [Fact]

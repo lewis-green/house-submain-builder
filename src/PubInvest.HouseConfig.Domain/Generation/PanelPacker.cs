@@ -113,11 +113,18 @@ public static class PanelPacker
         return placed;
     }
 
-    /// Devices of the listed categories, in category order then input order.
+    /// Devices belonging to a zone, kept in the order the generator produced
+    /// them. The zone's category list says which devices belong to which end,
+    /// not what order they go in — that way the 24V joints stay in the pairs the
+    /// sizer emitted (+1, -1, +2, -2) instead of being regrouped into all the
+    /// positives followed by all the negatives.
     private static IEnumerable<RequiredDevice> InOrder(
         IReadOnlyList<RequiredDevice> devices,
         IReadOnlyList<DeviceCategory> categories)
-        => categories.SelectMany(category => devices.Where(d => d.Category == category));
+    {
+        var wanted = categories.ToHashSet();
+        return devices.Where(d => wanted.Contains(d.Category));
+    }
 
     private static IEnumerable<PackingZone> ZonesInOrder(
         IReadOnlyList<RequiredDevice> devices,

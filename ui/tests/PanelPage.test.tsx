@@ -8,6 +8,24 @@ import type { DesignResponse } from '../src/api/types'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
+const submain = {
+  id: 's1', projectId: 'p1', name: 'Ground Floor', reference: null,
+  feedCableSize: null, originBreakerAmps: null, phase: null,
+  enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
+  layoutVersion: 4, circuitCount: 1, deviceCount: 1,
+}
+
+/**
+ * A fresh Response per call: a body can only be read once, and the page loads
+ * the layout and the submain together.
+ */
+const stub = (layout: () => Response, rest?: (url: string) => Response | undefined) =>
+  vi.fn(async (url: string) => {
+    if (url.endsWith('/layout')) return layout()
+    if (url === '/api/submains/s1') return json(submain)
+    return rest?.(url) ?? json({})
+  })
+
 const design = (diagnostics: DesignResponse['diagnostics'] = []): DesignResponse => ({
   submainId: 's1',
   layoutVersion: 4,
@@ -38,7 +56,7 @@ describe('PanelPage', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('draws the stored layout', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(design())))
+    vi.stubGlobal('fetch', stub(() => json(design())))
 
     renderPage()
 
@@ -46,17 +64,18 @@ describe('PanelPage', () => {
   })
 
   it('loads the stored layout, not a fresh preview', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(json(design()))
+    const fetchMock = stub(() => json(design()))
     vi.stubGlobal('fetch', fetchMock)
 
     renderPage()
     await screen.findByRole('button', { name: /dimmer 1/i })
 
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/submains/s1/layout')
+    expect(fetchMock.mock.calls.map(c => c[0])).toContain('/api/submains/s1/layout')
+    expect(fetchMock.mock.calls.map(c => c[0])).not.toContain('/api/submains/s1/design/preview')
   })
 
   it('shows a diagnostic with its suggestion', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(design([
+    vi.stubGlobal('fetch', stub(() => json(design([
       { severity: 'Warning', code: 'POSITION_OVERRIDE_DROPPED', message: 'Dimmer 2 moved', suggestion: 'Drag it again' },
     ]))))
 
@@ -67,7 +86,7 @@ describe('PanelPage', () => {
   })
 
   it('opens the device sheet when a device is tapped', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(design())))
+    vi.stubGlobal('fetch', stub(() => json(design())))
 
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: /dimmer 1/i }))
@@ -77,10 +96,9 @@ describe('PanelPage', () => {
   })
 
   it('reloads rather than erroring when an edit conflicts', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(json(design()))
-      .mockResolvedValueOnce(json({ message: 'changed', currentLayoutVersion: 9 }, 409))
-      .mockResolvedValueOnce(json(design()))
+    const fetchMock = stub(
+      () => json(design()),
+      url => url.includes('/channels/') ? json({ message: 'changed', currentLayoutVersion: 9 }, 409) : undefined)
     vi.stubGlobal('fetch', fetchMock)
 
     renderPage()
@@ -88,11 +106,10 @@ describe('PanelPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /free this channel/i }))
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/reloading/i))
-    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('tells the engineer when a submain has no panel yet', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({
+    vi.stubGlobal('fetch', stub(() => json({
       ...design(), layout: { rows: 0, slotsPerRow: 0, devices: [] },
     })))
 

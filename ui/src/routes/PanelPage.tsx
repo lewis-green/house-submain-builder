@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
-import type { DesignResponse } from '../api/types'
+import type { DesignResponse, SubmainResponse } from '../api/types'
 import { Button } from '../components/Button'
 import { Diagnostics } from '../components/Diagnostics'
 import { ErrorNote } from '../components/ErrorNote'
@@ -14,6 +14,7 @@ import { useDeviceDrag } from '../panel/useDeviceDrag'
 export function PanelPage() {
   const { submainId } = useParams()
   const [design, setDesign] = useState<DesignResponse | null>(null)
+  const [submain, setSubmain] = useState<SubmainResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -23,8 +24,12 @@ export function PanelPage() {
   // The stored layout, not /design/preview: preview regenerates and returns
   // id: null on every device, so nothing would be draggable.
   const load = useCallback(() =>
-    api.get<DesignResponse>(`/submains/${submainId}/layout`)
-      .then(setDesign)
+    Promise.all([
+      api.get<DesignResponse>(`/submains/${submainId}/layout`),
+      // Also the submain itself: without it there is no project to go back to.
+      api.get<SubmainResponse>(`/submains/${submainId}`),
+    ])
+      .then(([layout, s]) => { setDesign(layout); setSubmain(s) })
       .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
   useEffect(() => { void load() }, [load])
@@ -108,8 +113,13 @@ export function PanelPage() {
 
   return (
     <div className="p-4 pb-24">
-      <Link to=".." relative="path" className="text-sm text-slate-500">← Back</Link>
-      <h1 className="mt-1 mb-3 text-xl font-semibold">Panel</h1>
+      <Link
+        to={submain ? `/projects/${submain.projectId}` : '/'}
+        className="text-sm text-slate-500"
+      >
+        ← Back
+      </Link>
+      <h1 className="mt-1 mb-3 text-xl font-semibold">{submain?.name ?? 'Panel'}</h1>
 
       {notice && (
         <p role="status" className="mb-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">{notice}</p>

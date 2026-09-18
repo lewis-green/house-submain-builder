@@ -29,7 +29,12 @@ export function BomPage() {
 
   return (
     <div className="space-y-4 p-4">
-      <Link to=".." relative="path" className="text-sm text-slate-500">← Back</Link>
+      <Link
+        to={submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`}
+        className="text-sm text-slate-500"
+      >
+        ← Back
+      </Link>
       <h1 className="text-xl font-semibold">Bill of materials</h1>
 
       {bom.lines.length === 0 && (

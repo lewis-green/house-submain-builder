@@ -118,6 +118,27 @@ public class PanelSvgRendererTests
     }
 
     [Fact]
+    public void No_font_family_is_set_anywhere()
+    {
+        // QuestPDF renders this through Skia, which silently drops text whose
+        // font it cannot resolve. A stray font-family produces a drawing with
+        // no labels at all, and nothing fails until someone opens the PDF.
+        var svg = PanelSvgRenderer.Render(Layout(), Names());
+
+        Assert.DoesNotContain("font-family", svg);
+    }
+
+    [Fact]
+    public void Every_device_label_reaches_the_svg()
+    {
+        var svg = PanelSvgRenderer.Render(Layout(), Names());
+
+        Assert.Contains(">Dimmer 1<", svg);
+        Assert.Contains(">Relay 1<", svg);
+        Assert.Contains(">L1\u2013L4<", svg);
+    }
+
+    [Fact]
     public void Rendering_is_deterministic()
     {
         Assert.Equal(

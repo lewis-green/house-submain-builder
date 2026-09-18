@@ -12,6 +12,13 @@ namespace PubInvest.HouseConfig.Api.Rendering;
 /// one. They cannot share an implementation without running a browser on the
 /// server or trusting the client to upload its own drawing, so instead both
 /// derive positions from slot units and are pinned by tests.
+///
+/// No font-family is set anywhere, deliberately. QuestPDF renders this SVG
+/// through Skia, which silently DROPS any text whose font it cannot resolve —
+/// "sans-serif", "Arial" and "Helvetica" all produce a drawing with no labels
+/// at all. Omitting the attribute uses the default font in both QuestPDF and a
+/// browser. If you add a font-family here, look at a generated PDF before
+/// believing it worked.
 public static class PanelSvgRenderer
 {
     /// Below this width no horizontal label fits, so it is drawn rotated.
@@ -84,7 +91,7 @@ public static class PanelSvgRenderer
 
             svg.Append(CultureInfo.InvariantCulture,
                 $"<text x=\"{N(x + w / 2)}\" y=\"{N(y + h / 2)}\" text-anchor=\"middle\" ")
-               .Append("dominant-baseline=\"middle\" font-family=\"sans-serif\" font-size=\"3\" fill=\"#1e293b\">")
+               .Append("dominant-baseline=\"middle\" font-size=\"3\" fill=\"#1e293b\">")
                .Append(SecurityElement.Escape(group.Label))
                .Append("</text>");
         }
@@ -111,20 +118,20 @@ public static class PanelSvgRenderer
                 var cy = y + h - 2;
                 svg.Append(CultureInfo.InvariantCulture,
                     $"<text x=\"{N(cx)}\" y=\"{N(cy)}\" transform=\"rotate(-90 {N(cx)} {N(cy)})\" ")
-                   .Append("font-family=\"sans-serif\" font-size=\"3\" fill=\"#1e293b\">")
+                   .Append("font-size=\"3\" fill=\"#1e293b\">")
                    .Append(SecurityElement.Escape(device.Label))
                    .Append("</text>");
                 continue;
             }
 
             svg.Append(CultureInfo.InvariantCulture,
-                $"<text x=\"{N(x + 2)}\" y=\"{N(y + 6)}\" font-family=\"sans-serif\" font-size=\"3.5\" ")
+                $"<text x=\"{N(x + 2)}\" y=\"{N(y + 6)}\" font-size=\"3.5\" ")
                .Append("font-weight=\"bold\" fill=\"#1e293b\">")
                .Append(SecurityElement.Escape(device.Label))
                .Append("</text>");
 
             svg.Append(CultureInfo.InvariantCulture,
-                $"<text x=\"{N(x + 2)}\" y=\"{N(y + 11)}\" font-family=\"sans-serif\" font-size=\"2.6\" ")
+                $"<text x=\"{N(x + 2)}\" y=\"{N(y + 11)}\" font-size=\"2.6\" ")
                .Append("fill=\"#64748b\">")
                .Append(SecurityElement.Escape(style.Kind))
                .Append("</text>");
@@ -135,7 +142,7 @@ public static class PanelSvgRenderer
                 if (!circuitNames.TryGetValue(channel.CircuitId!.Value, out var name)) continue;
 
                 svg.Append(CultureInfo.InvariantCulture,
-                    $"<text x=\"{N(x + 2)}\" y=\"{N(y + 17 + line * 4.5)}\" font-family=\"sans-serif\" ")
+                    $"<text x=\"{N(x + 2)}\" y=\"{N(y + 17 + line * 4.5)}\" ")
                    .Append("font-size=\"2.6\" fill=\"#475569\">")
                    .Append(SecurityElement.Escape(name))
                    .Append("</text>");

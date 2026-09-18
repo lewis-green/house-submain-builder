@@ -7,6 +7,9 @@ using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Mapping;
 using PubInvest.HouseConfig.Data.Seeding;
 
+// QuestPDF Community licence, set once before any document is generated.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 var authEnabled = builder.Configuration.GetValue("HouseConfig:AuthEnabled", true);
@@ -59,6 +62,7 @@ app.MapDesignEndpoints();
 app.MapCircuitEndpoints();
 app.MapDeviceEndpoints();
 app.MapRevisionEndpoints();
+app.MapExportEndpoints();
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

@@ -1,3 +1,4 @@
+using PubInvest.HouseConfig.Domain.Bom;
 using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Layout;
 using PubInvest.HouseConfig.Domain.Rules;
@@ -15,6 +16,11 @@ public sealed record RevisionSnapshot(
     IReadOnlyList<CircuitSnapshot> Circuits,
     RuleSetPayload RuleSet,
     IReadOnlyList<DeviceType> Catalogue,
-    EnclosureType Enclosure);
+    EnclosureType Enclosure,
+    /// Costed at issue time. Accessories (jumper bars, end stops) occupy no
+    /// slots, so they are not placed devices and cannot be recovered from the
+    /// layout alone — storing the priced BOM is what makes a revision able to
+    /// re-cost itself years later.
+    BillOfMaterials Bom);
 
 public sealed record CircuitSnapshot(Guid Id, string Type, string Name, string? Room, int Sequence);

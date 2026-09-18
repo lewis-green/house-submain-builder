@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
 using PubInvest.HouseConfig.Data.Mapping;
+using PubInvest.HouseConfig.Domain.Generation;
 using PubInvest.HouseConfig.Domain.Layout;
 
 namespace PubInvest.HouseConfig.Api.Revisions;
@@ -73,6 +74,21 @@ public sealed class RevisionService(HouseConfigDbContext db)
                     .ToList(),
                 Enum.Parse<TerminalRole>(d.TerminalRole))).ToList());
 
+        // Accessories are not placed devices, so they have to be recomputed from
+        // the same rules and circuits the panel was generated from.
+        var fullCatalogue = new Domain.Catalogue.DeviceCatalogue(
+            (await db.DeviceTypes.ToListAsync(ct)).Select(DomainMapper.ToDomain));
+
+        var rules = DomainMapper.ToDomain(ruleSetRow);
+        var domainCircuits = submain.Circuits.Select(DomainMapper.ToDomain).ToList();
+        var accessories = TerminalBandBuilder.Build(domainCircuits, rules, fullCatalogue).Accessories;
+
+        var bom = BomBuilder.Build(layout, accessories, DomainMapper.ToDomain(enclosureRow), fullCatalogue);
+
+        var accessoryTypes = accessories
+            .Select(a => fullCatalogue.Find(a.DeviceTypeId))
+            .OfType<Domain.Catalogue.DeviceType>();
+
         var snapshot = new RevisionSnapshot(
             submain.Project?.Name ?? "",
             submain.Name,
@@ -82,9 +98,10 @@ public sealed class RevisionService(HouseConfigDbContext db)
                 .OrderBy(c => c.Sequence)
                 .Select(c => new CircuitSnapshot(c.Id, c.Type, c.Name, c.Room, c.Sequence))
                 .ToList(),
-            DomainMapper.ToDomain(ruleSetRow),
-            catalogue,
-            DomainMapper.ToDomain(enclosureRow));
+            rules,
+            catalogue.Concat(accessoryTypes).DistinctBy(t => t.Id).OrderBy(t => t.PartNumber).ToList(),
+            DomainMapper.ToDomain(enclosureRow),
+            bom);
 
         var revision = new PanelRevision
         {

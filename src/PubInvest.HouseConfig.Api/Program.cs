@@ -22,6 +22,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<PubInvest.HouseConfig.Api.Services.DesignService>();
+builder.Services.AddScoped<PubInvest.HouseConfig.Api.Revisions.RevisionService>();
 builder.Services.AddHealthChecks().AddDbContextCheck<HouseConfigDbContext>();
 builder.Services.AddOpenApi();
 
@@ -57,6 +58,7 @@ app.MapCatalogueEndpoints();
 app.MapDesignEndpoints();
 app.MapCircuitEndpoints();
 app.MapDeviceEndpoints();
+app.MapRevisionEndpoints();
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

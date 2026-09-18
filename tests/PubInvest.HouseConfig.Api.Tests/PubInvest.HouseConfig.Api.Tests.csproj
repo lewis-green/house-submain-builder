@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\src\PubInvest.HouseConfig.Api\PubInvest.HouseConfig.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Golden\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

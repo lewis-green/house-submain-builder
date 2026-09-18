@@ -40,8 +40,13 @@ these panels.
 | Outputs | PDF panel drawing + circuit schedule; bill of materials |
 | LED tape | 24V constant-voltage drivers in-panel, dimmed 0/1-10V |
 | Layout rules | Function-banded rows; no MCB/RCBO band; 240V circuit terminals on top |
-| Band order | Terminals → Dimmers → Relays → 24V PSUs |
-| Terminals | WAGO TOPJOB S 2003-7646; line un-bridged per circuit, neutral and earth bridged banks |
+| Band order | Isolator → Terminals → Dimmers → Relays → 24V distribution |
+| Terminals | One WAGO 2003-7646 per circuit, carrying L, N and E on a single slice |
+| Earth | Commons through the DIN rail: no bar, no separate PE part |
+| Neutral | Commoned with a jumper bar; live loops out to the Shelly |
+| Incoming feed | Lands on a two-pole isolator at the head of the top row |
+| LED drivers | Not DIN mount: sized and costed but never placed. The panel carries 12-way +24V and −24V blocks, one way per tape circuit |
+| Row packing | A band keeps a row to itself when the design fits that way; otherwise bands merge, dimmers from the left and relays from the right |
 | Architecture | Server-authoritative generator; client renders and edits optimistically |
 
 ## Architecture
@@ -80,42 +85,51 @@ trip per what-if, which is immaterial for a sub-millisecond pure function.
 `moduleWidth` (T-slots), `channelCount`, `maxLoadPerChannelW`, `maxTotalLoadW`,
 `cost`, `active`.
 
-`category` is one of: `Terminal240`, `Dimmer240`, `Dimmer0_10V`, `Relay`,
-`Psu24V`, `Accessory`.
+`category` is one of: `Terminal240`, `Isolator`, `Dimmer240`, `Dimmer0_10V`,
+`Relay`, `Dc24VPositive`, `Dc24VNegative`, `ExternalDriver`, `Accessory`.
+
+`ExternalDriver` and `Accessory` are never placed on the rail, so they carry a
+`moduleWidth` of zero and appear only on the bill of materials.
 
 **`EnclosureType`** — `id`, `manufacturer`, `model`, `rows`, `slotsPerRow`,
 `ipRating`, `cost`.
 
 **`RuleSet`** — `id`, `name`, `version`, `payload` (JSON), `isDefault`. The
-payload is validated against a JSON schema on save and carries:
+payload is validated on save — including that every device it references exists
+and is active — and carries:
 
 ```jsonc
 {
-  "bandOrder": ["Terminal240", "Dimmer240", "Relay", "Psu24V"],
-  "bandStartsNewRow": true,
+  "bandOrder": ["Isolator", "Terminal240", "Dimmer240", "Relay", "Dc24VPositive", "Dc24VNegative"],
   "psuDeratingFactor": 0.8,
   "preferredDevice": {
     "Dimmer240":  "<deviceTypeId>",
     "Dimmer0_10V":"<deviceTypeId>",
     "Relay":      "<deviceTypeId>",
-    "Psu24V":     ["<small>", "<medium>", "<large>"],
+    "isolator":      "<deviceTypeId>",
+    "dc24VPositive": "<deviceTypeId>",
+    "dc24VNegative": "<deviceTypeId>",
+    "externalDriver": ["<small>", "<medium>", "<large>"],
     "Terminal240":"<deviceTypeId>"
   },
   "terminals": {
-    "line":    { "deviceTypeId": "<wago-2003-7646>", "blocksPerCircuit": 1, "bridged": false },
-    "neutral": { "deviceTypeId": "<wago-2003-7646>", "blocksPerCircuit": 1, "bridged": true  },
-    "earth":   { "deviceTypeId": "<wago-2003-7646-pe>", "blocksPerCircuit": 1, "bridged": true  },
+    "deviceTypeId": "<wago-2003-7646>",
+    "blocksPerCircuit": 1,
     "bridgeBarDeviceTypeId": "<wago-jumper-bar>",
     "bridgeBarWays": 10,
     "endStopDeviceTypeId": "<wago-end-stop>"
   },
-  "packing": "firstFit"
+  "packing": "bandPerRow"
 }
 ```
 
-`Dimmer0_10V` is not in `bandOrder`; it is placed in the `Dimmer240` band.
-The band order is expressed by device category so that adding a category later
-is a data change, not a code change.
+`Dimmer0_10V` is placed in the `Dimmer240` band, and `Dc24VNegative` in the
+`Dc24VPositive` band — a ± pair belongs side by side. `ExternalDriver` is in no
+band at all, because it is never placed. The band order is expressed by device
+category so that adding a category later is a data change, not a code change.
+
+`packing` is `"bandPerRow"` (a row each, merging only when that will not fit) or
+`"dense"` (always merge).
 
 ### Design
 
@@ -171,21 +185,29 @@ catch any rule change that silently moves a device.
    `Relay` channels; LED tape → `Dimmer0_10V` channels. Device count per category
    is `ceil(circuits / channelCount)` for the preferred model. Because each
    circuit type maps to its own device category, circuit types never share a
-   device — that convention needs no rule of its own.
-3. **Size PSUs.** Sum LED tape watts (`wattsPerMetre × lengthMetres` per
-   circuit), divide by `psuDeratingFactor`, then select PSU models from the
-   catalogue largest-first until the derated load is covered.
-4. **Build the terminal band.** Sized per conductor, not by a flat ways-per-circuit
-   number. Line takes one un-bridged block per outgoing circuit. Neutral and earth
-   take banks of blocks of the same count, commoned with jumper bars — bridging
-   changes the *wiring*, not the block count, so all three conductors occupy
-   `circuits × blocksPerCircuit` slots each, plus the incoming twin-and-earth.
-   Jumper bars (`ceil(bankBlocks / bridgeBarWays)` per bridged bank) and end stops
-   are not DIN-slot devices: they add no width but do appear in the BOM.
-   Terminal blocks themselves are modelled as devices and occupy real slots like
-   anything else.
-5. **Band-pack.** Walk `bandOrder`; each band starts on a fresh row; first-fit
-   within a row; a device never straddles two rows.
+   device — that convention needs no rule of its own. One two-pole isolator is
+   added ahead of everything else; a panel with no means of isolation is an error,
+   not a warning.
+3. **Size the 24V supply.** Sum LED tape watts (`wattsPerMetre × lengthMetres`
+   per circuit) and divide by `psuDeratingFactor`. The driver that covers it is
+   chosen largest-first from the catalogue and put on the BOM, but **never placed**:
+   LED drivers are not DIN mount and live outside the panel. What the panel does
+   carry is a 12-way +24V block and a 12-way −24V block, one way per tape circuit,
+   so a second pair appears past twelve.
+4. **Build the terminal band.** One block per outgoing circuit. The 2003-7646
+   carries line, neutral and earth on a single slice, so a circuit needs one
+   block, not one in each of three banks. Earth commons through the DIN rail and
+   needs no bar; the neutral tier is bridged, contributing
+   `ceil(blocks / bridgeBarWays)` jumper bars and one set of end stops; line is
+   per-circuit and loops out to its Shelly channel. **No block is spent on the
+   incoming feed** — it lands on the isolator. Bars and stops add no width but do
+   appear in the BOM.
+5. **Pack.** First try one band per row, walking `bandOrder`, first-fit within a
+   row, never straddling. If that fits the enclosure, keep it — a banded drawing
+   reads better. If it does not, re-pack merged: bands share rows, with dimmers
+   growing from the left and relays and distribution blocks from the right, and a
+   row full when the two fronts meet. A merged layout is reported with an `Info`
+   diagnostic so the drawing is known to be dense on purpose.
 6. **Validate.** Emit `Diagnostics`, never exceptions. "Needs 5 rows, this
    enclosure has 4" is an ordinary result, shown in the UI with the smallest
    catalogue enclosure that would fit.
@@ -209,7 +231,10 @@ Each diagnostic carries `severity` (`Error` | `Warning` | `Info`), `code`,
 `message`, and optional `suggestion`. Errors block `generate`; warnings do not.
 
 - `ENCLOSURE_TOO_SMALL` — rows or slots exceeded; suggests a larger enclosure.
-- `NO_PREFERRED_DEVICE` — ruleset names a device type that is inactive or absent.
+- `NO_PREFERRED_DEVICE` — ruleset names a device type that is inactive or absent,
+  including a missing isolator or 24V distribution block.
+- `BANDS_MERGED` — informational: rows carry more than one kind of device because
+  a row each would not have fitted.
 - `PSU_UNSIZED` — LED tape load exceeds the largest catalogue PSU.
 - `ORPHANED_ASSIGNMENT` — a previously assigned circuit has no home in the new layout.
 - `TAPE_LOAD_MISSING` — an LED tape circuit has no watts/length, so PSU sizing is a guess.
@@ -342,16 +367,16 @@ a way the drawing would hide.
 | Shelly Pro Dimmer 0/1-10V PM | `Dimmer0_10V` | 2 | ? | drives 24V CV drivers |
 | Shelly Pro 4PM | `Relay` | 4 | ? | 16A per channel unverified |
 | Shelly Pro 2PM | `Relay` | 2 | ? | alternative relay model |
-| 24V CV PSU (model TBC) | `Psu24V` | — | ? | need the range of wattages actually stocked |
-| WAGO TOPJOB S 2003-7646 | `Terminal240` | — | ? | confirmed part number; need block width in T-slots and conductors per block |
-| WAGO earth block (2003-7646 PE equivalent) | `Terminal240` | — | ? | green/yellow PE variant part number to confirm |
+| 24V LED driver (model TBC) | `ExternalDriver` | — | 0 | not panel-mounted; need the wattages actually stocked |
+| Two-pole isolator (model TBC) | `Isolator` | — | ? | part number and width to confirm |
+| WAGO 12-way +24V block (part TBC) | `Dc24VPositive` | — | ? | part number, width and ways to confirm |
+| WAGO 12-way −24V block (part TBC) | `Dc24VNegative` | — | ? | part number, width and ways to confirm |
+| WAGO TOPJOB S 2003-7646 | `Terminal240` | — | 1 | **confirmed**: 3 per DIN module, carrying L/N/E on one slice |
 | WAGO jumper bar (part TBC) | `Accessory` | — | 0 | `bridgeBarWays` to confirm; no slot width |
 | WAGO end stop (part TBC) | `Accessory` | — | 0 | quantity per bank to confirm |
 
-Also open: whether `blocksPerCircuit` is 1 for all three conductors, the jumper
-bar part number and its `bridgeBarWays`, and the end-stop quantity per bridged
-bank. The 2003-7646 is a multi-conductor block; if a single block is ever shared
-between circuits on the line side, step 4 needs revisiting.
+Also open: the jumper bar part number and its `bridgeBarWays`, and the end-stop
+quantity for the neutral bank.
 
 **Risk — no offline capability.** A full server app cannot be used in a plant
 room with no signal. If dead spots turn out to be a real problem, the remedy is a

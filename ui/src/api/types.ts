@@ -1,5 +1,15 @@
-export type DeviceCategory = 'Terminal240' | 'Dimmer240' | 'Dimmer0_10V' | 'Relay' | 'Psu24V' | 'Accessory'
-export type TerminalRole = 'None' | 'Line' | 'Neutral' | 'Earth'
+export type DeviceCategory =
+  | 'Terminal240'
+  | 'Isolator'
+  | 'Dimmer240'
+  | 'Dimmer0_10V'
+  | 'Relay'
+  | 'Dc24VPositive'
+  | 'Dc24VNegative'
+  /** Sized and costed but never placed: LED drivers are not DIN mount. */
+  | 'ExternalDriver'
+  | 'Accessory'
+export type TerminalRole = 'None' | 'All' | 'Line' | 'Neutral' | 'Earth'
 export type Severity = 'Info' | 'Warning' | 'Error'
 export type CircuitType = 'DimmedLighting' | 'Switched' | 'LedTape'
 

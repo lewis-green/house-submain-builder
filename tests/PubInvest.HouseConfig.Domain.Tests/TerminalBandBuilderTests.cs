@@ -14,66 +14,68 @@ public class TerminalBandBuilderTests
             .ToList();
 
     [Fact]
-    public void Each_conductor_gets_one_block_per_circuit_plus_one_for_the_incomer()
+    public void One_block_serves_one_circuit_across_all_three_conductors()
     {
         var band = TerminalBandBuilder.Build(Circuits(9), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(10, band.Devices.Count(d => d.TerminalRole == TerminalRole.Line));
-        Assert.Equal(10, band.Devices.Count(d => d.TerminalRole == TerminalRole.Neutral));
-        Assert.Equal(10, band.Devices.Count(d => d.TerminalRole == TerminalRole.Earth));
+        Assert.Equal(9, band.Devices.Count);
+        Assert.All(band.Devices, d => Assert.Equal(TerminalRole.All, d.TerminalRole));
+        Assert.All(band.Devices, d => Assert.Equal(CatalogueFixture.TerminalId, d.DeviceTypeId));
     }
 
     [Fact]
-    public void Earth_blocks_use_the_pe_part_and_line_blocks_the_standard_part()
+    public void The_incoming_feed_does_not_take_a_terminal_block()
     {
-        var band = TerminalBandBuilder.Build(Circuits(2), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+        // It lands on the isolator instead.
+        var band = TerminalBandBuilder.Build(Circuits(4), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.All(
-            band.Devices.Where(d => d.TerminalRole == TerminalRole.Earth),
-            d => Assert.Equal(CatalogueFixture.EarthId, d.DeviceTypeId));
-        Assert.All(
-            band.Devices.Where(d => d.TerminalRole == TerminalRole.Line),
-            d => Assert.Equal(CatalogueFixture.TerminalId, d.DeviceTypeId));
+        Assert.Equal(4, band.Devices.Count);
     }
 
     [Fact]
-    public void Blocks_are_labelled_by_conductor_and_numbered_from_one()
+    public void Blocks_are_labelled_for_the_circuit_they_serve()
     {
-        var band = TerminalBandBuilder.Build(Circuits(2), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+        var band = TerminalBandBuilder.Build(Circuits(3), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(
-            ["L1", "L2", "L3"],
-            band.Devices.Where(d => d.TerminalRole == TerminalRole.Line).Select(d => d.Label));
+        Assert.Equal(["C1", "C2", "C3"], band.Devices.Select(d => d.Label));
     }
 
     [Fact]
-    public void Bridged_banks_contribute_jumper_bars_and_end_stops_but_unbridged_lines_do_not()
+    public void Only_the_neutral_tier_needs_bars_and_the_earth_needs_none()
     {
-        // 9 circuits -> 10 blocks per bank; 10-way bars -> 1 bar per bridged bank; 2 bridged banks.
+        // Nine blocks in one bank, ten-way bars: one bar, one set of end stops.
         var band = TerminalBandBuilder.Build(Circuits(9), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(2, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.BridgeId).Quantity);
-        Assert.Equal(4, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.EndStopId).Quantity);
+        Assert.Equal(1, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.BridgeId).Quantity);
+        Assert.Equal(2, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.EndStopId).Quantity);
     }
 
     [Fact]
-    public void Jumper_bars_round_up_when_a_bank_exceeds_one_bar()
+    public void Bars_round_up_once_a_bank_runs_past_one_bar()
     {
-        // 11 circuits -> 12 blocks per bank -> ceil(12/10) = 2 bars per bridged bank, 2 banks.
         var band = TerminalBandBuilder.Build(Circuits(11), CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
 
-        Assert.Equal(4, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.BridgeId).Quantity);
+        Assert.Equal(2, band.Accessories.Single(a => a.DeviceTypeId == CatalogueFixture.BridgeId).Quantity);
+    }
+
+    [Fact]
+    public void A_submain_with_no_circuits_needs_no_terminals()
+    {
+        var band = TerminalBandBuilder.Build([], CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+
+        Assert.Empty(band.Devices);
+        Assert.Empty(band.Accessories);
     }
 
     [Fact]
     public void A_missing_terminal_part_produces_an_error_diagnostic()
     {
         var catalogue = new DeviceCatalogue(CatalogueFixture.Catalogue().All
-            .Where(d => d.Id != CatalogueFixture.EarthId));
+            .Where(d => d.Id != CatalogueFixture.TerminalId));
 
         var band = TerminalBandBuilder.Build(Circuits(1), CatalogueFixture.Rules(), catalogue);
 
-        Assert.DoesNotContain(band.Devices, d => d.TerminalRole == TerminalRole.Earth);
+        Assert.Empty(band.Devices);
         var diagnostic = Assert.Single(band.Diagnostics);
         Assert.Equal(DiagnosticCodes.NoPreferredDevice, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);

@@ -19,9 +19,11 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         var relay = Id(3);
         var psu = Id(4);
         var terminal = Id(5);
-        var earth = Id(6);
+        var isolator = Id(6);
         var bar = Id(7);
         var endStop = Id(8);
+        var dcPos = Id(11);
+        var dcNeg = Id(12);
 
         return new SeedDocument(
             Version: 1,
@@ -30,9 +32,11 @@ public class CatalogueSeederTests(PostgresFixture fixture)
                 new SeedDeviceType(dimmer,     "Shelly", "Dimmer",      $"{tag}-DIM",   "Dimmer240",   2, 2, 200, 400, 60m, true),
                 new SeedDeviceType(tapeDimmer, "Shelly", "Tape dimmer", $"{tag}-DIM10", "Dimmer0_10V", 2, 2, null, null, 55m, true),
                 new SeedDeviceType(relay,      "Shelly", "Relay",       $"{tag}-REL",   "Relay",       4, 4, 3680, 7360, 95m, true),
-                new SeedDeviceType(psu,        "Test",   "PSU",         $"{tag}-PSU",   "Psu24V",      6, 0, null, 240, 85m, true),
+                new SeedDeviceType(psu,        "Test",   "Driver",      $"{tag}-PSU",   "ExternalDriver", 0, 0, null, 240, 85m, true),
+                new SeedDeviceType(isolator,   "Test",   "Isolator",    $"{tag}-ISO",   "Isolator",    6, 0, null, null, 18m, true),
+                new SeedDeviceType(dcPos,      "WAGO",   "+24V",        $"{tag}-DC+",   "Dc24VPositive", 4, 12, null, null, 7m, true),
+                new SeedDeviceType(dcNeg,      "WAGO",   "-24V",        $"{tag}-DC-",   "Dc24VNegative", 4, 12, null, null, 7m, true),
                 new SeedDeviceType(terminal,   "WAGO",   "Terminal",    $"{tag}-TB",    "Terminal240", 1, 0, null, null, 1.5m, true),
-                new SeedDeviceType(earth,      "WAGO",   "Terminal PE", $"{tag}-TBPE",  "Terminal240", 1, 0, null, null, 2.1m, true),
                 new SeedDeviceType(bar,        "WAGO",   "Jumper bar",  $"{tag}-BAR",   "Accessory",   0, 0, null, null, 3m, true),
                 new SeedDeviceType(endStop,    "WAGO",   "End stop",    $"{tag}-STOP",  "Accessory",   0, 0, null, null, 0.8m, true)
             ],
@@ -40,19 +44,21 @@ public class CatalogueSeederTests(PostgresFixture fixture)
             RuleSets:
             [
                 new SeedRuleSet(Id(10), $"Rules {tag}", 1, true, new RuleSetPayload(
-                    BandOrder: [DeviceCategory.Terminal240, DeviceCategory.Dimmer240, DeviceCategory.Relay, DeviceCategory.Psu24V],
-                    BandStartsNewRow: true,
+                    BandOrder:
+                    [
+                        DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240,
+                        DeviceCategory.Relay, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative,
+                    ],
                     PsuDeratingFactor: 0.8m,
-                    PreferredDevice: new PreferredDevices(dimmer, tapeDimmer, relay, [psu]),
+                    PreferredDevice: new PreferredDevices(isolator, dimmer, tapeDimmer, relay, dcPos, dcNeg, [psu]),
                     Terminals: new TerminalRules(
-                        Line: new TerminalConductorRule(terminal, 1, false),
-                        Neutral: new TerminalConductorRule(terminal, 1, true),
-                        Earth: new TerminalConductorRule(earth, 1, true),
+                        DeviceTypeId: terminal,
+                        BlocksPerCircuit: 1,
                         BridgeBarDeviceTypeId: bar,
                         BridgeBarWays: 10,
                         EndStopDeviceTypeId: endStop,
                         EndStopsPerBank: 2),
-                    Packing: "firstFit"))
+                    Packing: "bandPerRow"))
             ]);
     }
 
@@ -65,7 +71,7 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         var firstRun = await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
         var secondRun = await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
 
-        Assert.Equal(10, firstRun);
+        Assert.Equal(12, firstRun);
         Assert.Equal(0, secondRun);
     }
 
@@ -97,7 +103,8 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         var payload = DomainMapper.ToDomain(row);
 
         Assert.Equal(0.8m, payload.PsuDeratingFactor);
-        Assert.Equal(DeviceCategory.Terminal240, payload.BandOrder[0]);
+        // The isolator leads: it is the first thing on the top row.
+        Assert.Equal(DeviceCategory.Isolator, payload.BandOrder[0]);
         Assert.Equal(seed.DeviceTypes[0].Id, payload.PreferredDevice.Dimmer240);
         Assert.Equal(2, payload.Terminals.EndStopsPerBank);
     }
@@ -113,11 +120,11 @@ public class CatalogueSeederTests(PostgresFixture fixture)
             var p = ruleSet.Payload;
             var referenced = new List<Guid>
             {
-                p.PreferredDevice.Dimmer240, p.PreferredDevice.Dimmer0_10V, p.PreferredDevice.Relay,
-                p.Terminals.Line.DeviceTypeId, p.Terminals.Neutral.DeviceTypeId, p.Terminals.Earth.DeviceTypeId,
-                p.Terminals.BridgeBarDeviceTypeId, p.Terminals.EndStopDeviceTypeId
+                p.PreferredDevice.Isolator, p.PreferredDevice.Dimmer240, p.PreferredDevice.Dimmer0_10V,
+                p.PreferredDevice.Relay, p.PreferredDevice.Dc24VPositive, p.PreferredDevice.Dc24VNegative,
+                p.Terminals.DeviceTypeId, p.Terminals.BridgeBarDeviceTypeId, p.Terminals.EndStopDeviceTypeId
             };
-            referenced.AddRange(p.PreferredDevice.Psu24V);
+            referenced.AddRange(p.PreferredDevice.ExternalDriver);
 
             Assert.All(referenced, id => Assert.Contains(id, known));
         }

@@ -192,21 +192,23 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
             isDefault = false,
             payload = new
             {
-                bandOrder = new[] { "Terminal240", "Dimmer240", "Relay", "Psu24V" },
+                bandOrder = new[] { "Isolator", "Terminal240", "Dimmer240", "Relay" },
                 bandStartsNewRow = true,
                 psuDeratingFactor = 0.8,
                 preferredDevice = new
                 {
+                    isolator = TestSeed.IsolatorId,
                     dimmer240 = missing,
                     dimmer0_10V = TestSeed.TapeDimId,
                     relay = TestSeed.RelayId,
-                    psu24V = new[] { TestSeed.Psu240Id },
+                    dc24VPositive = TestSeed.DcPosId,
+                    dc24VNegative = TestSeed.DcNegId,
+                    externalDriver = new[] { TestSeed.Psu240Id },
                 },
                 terminals = new
                 {
-                    line = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = false },
-                    neutral = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = true },
-                    earth = new { deviceTypeId = TestSeed.EarthId, blocksPerCircuit = 1, bridged = true },
+                    deviceTypeId = TestSeed.TerminalId,
+                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,
@@ -238,16 +240,18 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
                 psuDeratingFactor = 1.5,
                 preferredDevice = new
                 {
+                    isolator = TestSeed.IsolatorId,
                     dimmer240 = TestSeed.DimmerId,
                     dimmer0_10V = TestSeed.TapeDimId,
                     relay = TestSeed.RelayId,
-                    psu24V = new[] { TestSeed.Psu240Id },
+                    dc24VPositive = TestSeed.DcPosId,
+                    dc24VNegative = TestSeed.DcNegId,
+                    externalDriver = new[] { TestSeed.Psu240Id },
                 },
                 terminals = new
                 {
-                    line = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = false },
-                    neutral = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = true },
-                    earth = new { deviceTypeId = TestSeed.EarthId, blocksPerCircuit = 1, bridged = true },
+                    deviceTypeId = TestSeed.TerminalId,
+                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,
@@ -282,21 +286,23 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
             isDefault = false,
             payload = new
             {
-                bandOrder = new[] { "Terminal240", "Dimmer240", "Relay", "Psu24V" },
+                bandOrder = new[] { "Isolator", "Terminal240", "Dimmer240", "Relay" },
                 bandStartsNewRow = true,
                 psuDeratingFactor = 0.8,
                 preferredDevice = new
                 {
+                    isolator = TestSeed.IsolatorId,
                     dimmer240 = wide!.Id,
                     dimmer0_10V = TestSeed.TapeDimId,
                     relay = TestSeed.RelayId,
-                    psu24V = new[] { TestSeed.Psu240Id },
+                    dc24VPositive = TestSeed.DcPosId,
+                    dc24VNegative = TestSeed.DcNegId,
+                    externalDriver = new[] { TestSeed.Psu240Id },
                 },
                 terminals = new
                 {
-                    line = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = false },
-                    neutral = new { deviceTypeId = TestSeed.TerminalId, blocksPerCircuit = 1, bridged = true },
-                    earth = new { deviceTypeId = TestSeed.EarthId, blocksPerCircuit = 1, bridged = true },
+                    deviceTypeId = TestSeed.TerminalId,
+                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,

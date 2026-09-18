@@ -29,18 +29,23 @@ public static class PanelGenerator
     {
         var diagnostics = new List<Diagnostic>();
 
+        var (isolator, isolatorDiagnostics) = IsolatorBuilder.Build(request.Rules, request.Catalogue);
+        diagnostics.AddRange(isolatorDiagnostics);
+
         var terminals = TerminalBandBuilder.Build(request.Circuits, request.Rules, request.Catalogue);
         diagnostics.AddRange(terminals.Diagnostics);
 
         var demand = DeviceDemandCalculator.Calculate(request.Circuits, request.Rules, request.Catalogue);
         diagnostics.AddRange(demand.Diagnostics);
 
-        var psus = PsuSizer.Size(request.Circuits, request.Rules, request.Catalogue);
-        diagnostics.AddRange(psus.Diagnostics);
+        var tape = TapeSupplySizer.Size(request.Circuits, request.Rules, request.Catalogue);
+        diagnostics.AddRange(tape.Diagnostics);
 
-        var allDevices = terminals.Devices
+        // The isolator leads: it is the first thing on the top row.
+        var allDevices = (isolator is null ? Enumerable.Empty<RequiredDevice>() : [isolator])
+            .Concat(terminals.Devices)
             .Concat(demand.Devices)
-            .Concat(psus.Devices)
+            .Concat(tape.Blocks)
             .ToList();
 
         var packed = BandPacker.Pack(allDevices, request.Enclosure, request.Rules, request.AllEnclosures);
@@ -52,7 +57,9 @@ public static class PanelGenerator
             OverrideApplier.Apply(packed.Layout, request.Overrides ?? []);
         diagnostics.AddRange(overrideDiagnostics);
 
-        var bom = BomBuilder.Build(layout, terminals.Accessories, request.Enclosure, request.Catalogue);
+        // External parts are costed but never placed.
+        var offRail = terminals.Accessories.Concat(tape.ExternalParts).ToList();
+        var bom = BomBuilder.Build(layout, offRail, request.Enclosure, request.Catalogue);
 
         return new GenerationResult(layout, diagnostics, bom);
     }

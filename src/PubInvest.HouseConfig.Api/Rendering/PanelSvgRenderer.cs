@@ -29,7 +29,10 @@ public static class PanelSvgRenderer
         [DeviceCategory.Dimmer240] = ("#bae6fd", "#0284c7", "Dimmer"),
         [DeviceCategory.Dimmer0_10V] = ("#c7d2fe", "#4f46e5", "Tape dimmer"),
         [DeviceCategory.Relay] = ("#99f6e4", "#0d9488", "Relay"),
-        [DeviceCategory.Psu24V] = ("#fde68a", "#d97706", "PSU"),
+        [DeviceCategory.Isolator]      = ("#fecaca", "#dc2626", "Isolator"),
+        [DeviceCategory.Dc24VPositive] = ("#fde68a", "#d97706", "+24V"),
+        [DeviceCategory.Dc24VNegative] = ("#e2e8f0", "#64748b", "-24V"),
+        [DeviceCategory.ExternalDriver]= ("#f1f5f9", "#cbd5e1", "Driver (external)"),
         [DeviceCategory.Terminal240] = ("#e2e8f0", "#94a3b8", "Terminal"),
         [DeviceCategory.Accessory] = ("#f1f5f9", "#cbd5e1", "Accessory"),
     };

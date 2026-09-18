@@ -25,11 +25,13 @@ public static class BandPacker
             diagnostics.Add(new Diagnostic(
                 DiagnosticSeverity.Error,
                 DiagnosticCodes.EnclosureTooSmall,
-                $"This design needs {rowsUsed} rows of {enclosure.SlotsPerRow} slots; " +
+                // Slot units are an internal unit; a person reads DIN modules.
+                $"This design needs {rowsUsed} rows of {DinUnits.ToModules(enclosure.SlotsPerRow):0.#} modules; " +
                 $"{enclosure.Description} has {enclosure.Rows}.",
                 suggestion is null
                     ? "No catalogue enclosure is large enough; split the submain."
-                    : $"Use {suggestion.Description} ({suggestion.Rows} x {suggestion.SlotsPerRow})."));
+                    : $"Use {suggestion.Description} " +
+                      $"({suggestion.Rows} rows of {DinUnits.ToModules(suggestion.SlotsPerRow):0.#} modules)."));
         }
 
         return new PackResult(new PanelLayout(enclosure.Rows, enclosure.SlotsPerRow, placed), diagnostics);
@@ -65,7 +67,8 @@ public static class BandPacker
                     diagnostics?.Add(new Diagnostic(
                         DiagnosticSeverity.Error,
                         DiagnosticCodes.DeviceWiderThanRow,
-                        $"'{device.Label}' is {device.ModuleWidth} slots wide but a row holds {slotsPerRow}.",
+                        $"'{device.Label}' is {DinUnits.ToModules(device.ModuleWidth):0.#} modules wide " +
+                        $"but a row holds {DinUnits.ToModules(slotsPerRow):0.#}.",
                         "Choose a wider enclosure or a narrower device."));
                     continue;
                 }

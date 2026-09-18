@@ -95,6 +95,9 @@ public class BandPackerTests
         Assert.Equal(DiagnosticCodes.EnclosureTooSmall, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Contains("Test 6x24", diagnostic.Suggestion);
+        // Slot units are internal; the message an engineer reads is in modules.
+        Assert.Contains("modules", diagnostic.Message);
+        Assert.DoesNotContain("slots", diagnostic.Message);
     }
 
     [Fact]

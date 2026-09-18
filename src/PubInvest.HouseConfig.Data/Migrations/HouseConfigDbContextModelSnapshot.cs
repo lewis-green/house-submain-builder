@@ -241,6 +241,33 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.ToTable("PanelRevisions");
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PositionOverrideRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RowIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StartSlot")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SubmainId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmainId", "Label")
+                        .IsUnique();
+
+                    b.ToTable("PositionOverrides");
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -363,6 +390,15 @@ namespace PubInvest.HouseConfig.Data.Migrations
                 {
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
                         .WithMany("Devices")
+                        .HasForeignKey("SubmainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PositionOverrideRow", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
+                        .WithMany()
                         .HasForeignKey("SubmainId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

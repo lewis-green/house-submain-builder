@@ -55,6 +55,8 @@ app.MapProjectEndpoints();
 app.MapSubmainEndpoints();
 app.MapCatalogueEndpoints();
 app.MapDesignEndpoints();
+app.MapCircuitEndpoints();
+app.MapDeviceEndpoints();
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

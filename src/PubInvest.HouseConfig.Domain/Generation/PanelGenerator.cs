@@ -12,7 +12,8 @@ public sealed record GenerationRequest(
     EnclosureType Enclosure,
     RuleSetPayload Rules,
     DeviceCatalogue Catalogue,
-    IReadOnlyList<EnclosureType> AllEnclosures);
+    IReadOnlyList<EnclosureType> AllEnclosures,
+    IReadOnlyList<PositionOverride>? Overrides = null);
 
 public sealed record GenerationResult(
     PanelLayout Layout,
@@ -45,8 +46,14 @@ public static class PanelGenerator
         var packed = BandPacker.Pack(allDevices, request.Enclosure, request.Rules, request.AllEnclosures);
         diagnostics.AddRange(packed.Diagnostics);
 
-        var bom = BomBuilder.Build(packed.Layout, terminals.Accessories, request.Enclosure, request.Catalogue);
+        // Overrides run after packing and before the BOM, so the parts list counts
+        // the same devices the drawing shows.
+        var (layout, overrideDiagnostics) =
+            OverrideApplier.Apply(packed.Layout, request.Overrides ?? []);
+        diagnostics.AddRange(overrideDiagnostics);
 
-        return new GenerationResult(packed.Layout, diagnostics, bom);
+        var bom = BomBuilder.Build(layout, terminals.Accessories, request.Enclosure, request.Catalogue);
+
+        return new GenerationResult(layout, diagnostics, bom);
     }
 }

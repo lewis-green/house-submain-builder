@@ -63,12 +63,22 @@ public sealed class DesignService(HouseConfigDbContext db)
         var allEnclosures = (await db.Enclosures.ToListAsync(ct))
             .Select(DomainMapper.ToDomain).ToList();
 
+        // Positions the engineer chose by dragging. Keyed by label, so they
+        // survive the device rows being replaced.
+        var positionOverrides = (await db.PositionOverrides
+                .Where(o => o.SubmainId == submainId)
+                .OrderBy(o => o.Label)
+                .ToListAsync(ct))
+            .Select(o => new PositionOverride(o.Label, o.RowIndex, o.StartSlot))
+            .ToList();
+
         var request = new GenerationRequest(
             circuits,
             DomainMapper.ToDomain(enclosureRow),
             DomainMapper.ToDomain(ruleSetRow),
             catalogue,
-            allEnclosures);
+            allEnclosures,
+            positionOverrides);
 
         return (new DesignInputs(submain, request, circuits), null);
     }

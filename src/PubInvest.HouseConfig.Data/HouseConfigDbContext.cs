@@ -11,6 +11,7 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<DeviceInstance> DeviceInstances => Set<DeviceInstance>();
     public DbSet<DeviceChannelRow> DeviceChannels => Set<DeviceChannelRow>();
     public DbSet<PanelRevision> PanelRevisions => Set<PanelRevision>();
+    public DbSet<PositionOverrideRow> PositionOverrides => Set<PositionOverrideRow>();
     public DbSet<DeviceTypeRow> DeviceTypes => Set<DeviceTypeRow>();
     public DbSet<EnclosureTypeRow> Enclosures => Set<EnclosureTypeRow>();
     public DbSet<RuleSetRow> RuleSets => Set<RuleSetRow>();
@@ -36,6 +37,10 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
             .HasIndex(c => new { c.DeviceInstanceId, c.ChannelIndex }).IsUnique();
 
         b.Entity<DeviceChannelRow>().HasIndex(c => c.CircuitId);
+
+        b.Entity<PositionOverrideRow>().HasIndex(o => new { o.SubmainId, o.Label }).IsUnique();
+        b.Entity<Submain>().HasMany<PositionOverrideRow>().WithOne()
+            .HasForeignKey(o => o.SubmainId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<DeviceTypeRow>().HasIndex(d => d.PartNumber).IsUnique();
         b.Entity<RuleSetRow>().HasIndex(r => new { r.Name, r.Version }).IsUnique();

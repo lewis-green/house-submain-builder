@@ -71,6 +71,91 @@ public static class DeviceEndpoints
             })
             .WithTags("Devices");
 
+        app.MapPatch("/devices/{id:guid}/position", async (
+                Guid id,
+                UpdatePositionRequest request,
+                HouseConfigDbContext db,
+                CancellationToken ct) =>
+            {
+                var device = await db.DeviceInstances.SingleOrDefaultAsync(d => d.Id == id, ct);
+                if (device is null) return Results.NotFound();
+
+                var submain = await db.Submains.SingleAsync(s => s.Id == device.SubmainId, ct);
+                if (submain.LayoutVersion != request.BasedOnLayoutVersion)
+                {
+                    return Results.Json(
+                        new ConflictResponse(
+                            "This panel changed since you loaded it. Reload and try again.",
+                            submain.LayoutVersion),
+                        statusCode: StatusCodes.Status409Conflict);
+                }
+
+                var enclosure = submain.EnclosureTypeId is null
+                    ? null
+                    : await db.Enclosures.SingleOrDefaultAsync(e => e.Id == submain.EnclosureTypeId, ct);
+
+                if (enclosure is null)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["design"] = ["This submain has no enclosure."]
+                    });
+                }
+
+                var end = request.StartSlot + device.ModuleWidth;
+
+                if (request.RowIndex < 0 || request.RowIndex >= enclosure.Rows
+                    || request.StartSlot < 0 || end > enclosure.SlotsPerRow)
+                {
+                    return Results.Json(
+                        new { message = "That position is outside the enclosure." },
+                        statusCode: StatusCodes.Status422UnprocessableEntity);
+                }
+
+                var blocked = await db.DeviceInstances.AnyAsync(other =>
+                    other.SubmainId == device.SubmainId
+                    && other.Id != device.Id
+                    && other.RowIndex == request.RowIndex
+                    && other.StartSlot < end
+                    && request.StartSlot < other.StartSlot + other.ModuleWidth, ct);
+
+                if (blocked)
+                {
+                    return Results.Json(
+                        new { message = "Another device is already in that space." },
+                        statusCode: StatusCodes.Status422UnprocessableEntity);
+                }
+
+                device.RowIndex = request.RowIndex;
+                device.StartSlot = request.StartSlot;
+
+                var existing = await db.PositionOverrides
+                    .SingleOrDefaultAsync(o => o.SubmainId == device.SubmainId && o.Label == device.Label, ct);
+
+                if (existing is null)
+                {
+                    db.PositionOverrides.Add(new Data.Entities.PositionOverrideRow
+                    {
+                        Id = Guid.NewGuid(),
+                        SubmainId = device.SubmainId,
+                        Label = device.Label,
+                        RowIndex = request.RowIndex,
+                        StartSlot = request.StartSlot
+                    });
+                }
+                else
+                {
+                    existing.RowIndex = request.RowIndex;
+                    existing.StartSlot = request.StartSlot;
+                }
+
+                submain.LayoutVersion++;
+                await db.SaveChangesAsync(ct);
+
+                return Results.Ok(new { submain.LayoutVersion, device.RowIndex, device.StartSlot });
+            })
+            .WithTags("Devices");
+
         return app;
     }
 }

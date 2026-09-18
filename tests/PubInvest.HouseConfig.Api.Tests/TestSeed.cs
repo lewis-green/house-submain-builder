@@ -24,6 +24,12 @@ public static class TestSeed
     public static readonly Guid TinyEnclosureId = new("bbbb0000-0000-4000-8000-000000000002");
     public static readonly Guid RuleSetId       = new("cccc0000-0000-4000-8000-000000000001");
 
+    /// Termination stays on the top row whatever else moves: circuit terminals
+    /// then the 24V pair from the left, the isolator hard against the right.
+    private static PackingZone Termination => new(
+        FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+        FromRight: [DeviceCategory.Isolator]);
+
     public static SeedDocument Document() => new(
         Version: 1,
         DeviceTypes:
@@ -48,10 +54,33 @@ public static class TestSeed
         RuleSets:
         [
             new SeedRuleSet(RuleSetId, "Test rules", 1, true, new RuleSetPayload(
-                BandOrder:
+                Layouts:
                 [
-                    DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240,
-                    DeviceCategory.Relay, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative,
+                    // Finest: a row for every kind of device.
+                    new PanelLayoutOption(
+                    [
+                                Termination,
+                                new PackingZone([DeviceCategory.Dimmer240], []),
+                                new PackingZone([DeviceCategory.Dimmer0_10V], []),
+                                new PackingZone([], [DeviceCategory.Relay]),
+                    ]),
+
+                    // Then: the two sorts of dimmer share a row, relays keep their own.
+                    new PanelLayoutOption(
+                    [
+                                Termination,
+                                new PackingZone([DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V], []),
+                                new PackingZone([], [DeviceCategory.Relay]),
+                    ]),
+
+                    // Last: everything in one zone, dimmers left and relays right.
+                    new PanelLayoutOption(
+                    [
+                                Termination,
+                                new PackingZone(
+                                    [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                                    [DeviceCategory.Relay]),
+                    ]),
                 ],
                 PsuDeratingFactor: 0.8m,
                 PreferredDevice: new PreferredDevices(
@@ -68,7 +97,6 @@ public static class TestSeed
                     BridgeBarDeviceTypeId: BridgeId,
                     BridgeBarWays: 10,
                     EndStopDeviceTypeId: EndStopId,
-                    EndStopsPerBank: 2),
-                Packing: "bandPerRow"))
+                    EndStopsPerBank: 2)))
         ]);
 }

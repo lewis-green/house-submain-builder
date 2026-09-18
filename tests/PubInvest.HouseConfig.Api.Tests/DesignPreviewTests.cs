@@ -55,13 +55,13 @@ public class DesignPreviewTests(HouseConfigApiFactory factory)
         var design = await response.Content.ReadFromJsonAsync<DesignDto>();
         Assert.NotEmpty(design!.Layout.Devices);
 
-        // The isolator leads on row 0; the terminal band follows on its own row.
-        Assert.Equal(0, design.Layout.Devices.Single(d => d.Category == "Isolator").RowIndex);
-        var terminalRows = design.Layout.Devices
-            .Where(d => d.Category == "Terminal240")
-            .Select(d => d.RowIndex)
-            .Distinct();
-        Assert.Equal([1], terminalRows);
+        // Termination across the top: terminals from the left, isolator from the right.
+        var isolator = design.Layout.Devices.Single(d => d.Category == "Isolator");
+        Assert.Equal(0, isolator.RowIndex);
+        Assert.Equal(design.Layout.SlotsPerRow, isolator.StartSlot + isolator.ModuleWidth);
+        Assert.All(
+            design.Layout.Devices.Where(d => d.Category == "Terminal240"),
+            d => Assert.Equal(0, d.RowIndex));
 
         Assert.Equal(design.Layout.Devices.Length, design.Summary.DeviceCount);
         Assert.NotEmpty(design.Bom);

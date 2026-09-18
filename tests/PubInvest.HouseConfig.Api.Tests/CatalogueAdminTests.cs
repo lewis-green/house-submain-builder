@@ -192,7 +192,17 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
             isDefault = false,
             payload = new
             {
-                bandOrder = new[] { "Isolator", "Terminal240", "Dimmer240", "Relay" },
+                layouts = new[]
+                {
+                    new
+                    {
+                        zones = new[]
+                        {
+                            new { fromLeft = new[] { "Terminal240" }, fromRight = new[] { "Isolator" } },
+                            new { fromLeft = new[] { "Dimmer240" }, fromRight = new[] { "Relay" } },
+                        },
+                    },
+                },
                 bandStartsNewRow = true,
                 psuDeratingFactor = 0.8,
                 preferredDevice = new
@@ -223,6 +233,23 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task A_ruleset_with_no_layouts_is_refused_rather_than_crashing()
+    {
+        var client = factory.CreateClient();
+        await Seed();
+
+        var response = await client.PostAsJsonAsync("/catalogue/rulesets", new
+        {
+            name = $"Layoutless {Guid.NewGuid():N}",
+            version = 1,
+            isDefault = false,
+            payload = new { psuDeratingFactor = 0.8 },
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_derating_factor_outside_zero_to_one_is_refused()
     {
         var client = factory.CreateClient();
@@ -235,7 +262,16 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
             isDefault = false,
             payload = new
             {
-                bandOrder = new[] { "Terminal240" },
+                layouts = new[]
+                {
+                    new
+                    {
+                        zones = new[]
+                        {
+                            new { fromLeft = new[] { "Terminal240" }, fromRight = new[] { "Isolator" } },
+                        },
+                    },
+                },
                 bandStartsNewRow = true,
                 psuDeratingFactor = 1.5,
                 preferredDevice = new
@@ -286,7 +322,17 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
             isDefault = false,
             payload = new
             {
-                bandOrder = new[] { "Isolator", "Terminal240", "Dimmer240", "Relay" },
+                layouts = new[]
+                {
+                    new
+                    {
+                        zones = new[]
+                        {
+                            new { fromLeft = new[] { "Terminal240" }, fromRight = new[] { "Isolator" } },
+                            new { fromLeft = new[] { "Dimmer240" }, fromRight = new[] { "Relay" } },
+                        },
+                    },
+                },
                 bandStartsNewRow = true,
                 psuDeratingFactor = 0.8,
                 preferredDevice = new

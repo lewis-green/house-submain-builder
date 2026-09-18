@@ -44,10 +44,25 @@ public class CatalogueSeederTests(PostgresFixture fixture)
             RuleSets:
             [
                 new SeedRuleSet(Id(10), $"Rules {tag}", 1, true, new RuleSetPayload(
-                    BandOrder:
+                    Layouts:
                     [
-                        DeviceCategory.Isolator, DeviceCategory.Terminal240, DeviceCategory.Dimmer240,
-                        DeviceCategory.Relay, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative,
+                        new PanelLayoutOption(
+                        [
+                            new PackingZone(
+                                [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+                                [DeviceCategory.Isolator]),
+                            new PackingZone([DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V], []),
+                            new PackingZone([], [DeviceCategory.Relay]),
+                        ]),
+                        new PanelLayoutOption(
+                        [
+                            new PackingZone(
+                                [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
+                                [DeviceCategory.Isolator]),
+                            new PackingZone(
+                                [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
+                                [DeviceCategory.Relay]),
+                        ]),
                     ],
                     PsuDeratingFactor: 0.8m,
                     PreferredDevice: new PreferredDevices(isolator, dimmer, tapeDimmer, relay, dcPos, dcNeg, [psu]),
@@ -57,8 +72,7 @@ public class CatalogueSeederTests(PostgresFixture fixture)
                         BridgeBarDeviceTypeId: bar,
                         BridgeBarWays: 10,
                         EndStopDeviceTypeId: endStop,
-                        EndStopsPerBank: 2),
-                    Packing: "bandPerRow"))
+                        EndStopsPerBank: 2)))
             ]);
     }
 
@@ -103,8 +117,10 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         var payload = DomainMapper.ToDomain(row);
 
         Assert.Equal(0.8m, payload.PsuDeratingFactor);
-        // The isolator leads: it is the first thing on the top row.
-        Assert.Equal(DeviceCategory.Isolator, payload.BandOrder[0]);
+        // Termination on top of the finest layout: terminals left, isolator right.
+        var finest = payload.Layouts[0].Zones;
+        Assert.Equal(DeviceCategory.Terminal240, finest[0].FromLeft[0]);
+        Assert.Equal(DeviceCategory.Isolator, finest[0].FromRight[0]);
         Assert.Equal(seed.DeviceTypes[0].Id, payload.PreferredDevice.Dimmer240);
         Assert.Equal(2, payload.Terminals.EndStopsPerBank);
     }

@@ -256,9 +256,22 @@ public static class CatalogueAdminEndpoints
             problems["psuDeratingFactor"] = ["The derating factor must be greater than 0 and at most 1."];
         }
 
-        if (request.Payload.BandOrder.Count == 0)
+        // A payload that omits its layouts deserialises them as null. That must
+        // read as "you forgot the layouts", not as a 500.
+        if (request.Payload.Layouts is null || request.Payload.Layouts.Count == 0)
         {
-            problems["bandOrder"] = ["A ruleset needs a band order."];
+            problems["layouts"] = ["A ruleset needs at least one panel layout to try."];
+        }
+        else if (request.Payload.Layouts.Any(l => (l.Zones?.Count ?? 0) == 0))
+        {
+            problems["layouts"] = ["Every layout needs at least one packing zone."];
+        }
+        else if (request.Payload.Layouts.All(l => l.Zones.All(z =>
+                     (z.FromLeft?.Count ?? 0) == 0 && (z.FromRight?.Count ?? 0) == 0)))
+        {
+            // A zone that names no category places nothing, so a ruleset made
+            // only of empty zones would draw an empty panel with no complaint.
+            problems["layouts"] = ["A packing zone must name at least one device category."];
         }
 
         // The same referential check the shipped-seed test makes, enforced at
@@ -267,6 +280,12 @@ public static class CatalogueAdminEndpoints
             .Where(d => d.Active)
             .Select(d => d.Id)
             .ToListAsync(ct);
+
+        if (request.Payload.PreferredDevice is null || request.Payload.Terminals is null)
+        {
+            problems["payload"] = ["The ruleset payload is missing its preferred devices or terminal rules."];
+            return problems;
+        }
 
         var missing = Referenced(request.Payload).Distinct().Where(id => !active.Contains(id)).ToList();
         if (missing.Count > 0)

@@ -8,6 +8,18 @@ drawing with its circuit schedule and a bill of materials.
 
 ## Running it
 
+Everything in containers, which is how it is meant to be deployed:
+
+```bash
+docker-compose up --build
+```
+
+Then open **http://localhost:8080**. The UI is served by nginx, which proxies
+`/api` through to the API container, so the browser only ever talks to one
+origin.
+
+### Running it for development
+
 You need Docker, the .NET 10 SDK and Node 22.
 
 **Three terminals.**
@@ -72,7 +84,11 @@ units.
 ```bash
 dotnet test          # 173 tests. Needs Docker: the Data and Api suites use Testcontainers.
 cd ui && npm test    # 84 tests
+cd ui && npm run build   # the real typecheck: `tsc -b` is stricter than `tsc --noEmit`
 ```
+
+CI runs all of these on every push and pull request, builds both container
+images, and pushes them to GHCR from `main`.
 
 `ui/e2e/` holds a Playwright suite covering the touch-drag path. It has never
 been run here — the chromium download times out on this network. `npx playwright

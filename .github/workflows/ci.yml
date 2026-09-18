@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Release
+
+      # The Data and Api suites start Postgres through Testcontainers, so they
+      # need the Docker daemon the runner already provides.
+      - run: dotnet test --no-build -c Release --logger "trx;LogFileName=results.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: '**/TestResults/*.trx'
+
+  ui:
+    name: UI tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - run: npm ci
+
+      # The real build, not `tsc --noEmit`: `tsc -b` applies the stricter
+      # project settings, and caught four errors the looser check let through.
+      - name: Build
+        run: npm run build
+
+      - run: npm test
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+    needs: [backend, ui]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: HouseConfig
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d HouseConfig"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Start the API
+        run: |
+          dotnet run --project src/PubInvest.HouseConfig.Api &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:5020/health && exit 0
+            sleep 2
+          done
+          echo "API did not become healthy"; exit 1
+        env:
+          ConnectionStrings__HouseConfig: "Host=localhost;Port=5432;Database=HouseConfig;Username=postgres;Password=postgres"
+          HouseConfig__AuthEnabled: "false"
+          HouseConfig__SeedOnStartup: "true"
+          ASPNETCORE_ENVIRONMENT: Development
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: ui
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: ui/playwright-report/
+
+  images:
+    name: Container images
+    runs-on: ubuntu-latest
+    needs: [backend, ui]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Built on every run so a pull request cannot merge an image that will not
+      # build; pushed only from main.
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/PubInvest.HouseConfig.Api/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
+            ${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: UI image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ui
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/ui:latest
+            ${{ env.REGISTRY }}/${{ github.repository }}/ui:${{ github.sha }}
+          cache-from: type=gha,scope=ui
+          cache-to: type=gha,scope=ui,mode=max

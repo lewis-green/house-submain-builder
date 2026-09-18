@@ -15,5 +15,27 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: src/PubInvest.HouseConfig.Api/Dockerfile
+    environment:
+      ConnectionStrings__HouseConfig: "Host=postgres;Port=5432;Database=HouseConfig;Username=postgres;Password=postgres"
+      HouseConfig__AuthEnabled: "false"
+      HouseConfig__SeedOnStartup: "true"
+    ports:
+      - "5020:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ui:
+    build:
+      context: ./ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+
 volumes:
   postgres-data:

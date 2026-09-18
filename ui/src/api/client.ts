@@ -1,12 +1,19 @@
 export class ApiError extends Error {
+  readonly status: number
+  readonly fieldErrors: Record<string, string[]>
+  readonly currentLayoutVersion?: number
+
   constructor(
-    readonly status: number,
+    status: number,
     message: string,
-    readonly fieldErrors: Record<string, string[]> = {},
-    readonly currentLayoutVersion?: number,
+    fieldErrors: Record<string, string[]> = {},
+    currentLayoutVersion?: number,
   ) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
+    this.fieldErrors = fieldErrors
+    this.currentLayoutVersion = currentLayoutVersion
   }
 
   /** A 409 means someone else changed the panel: reload, don't report a failure. */

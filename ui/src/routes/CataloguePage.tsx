@@ -21,9 +21,6 @@ interface DeviceTypeView {
   active: boolean
 }
 
-const categories: DeviceCategory[] =
-  ['Terminal240', 'Dimmer240', 'Dimmer0_10V', 'Relay', 'Psu24V', 'Accessory']
-
 /**
  * Widths are entered and shown in DIN modules and converted on save. An admin
  * should never have to think in thirds. Terminal blocks are the exception: a

@@ -1,7 +1,7 @@
 import type { LayoutResponse, PlacedDeviceResponse } from '../api/types'
 import { SLOT_UNITS_PER_MODULE } from '../units'
 import { deviceStyle } from './deviceStyle'
-import { ROW_PX, SLOT_PX, deviceRect, panelSize, rowToY, slotToX } from './geometry'
+import { ROW_PX, deviceRect, panelSize, rowToY, slotToX } from './geometry'
 
 export interface DragState {
   deviceId: string

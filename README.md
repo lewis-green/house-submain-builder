@@ -36,8 +36,9 @@ Auth is off in development (`HouseConfig:AuthEnabled` is `false` in
 2. **Add submain**. Pick the 3-row enclosure, then enter circuit counts — say 4
    dimmed and 2 switched. The preview updates as you type and tells you what the
    panel needs and whether it fits.
-3. **Generate panel**. The drawing appears to scale: terminals on the top row,
-   then dimmers, relays and any 24V PSUs.
+3. **Generate panel**. The drawing appears to scale: termination across the top
+   row — circuit terminals, then a +24V and a -24V joint for each tape run, then
+   the two-pole isolator hard against the right — and the Shelly kit below it.
 4. **Tap a device** to name its channels. Names propagate straight back to the drawing.
 5. **Long-press and drag** a device to move it. Invalid targets go red; the move
    is saved and survives re-generation.
@@ -62,15 +63,15 @@ module, the Shelly Pro relay is 4 channels at 3 modules, and three WAGO
 2003-7646 fit in one module. Everything else needs checking against a datasheet
 before anyone orders from a generated BOM.
 
-Prices and parts can be corrected in the **Catalogue** screen (linked from the
-houses list) without a redeploy — widths there are entered in DIN modules, not
-internal slot units.
+Parts can be corrected in the **Catalogue** screen (linked from the houses list)
+without a redeploy — widths there are entered in DIN modules, not internal slot
+units.
 
 ## Tests
 
 ```bash
-dotnet test          # 152 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 77 tests
+dotnet test          # 173 tests. Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 84 tests
 ```
 
 `ui/e2e/` holds a Playwright suite covering the touch-drag path. It has never
@@ -85,7 +86,7 @@ src/PubInvest.HouseConfig.Data/     EF Core, Postgres, catalogue seeding
 src/PubInvest.HouseConfig.Api/      minimal API, revisions, PDF and BOM export
 ui/                                 React 19 + Vite + TypeScript + Tailwind
 seed/catalogue.v1.json              devices, enclosures and the default ruleset
-docs/superpowers/                   the design spec and the three implementation plans
+docs/superpowers/                   the design spec and the four implementation plans
 ```
 
 Three ideas are worth knowing before reading the code:
@@ -101,5 +102,6 @@ converted back to modules first.
 the schedule and the parts list from ever disagreeing.
 
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
-the ruleset payload and the catalogue entries as they were, so re-pricing a part
-next month cannot retroactively change what a drawing in someone's folder said.
+the ruleset payload and the catalogue entries as they were, so editing a rule or
+a part next month cannot retroactively change what a drawing in someone's folder
+said.

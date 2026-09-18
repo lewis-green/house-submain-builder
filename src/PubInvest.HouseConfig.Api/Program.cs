@@ -7,6 +7,9 @@ using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Mapping;
 using PubInvest.HouseConfig.Data.Seeding;
 
+// QuestPDF Community licence, set once before any document is generated.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 var authEnabled = builder.Configuration.GetValue("HouseConfig:AuthEnabled", true);
@@ -22,13 +25,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<PubInvest.HouseConfig.Api.Services.DesignService>();
+builder.Services.AddScoped<PubInvest.HouseConfig.Api.Revisions.RevisionService>();
 builder.Services.AddHealthChecks().AddDbContextCheck<HouseConfigDbContext>();
 builder.Services.AddOpenApi();
 
 if (authEnabled)
 {
     builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorizationBuilder()
+        .AddPolicy("catalogue-admin", policy => policy.RequireRole("catalogue-admin"));
 }
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
@@ -57,6 +62,9 @@ app.MapCatalogueEndpoints();
 app.MapDesignEndpoints();
 app.MapCircuitEndpoints();
 app.MapDeviceEndpoints();
+app.MapRevisionEndpoints();
+app.MapExportEndpoints();
+app.MapCatalogueAdminEndpoints(authEnabled);
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

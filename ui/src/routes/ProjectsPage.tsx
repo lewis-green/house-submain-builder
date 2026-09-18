@@ -44,7 +44,10 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-xl font-semibold">Houses</h1>
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-xl font-semibold">Houses</h1>
+        <Link to="/catalogue" className="text-sm underline">Catalogue</Link>
+      </div>
 
       {projects.length === 0 ? (
         <p className="text-slate-500">No houses yet. Add one below to get started.</p>

@@ -7,6 +7,7 @@ import { Diagnostics } from '../components/Diagnostics'
 import { ErrorNote } from '../components/ErrorNote'
 import { Spinner } from '../components/Spinner'
 import { DeviceSheet } from '../panel/DeviceSheet'
+import { IssueButton } from '../panel/IssueButton'
 import { PanelSvg } from '../panel/PanelSvg'
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 
@@ -144,6 +145,13 @@ export function PanelPage() {
             </div>
           </div>
         </>
+      )}
+
+      {!empty && submainId && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <IssueButton submainId={submainId} />
+          <Link to={`/submains/${submainId}/bom`} className="text-sm underline">Bill of materials</Link>
+        </div>
       )}
 
       {selected && selected.id && (

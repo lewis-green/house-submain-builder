@@ -56,7 +56,10 @@ export function ProjectPage() {
         </ul>
       )}
 
-      <Button onClick={() => navigate(`/projects/${projectId}/submains/new`)}>Add submain</Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button onClick={() => navigate(`/projects/${projectId}/submains/new`)}>Add submain</Button>
+        <Link to={`/projects/${projectId}/bom`} className="text-sm underline">House bill of materials</Link>
+      </div>
     </div>
   )
 }

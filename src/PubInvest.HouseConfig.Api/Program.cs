@@ -32,7 +32,8 @@ builder.Services.AddOpenApi();
 if (authEnabled)
 {
     builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorizationBuilder()
+        .AddPolicy("catalogue-admin", policy => policy.RequireRole("catalogue-admin"));
 }
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
@@ -63,6 +64,7 @@ app.MapCircuitEndpoints();
 app.MapDeviceEndpoints();
 app.MapRevisionEndpoints();
 app.MapExportEndpoints();
+app.MapCatalogueAdminEndpoints(authEnabled);
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))
 {

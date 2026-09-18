@@ -21,11 +21,10 @@ public static class DomainMapper
     public static DeviceType ToDomain(DeviceTypeRow row) => new(
         row.Id, row.Manufacturer, row.Model, row.PartNumber,
         Enum.Parse<DeviceCategory>(row.Category),
-        row.ModuleWidth, row.ChannelCount, row.MaxLoadPerChannelW, row.MaxTotalLoadW,
-        row.Cost, row.Active);
+        row.ModuleWidth, row.ChannelCount, row.MaxLoadPerChannelW, row.MaxTotalLoadW, row.Active);
 
     public static EnclosureType ToDomain(EnclosureTypeRow row) => new(
-        row.Id, row.Manufacturer, row.Model, row.Rows, row.SlotsPerRow, row.IpRating, row.Cost);
+        row.Id, row.Manufacturer, row.Model, row.Rows, row.SlotsPerRow, row.IpRating);
 
     public static Circuit ToDomain(CircuitRow row) => new(
         row.Id, Enum.Parse<CircuitType>(row.Type), row.Name, row.Room, row.Sequence,

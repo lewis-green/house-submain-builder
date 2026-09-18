@@ -23,10 +23,10 @@ public sealed record LayoutResponse(int Rows, int SlotsPerRow, IReadOnlyList<Pla
 public sealed record DiagnosticResponse(string Severity, string Code, string Message, string? Suggestion);
 
 public sealed record BomLineResponse(
-    Guid CatalogueId, string PartNumber, string Description, int Quantity, decimal UnitCost, decimal LineTotal);
+    Guid CatalogueId, string PartNumber, string Description, int Quantity, bool PanelMounted);
 
 public sealed record DesignSummary(
-    int RowsUsed, int SlotsUsed, int TotalSlots, int DeviceCount, int SpareChannels, decimal BomTotal);
+    int RowsUsed, int SlotsUsed, int TotalSlots, int DeviceCount, int SpareChannels);
 
 public sealed record DesignResponse(
     Guid SubmainId,

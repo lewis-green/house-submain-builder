@@ -5,15 +5,10 @@ public sealed record BomLine(
     string PartNumber,
     string Description,
     int Quantity,
-    decimal UnitCost,
-    /// False for anything that is bought but never mounted on the rail — the LED
-    /// driver above all — so nobody goes looking for it in the panel.
-    bool PanelMounted = true)
-{
-    public decimal LineTotal => Quantity * UnitCost;
-}
+    /// False for anything bought but never mounted on the rail — the LED driver
+    /// above all — so nobody goes looking for it in the panel.
+    bool PanelMounted = true);
 
-public sealed record BillOfMaterials(IReadOnlyList<BomLine> Lines)
-{
-    public decimal Total => Lines.Sum(l => l.LineTotal);
-}
+/// What to order. Deliberately carries no prices: this is a parts list, and
+/// costing happens wherever your pricing actually lives.
+public sealed record BillOfMaterials(IReadOnlyList<BomLine> Lines);

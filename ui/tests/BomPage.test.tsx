@@ -7,21 +7,12 @@ import type { BomView } from '../src/api/types'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
-const priced: BomView = {
+const bom: BomView = {
   lines: [
-    { catalogueId: 'a', partNumber: 'SHELLY-DIM', description: 'Shelly Pro Dimmer 2PM', quantity: 3, unitCost: 60, lineTotal: 180 },
-    { catalogueId: 'b', partNumber: '2003-7646', description: 'WAGO TOPJOB S', quantity: 27, unitCost: 1.5, lineTotal: 40.5 },
+    { catalogueId: 'a', partNumber: 'SHELLY-DIM', description: 'Shelly Pro Dimmer 2PM', quantity: 3, panelMounted: true },
+    { catalogueId: 'b', partNumber: '2003-7646', description: 'WAGO TOPJOB S', quantity: 27, panelMounted: true },
+    { catalogueId: 'c', partNumber: 'DRIVER-100', description: '24V LED driver', quantity: 1, panelMounted: false },
   ],
-  total: 220.5,
-  unpricedLines: 0,
-  priced: true,
-}
-
-const unpriced: BomView = {
-  lines: [{ catalogueId: 'a', partNumber: 'SHELLY-DIM', description: 'Shelly Pro Dimmer 2PM', quantity: 3, unitCost: 0, lineTotal: 0 }],
-  total: null,
-  unpricedLines: 1,
-  priced: false,
 }
 
 const renderPage = () =>
@@ -35,7 +26,7 @@ describe('BomPage', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('lists parts with their quantities', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(priced)))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 
     renderPage()
 
@@ -44,21 +35,21 @@ describe('BomPage', () => {
     expect(screen.getByText('2003-7646')).toBeInTheDocument()
   })
 
-  it('shows a total when everything is priced', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(priced)))
+  it('shows no money anywhere', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 
     renderPage()
+    await screen.findByText('Shelly Pro Dimmer 2PM')
 
-    expect(await screen.findByText(/Total £220.50/)).toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/£|total|cost|price/i)
   })
 
-  it('says not priced rather than showing a zero total', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(unpriced)))
+  it('marks a part that is not mounted in the panel', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 
     renderPage()
 
-    expect(await screen.findByText(/Not priced \(1 of 1 parts have no cost\)/)).toBeInTheDocument()
-    expect(screen.queryByText(/£0.00/)).not.toBeInTheDocument()
+    expect(await screen.findByText('external')).toBeInTheDocument()
   })
 
   it('explains that nothing has been issued rather than showing a bare error', async () => {
@@ -69,12 +60,29 @@ describe('BomPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/nothing has been issued yet/i)
   })
 
+  it('says so when there is nothing to order', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ lines: [] })))
+
+    renderPage()
+
+    expect(await screen.findByText(/nothing to order/i)).toBeInTheDocument()
+  })
+
   it('offers the csv download for the scope it is showing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(priced)))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 
     renderPage()
 
     const link = await screen.findByRole('link', { name: /download csv/i })
     expect(link).toHaveAttribute('href', '/api/submains/s1/bom.csv')
+  })
+
+  it('goes back to the panel it belongs to', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
+
+    renderPage()
+
+    const back = await screen.findByRole('link', { name: /back/i })
+    expect(back).toHaveAttribute('href', '/submains/s1/panel')
   })
 })

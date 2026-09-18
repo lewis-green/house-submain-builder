@@ -74,8 +74,7 @@ export interface BomLineResponse {
   partNumber: string
   description: string
   quantity: number
-  unitCost: number
-  lineTotal: number
+  panelMounted: boolean
 }
 
 export interface DesignSummary {
@@ -84,7 +83,6 @@ export interface DesignSummary {
   totalSlots: number
   deviceCount: number
   spareChannels: number
-  bomTotal: number
 }
 
 export interface DesignResponse {
@@ -103,7 +101,6 @@ export interface EnclosureType {
   rows: number
   slotsPerRow: number
   ipRating: string
-  cost: number
   totalSlots: number
   description: string
 }
@@ -123,16 +120,13 @@ export interface BomLineView {
   partNumber: string
   description: string
   quantity: number
-  unitCost: number
-  lineTotal: number
+  /** False for anything bought but never mounted on the rail. */
+  panelMounted: boolean
 }
 
+/** A parts list. Costing happens wherever your pricing actually lives. */
 export interface BomView {
   lines: BomLineView[]
-  /** null while any part is unpriced: a confident zero would be a different claim. */
-  total: number | null
-  unpricedLines: number
-  priced: boolean
 }
 
 export interface RevisionView {

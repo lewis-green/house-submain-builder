@@ -19,7 +19,7 @@ const design = (
   },
   diagnostics,
   bom: [],
-  summary: { rowsUsed: 3, slotsUsed: 36, totalSlots: 216, deviceCount: 2, spareChannels: 1, bomTotal: 0, ...summary },
+  summary: { rowsUsed: 3, slotsUsed: 36, totalSlots: 216, deviceCount: 2, spareChannels: 1, ...summary },
 })
 
 describe('PreviewSummary', () => {

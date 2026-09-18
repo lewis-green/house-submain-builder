@@ -13,7 +13,7 @@ public class BomCsvTests
     public void A_description_with_a_comma_is_quoted()
     {
         var csv = BomCsv.Write(new BillOfMaterials([
-            new BomLine(Guid.NewGuid(), "P-1", "Terminal, grey", 3, 1.50m)]), "Test");
+            new BomLine(Guid.NewGuid(), "P-1", "Terminal, grey", 3)]), "Test");
 
         Assert.Contains("\"Terminal, grey\"", csv);
     }
@@ -22,31 +22,23 @@ public class BomCsvTests
     public void A_description_with_a_quote_has_it_doubled()
     {
         var csv = BomCsv.Write(new BillOfMaterials([
-            new BomLine(Guid.NewGuid(), "P-2", "6\" rail", 1, 2m)]), "Test");
+            new BomLine(Guid.NewGuid(), "P-2", "6\" rail", 1)]), "Test");
 
         Assert.Contains("\"6\"\" rail\"", csv);
     }
 
     [Fact]
-    public void A_priced_bom_ends_with_its_total()
+    public void The_csv_is_a_parts_list_with_no_money_in_it()
     {
         var csv = BomCsv.Write(new BillOfMaterials([
-            new BomLine(Guid.NewGuid(), "P-1", "Dimmer", 2, 60m),
-            new BomLine(Guid.NewGuid(), "P-2", "Relay", 1, 95m)]), "Test");
+            new BomLine(Guid.NewGuid(), "P-1", "Dimmer", 2),
+            new BomLine(Guid.NewGuid(), "P-2", "Driver", 1, PanelMounted: false)]), "Test");
 
-        Assert.Contains("Total,215.00", csv);
-        Assert.DoesNotContain("Not priced", csv);
-    }
-
-    [Fact]
-    public void An_unpriced_line_leaves_its_cost_cells_empty_rather_than_zero()
-    {
-        var csv = BomCsv.Write(new BillOfMaterials([
-            new BomLine(Guid.NewGuid(), "P-1", "Dimmer", 2, 0m)]), "Test");
-
-        Assert.Contains("P-1,Dimmer,2,,", csv);
-        Assert.Contains("Not priced (1 of 1 parts have no cost)", csv);
-        Assert.DoesNotContain("0.00", csv);
+        Assert.Contains("Part,Description,Quantity,Panel mounted", csv);
+        Assert.Contains("P-1,Dimmer,2,yes", csv);
+        Assert.Contains("P-2,Driver,1,no", csv);
+        Assert.DoesNotContain("Total", csv);
+        Assert.DoesNotContain("cost", csv, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -55,8 +47,8 @@ public class BomExportTests(HouseConfigApiFactory factory)
 {
     private record ProjectDto(Guid Id);
     private record SubmainDto(Guid Id);
-    private record BomLineDto(string PartNumber, string Description, int Quantity, decimal UnitCost);
-    private record BomDto(BomLineDto[] Lines, decimal? Total, int UnpricedLines, bool Priced);
+    private record BomLineDto(string PartNumber, string Description, int Quantity, bool PanelMounted);
+    private record BomDto(BomLineDto[] Lines);
 
     private static object[] Circuits =>
     [
@@ -136,41 +128,19 @@ public class BomExportTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
-    public async Task A_bom_reports_a_total_when_everything_is_priced()
+    public async Task The_external_driver_is_marked_as_not_panel_mounted()
     {
         var client = factory.CreateClient();
         var (_, submainId) = await Issued(client);
 
         var bom = await client.GetFromJsonAsync<BomDto>($"/submains/{submainId}/bom");
 
-        Assert.True(bom!.Priced);
-        Assert.NotNull(bom.Total);
-        Assert.Equal(0, bom.UnpricedLines);
+        Assert.All(bom!.Lines.Where(l => l.PartNumber.StartsWith("T-PSU")), l => Assert.False(l.PanelMounted));
+        Assert.All(bom.Lines.Where(l => l.PartNumber == "T-TB"), l => Assert.True(l.PanelMounted));
     }
 
     [Fact]
-    public async Task A_bom_with_an_unpriced_part_reports_no_total_at_all()
-    {
-        var client = factory.CreateClient();
-
-        await using (var db = factory.NewDbContext())
-        {
-            await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
-            var relay = await db.DeviceTypes.SingleAsync(d => d.Id == TestSeed.RelayId);
-            relay.Cost = 0m;
-            await db.SaveChangesAsync();
-        }
-
-        var (_, submainId) = await Issued(client);
-        var bom = await client.GetFromJsonAsync<BomDto>($"/submains/{submainId}/bom");
-
-        Assert.False(bom!.Priced);
-        Assert.Null(bom.Total);
-        Assert.True(bom.UnpricedLines > 0);
-    }
-
-    [Fact]
-    public async Task A_house_with_nothing_issued_is_not_reported_as_priced()
+    public async Task A_house_with_nothing_issued_has_an_empty_parts_list()
     {
         var client = factory.CreateClient();
         await Seed();
@@ -181,8 +151,6 @@ public class BomExportTests(HouseConfigApiFactory factory)
         var bom = await client.GetFromJsonAsync<BomDto>($"/projects/{project!.Id}/bom");
 
         Assert.Empty(bom!.Lines);
-        Assert.False(bom.Priced);
-        Assert.Null(bom.Total);
     }
 
     [Fact]

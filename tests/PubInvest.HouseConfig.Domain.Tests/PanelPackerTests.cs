@@ -27,10 +27,10 @@ public class PanelPackerTests
     /// Termination takes one row, leaving one for three kinds of device, so the
     /// ladder has to fall to its last rung.
     private static EnclosureType TwoRows() =>
-        new(new Guid("22222222-0000-0000-0000-000000000004"), "Test", "2x8", 2, 24, "IP30", 100m);
+        new(new Guid("22222222-0000-0000-0000-000000000004"), "Test", "2x8", 2, 24, "IP30");
 
     private static EnclosureType OneRow() =>
-        new(new Guid("22222222-0000-0000-0000-000000000005"), "Test", "1x8", 1, 24, "IP30", 100m);
+        new(new Guid("22222222-0000-0000-0000-000000000005"), "Test", "1x8", 1, 24, "IP30");
 
     private static PackResult Packed() =>
         PanelPacker.Pack(Panel(), CatalogueFixture.LargeEnclosure(),

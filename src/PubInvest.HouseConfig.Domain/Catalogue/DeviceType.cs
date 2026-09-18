@@ -35,7 +35,6 @@ public sealed record DeviceType(
     int ChannelCount,
     int? MaxLoadPerChannelW,
     int? MaxTotalLoadW,
-    decimal Cost,
     bool Active)
 {
     public string Description => $"{Manufacturer} {Model}";

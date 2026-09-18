@@ -211,11 +211,6 @@ public static class CatalogueAdminEndpoints
             problems["channelCount"] = ["A dimmer or relay must have at least one channel."];
         }
 
-        if (request.Cost < 0m)
-        {
-            problems["cost"] = ["Cost cannot be negative."];
-        }
-
         return problems;
     }
 
@@ -236,8 +231,6 @@ public static class CatalogueAdminEndpoints
             problems["slotsPerRow"] =
                 [$"Slots per row must be a multiple of {DinUnits.PerModule}, since {DinUnits.PerModule} slots make one DIN module."];
         }
-
-        if (request.Cost < 0m) problems["cost"] = ["Cost cannot be negative."];
 
         return problems;
     }
@@ -315,7 +308,6 @@ public static class CatalogueAdminEndpoints
         row.ChannelCount = request.ChannelCount;
         row.MaxLoadPerChannelW = request.MaxLoadPerChannelW;
         row.MaxTotalLoadW = request.MaxTotalLoadW;
-        row.Cost = request.Cost;
         row.Active = request.Active;
     }
 
@@ -326,6 +318,5 @@ public static class CatalogueAdminEndpoints
         row.Rows = request.Rows;
         row.SlotsPerRow = request.SlotsPerRow;
         row.IpRating = request.IpRating;
-        row.Cost = request.Cost;
     }
 }

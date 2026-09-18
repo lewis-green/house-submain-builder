@@ -42,7 +42,7 @@ const design = (diagnostics: DesignResponse['diagnostics'] = []): DesignResponse
   },
   diagnostics,
   bom: [],
-  summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 216, deviceCount: 1, spareChannels: 0, bomTotal: 0 },
+  summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 216, deviceCount: 1, spareChannels: 0 },
 })
 
 const renderPage = () =>

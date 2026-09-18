@@ -29,18 +29,18 @@ public class CatalogueSeederTests(PostgresFixture fixture)
             Version: 1,
             DeviceTypes:
             [
-                new SeedDeviceType(dimmer,     "Shelly", "Dimmer",      $"{tag}-DIM",   "Dimmer240",   2, 2, 200, 400, 60m, true),
-                new SeedDeviceType(tapeDimmer, "Shelly", "Tape dimmer", $"{tag}-DIM10", "Dimmer0_10V", 2, 2, null, null, 55m, true),
-                new SeedDeviceType(relay,      "Shelly", "Relay",       $"{tag}-REL",   "Relay",       4, 4, 3680, 7360, 95m, true),
-                new SeedDeviceType(psu,        "Test",   "Driver",      $"{tag}-PSU",   "ExternalDriver", 0, 0, null, 240, 85m, true),
-                new SeedDeviceType(isolator,   "Test",   "Isolator",    $"{tag}-ISO",   "Isolator",    6, 0, null, null, 18m, true),
-                new SeedDeviceType(dcPos,      "WAGO",   "+24V",        $"{tag}-DC+",   "Dc24VPositive", 4, 12, null, null, 7m, true),
-                new SeedDeviceType(dcNeg,      "WAGO",   "-24V",        $"{tag}-DC-",   "Dc24VNegative", 4, 12, null, null, 7m, true),
-                new SeedDeviceType(terminal,   "WAGO",   "Terminal",    $"{tag}-TB",    "Terminal240", 1, 0, null, null, 1.5m, true),
-                new SeedDeviceType(bar,        "WAGO",   "Jumper bar",  $"{tag}-BAR",   "Accessory",   0, 0, null, null, 3m, true),
-                new SeedDeviceType(endStop,    "WAGO",   "End stop",    $"{tag}-STOP",  "Accessory",   0, 0, null, null, 0.8m, true)
+                new SeedDeviceType(dimmer,     "Shelly", "Dimmer",      $"{tag}-DIM",   "Dimmer240",   2, 2, 200, 400, true),
+                new SeedDeviceType(tapeDimmer, "Shelly", "Tape dimmer", $"{tag}-DIM10", "Dimmer0_10V", 2, 2, null, null, true),
+                new SeedDeviceType(relay,      "Shelly", "Relay",       $"{tag}-REL",   "Relay",       4, 4, 3680, 7360, true),
+                new SeedDeviceType(psu,        "Test",   "Driver",      $"{tag}-PSU",   "ExternalDriver", 0, 0, null, 240, true),
+                new SeedDeviceType(isolator,   "Test",   "Isolator",    $"{tag}-ISO",   "Isolator",    6, 0, null, null, true),
+                new SeedDeviceType(dcPos,      "WAGO",   "+24V",        $"{tag}-DC+",   "Dc24VPositive", 4, 12, null, null, true),
+                new SeedDeviceType(dcNeg,      "WAGO",   "-24V",        $"{tag}-DC-",   "Dc24VNegative", 4, 12, null, null, true),
+                new SeedDeviceType(terminal,   "WAGO",   "Terminal",    $"{tag}-TB",    "Terminal240", 1, 0, null, null, true),
+                new SeedDeviceType(bar,        "WAGO",   "Jumper bar",  $"{tag}-BAR",   "Accessory",   0, 0, null, null, true),
+                new SeedDeviceType(endStop,    "WAGO",   "End stop",    $"{tag}-STOP",  "Accessory",   0, 0, null, null, true)
             ],
-            Enclosures: [new SeedEnclosure(Id(9), "Hager", $"Box {tag}", 6, 24, "IP30", 220m)],
+            Enclosures: [new SeedEnclosure(Id(9), "Hager", $"Box {tag}", 6, 24, "IP30")],
             RuleSets:
             [
                 new SeedRuleSet(Id(10), $"Rules {tag}", 1, true, new RuleSetPayload(
@@ -97,13 +97,13 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
 
         var row = await db.DeviceTypes.SingleAsync(d => d.Id == seed.DeviceTypes[0].Id);
-        row.Cost = 999.99m;
+        row.Model = "Edited by an admin";
         await db.SaveChangesAsync(CancellationToken.None);
 
         await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
 
         db.ChangeTracker.Clear();
-        Assert.Equal(999.99m, (await db.DeviceTypes.SingleAsync(d => d.Id == row.Id)).Cost);
+        Assert.Equal("Edited by an admin", (await db.DeviceTypes.SingleAsync(d => d.Id == row.Id)).Model);
     }
 
     [Fact]

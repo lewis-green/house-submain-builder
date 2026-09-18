@@ -66,25 +66,26 @@ public class RevisionEndpointTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
-    public async Task A_revision_keeps_the_prices_it_was_issued_with()
+    public async Task A_revision_keeps_the_catalogue_it_was_issued_with()
     {
         var client = factory.CreateClient();
         var (submainId, _) = await Generated(client, ThreeDimmed);
         var revision = await (await client.PostAsJsonAsync($"/submains/{submainId}/revisions", new { }))
             .Content.ReadFromJsonAsync<RevisionDto>();
 
-        // An admin re-prices the dimmer afterwards.
+        // An admin renames the dimmer afterwards.
         await using (var db = factory.NewDbContext())
         {
             var dimmer = await db.DeviceTypes.SingleAsync(d => d.Id == TestSeed.DimmerId);
-            dimmer.Cost = 999.99m;
+            dimmer.Model = "Renamed after issue";
             await db.SaveChangesAsync();
         }
 
         var stored = await client.GetFromJsonAsync<RevisionDetailDto>($"/revisions/{revision!.Id}");
 
-        Assert.DoesNotContain("999.99", stored!.SnapshotJson);
-        Assert.Contains("60", stored.SnapshotJson);
+        // What was issued must keep meaning what it meant.
+        Assert.DoesNotContain("Renamed after issue", stored!.SnapshotJson);
+        Assert.Contains("Test Dimmer 2", stored.SnapshotJson);
     }
 
     [Fact]

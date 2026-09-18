@@ -26,7 +26,7 @@ const design: DesignResponse = {
     }],
   },
   diagnostics: [], bom: [],
-  summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 216, deviceCount: 1, spareChannels: 0, bomTotal: 0 },
+  summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 216, deviceCount: 1, spareChannels: 0 },
 }
 
 /** Routes the real app defines. A Back link must land on one of these. */

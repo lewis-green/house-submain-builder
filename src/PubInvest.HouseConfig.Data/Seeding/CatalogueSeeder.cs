@@ -24,7 +24,7 @@ public static class CatalogueSeeder
                 Id = d.Id, Manufacturer = d.Manufacturer, Model = d.Model, PartNumber = d.PartNumber,
                 Category = d.Category, ModuleWidth = d.ModuleWidth, ChannelCount = d.ChannelCount,
                 MaxLoadPerChannelW = d.MaxLoadPerChannelW, MaxTotalLoadW = d.MaxTotalLoadW,
-                Cost = d.Cost, Active = d.Active
+                Active = d.Active
             });
             inserted++;
         }
@@ -35,7 +35,7 @@ public static class CatalogueSeeder
             db.Enclosures.Add(new EnclosureTypeRow
             {
                 Id = e.Id, Manufacturer = e.Manufacturer, Model = e.Model,
-                Rows = e.Rows, SlotsPerRow = e.SlotsPerRow, IpRating = e.IpRating, Cost = e.Cost
+                Rows = e.Rows, SlotsPerRow = e.SlotsPerRow, IpRating = e.IpRating
             });
             inserted++;
         }

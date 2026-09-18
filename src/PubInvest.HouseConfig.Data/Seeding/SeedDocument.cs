@@ -10,11 +10,10 @@ public sealed record SeedDocument(
 
 public sealed record SeedDeviceType(
     Guid Id, string Manufacturer, string Model, string PartNumber, string Category,
-    int ModuleWidth, int ChannelCount, int? MaxLoadPerChannelW, int? MaxTotalLoadW,
-    decimal Cost, bool Active);
+    int ModuleWidth, int ChannelCount, int? MaxLoadPerChannelW, int? MaxTotalLoadW, bool Active);
 
 public sealed record SeedEnclosure(
-    Guid Id, string Manufacturer, string Model, int Rows, int SlotsPerRow, string IpRating, decimal Cost);
+    Guid Id, string Manufacturer, string Model, int Rows, int SlotsPerRow, string IpRating);
 
 public sealed record SeedRuleSet(
     Guid Id, string Name, int Version, bool IsDefault, RuleSetPayload Payload);

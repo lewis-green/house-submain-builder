@@ -43,15 +43,19 @@ Auth is off in development (`HouseConfig:AuthEnabled` is `false` in
    is saved and survives re-generation.
 6. **Issue & download PDF** on the panel screen. Page 1 is the drawing, page 2
    the circuit schedule and bill of materials.
-7. **Bill of materials** lists the parts. It will say *"Not priced"* — see below.
+7. **Bill of materials** lists the parts to order, with anything not mounted in
+   the panel (the LED driver) marked as external.
 
-### The catalogue is not real yet
+### The catalogue is not confirmed yet
 
-Every device type and enclosure in `seed/catalogue.v1.json` is priced at
-**£0.00**, and four parts still carry `ASSUMED` part numbers (the PSU wattages
-and widths, the jumper bar's ways, and the end stops per bank). The app is
-deliberately honest about it: a BOM or PDF with any unpriced part says
-*"Not priced (n of m parts have no cost)"* rather than printing a confident zero.
+Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
+the two-pole isolator, the 24V joint blocks, the external driver wattages, the
+jumper bar's ways and the end stops per bank. Confirm them before ordering from
+a generated bill of materials.
+
+The bill of materials carries **no prices**. It is a parts list — part number,
+description, quantity, and whether the part is mounted in the panel — and
+costing happens wherever your pricing actually lives.
 
 **Confirmed from real hardware:** the Shelly Pro Dimmer is 2 channels at 1 DIN
 module, the Shelly Pro relay is 4 channels at 3 modules, and three WAGO

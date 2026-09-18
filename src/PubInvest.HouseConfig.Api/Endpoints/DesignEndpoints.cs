@@ -110,8 +110,7 @@ public static class DesignEndpoints
                         placed.Sum(d => d.ModuleWidth),
                         rows * slotsPerRow,
                         placed.Count,
-                        placed.SelectMany(d => d.Channels).Count(c => c.IsSpare),
-                        0m)));
+                        placed.SelectMany(d => d.Channels).Count(c => c.IsSpare))));
             })
             .WithTags("Design");
 

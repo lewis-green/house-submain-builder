@@ -55,12 +55,71 @@ public class ShippedSeedTests(PostgresFixture fixture)
         Assert.Equal(DinUnits.PerModule, dimmer.ModuleWidth);   // 1 T
         Assert.Equal(2, dimmer.ChannelCount);
 
-        var relay = seed.DeviceTypes.Single(d => d.PartNumber == "SHELLY-PRO-RELAY-4");
+        var relay = seed.DeviceTypes.Single(d => d.PartNumber == "SHELLY-PRO-4PM");
         Assert.Equal(DinUnits.FromModules(3), relay.ModuleWidth); // 3 T
         Assert.Equal(4, relay.ChannelCount);
 
         var terminal = seed.DeviceTypes.Single(d => d.PartNumber == "2003-7646");
         Assert.Equal(1, terminal.ModuleWidth);                   // 3 per T
+    }
+
+    [Fact]
+    public void No_two_catalogue_entries_share_an_id_or_a_part_number()
+    {
+        // Adding a device with an id that is already taken is silent: the seeder
+        // skips ids it has seen, so an existing database would quietly drop the
+        // new entry while a fresh one took it in place of the old.
+        var seed = Load();
+
+        Assert.Equal(seed.DeviceTypes.Count, seed.DeviceTypes.Select(d => d.Id).Distinct().Count());
+        Assert.Equal(
+            seed.DeviceTypes.Count,
+            seed.DeviceTypes.Select(d => d.PartNumber).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(seed.Enclosures.Count, seed.Enclosures.Select(e => e.Id).Distinct().Count());
+    }
+
+    [Fact]
+    public void Every_category_in_the_seed_is_one_the_domain_knows()
+    {
+        var seed = Load();
+
+        Assert.All(seed.DeviceTypes, d =>
+            Assert.True(Enum.TryParse<DeviceCategory>(d.Category, out _),
+                $"'{d.PartNumber}' has category '{d.Category}', which is not a DeviceCategory."));
+    }
+
+    [Fact]
+    public void Every_category_the_layouts_pack_is_one_the_domain_knows()
+    {
+        // A category named only in the ruleset would pack nothing and raise
+        // nothing: the devices would fall through to the stray zone instead.
+        var seed = Load();
+        var payload = seed.RuleSets.Single(r => r.IsDefault).Payload;
+
+        var packed = payload.Layouts
+            .SelectMany(l => l.Zones)
+            .SelectMany(z => z.FromLeft.Concat(z.FromRight))
+            .Distinct();
+
+        Assert.All(packed, c => Assert.True(Enum.IsDefined(c), $"'{c}' is not a DeviceCategory."));
+    }
+
+    [Fact]
+    public void Every_placeable_category_has_a_rail_to_go_on_in_the_finest_layout()
+    {
+        var seed = Load();
+        var payload = seed.RuleSets.Single(r => r.IsDefault).Payload;
+
+        var placeable = seed.DeviceTypes
+            .Where(d => d.ModuleWidth > 0)
+            .Select(d => Enum.Parse<DeviceCategory>(d.Category))
+            .Distinct();
+
+        var packed = payload.Layouts[0].Zones
+            .SelectMany(z => z.FromLeft.Concat(z.FromRight))
+            .ToHashSet();
+
+        Assert.All(placeable, c => Assert.Contains(c, packed));
     }
 
     [Fact]

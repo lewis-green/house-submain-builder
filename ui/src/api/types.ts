@@ -4,6 +4,10 @@ export type DeviceCategory =
   | 'Dimmer240'
   | 'Dimmer0_10V'
   | 'Relay'
+  | 'Cover'
+  | 'LedController'
+  | 'EnergyMeter'
+  | 'Network'
   | 'Dc24VPositive'
   | 'Dc24VNegative'
   /** Sized and costed but never placed: LED drivers are not DIN mount. */

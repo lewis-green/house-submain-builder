@@ -47,6 +47,13 @@ public static class CatalogueFixture
 
     /// Termination stays on the top row whatever else moves: circuit terminals
     /// then the 24V pair from the left, the isolator hard against the right.
+    /// Covers and LED controllers from the left, meters and network gear from
+    /// the right. Kept in step with seed/catalogue.v1.json by hand — a fixture
+    /// that drifts from the seed hides real behaviour behind passing tests.
+    private static PackingZone Extras => new(
+        FromLeft: [DeviceCategory.Cover, DeviceCategory.LedController],
+        FromRight: [DeviceCategory.EnergyMeter, DeviceCategory.Network]);
+
     private static PackingZone Termination => new(
         FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
         FromRight: [DeviceCategory.Isolator]);
@@ -61,6 +68,7 @@ public static class CatalogueFixture
                 new PackingZone([DeviceCategory.Dimmer240], []),
                 new PackingZone([DeviceCategory.Dimmer0_10V], []),
                 new PackingZone([], [DeviceCategory.Relay]),
+                Extras,
             ]),
 
             // Then: the two sorts of dimmer share a row, but from opposite ends
@@ -71,6 +79,7 @@ public static class CatalogueFixture
                 Termination,
                 new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Dimmer0_10V]),
                 new PackingZone([], [DeviceCategory.Relay]),
+                Extras,
             ]),
 
             // Last resort: all three on one row. A row has only two ends, so the
@@ -79,8 +88,9 @@ public static class CatalogueFixture
             [
                 Termination,
                 new PackingZone(
-                    [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
-                    [DeviceCategory.Relay]),
+                    [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V,
+                     DeviceCategory.Cover, DeviceCategory.LedController],
+                    [DeviceCategory.Relay, DeviceCategory.EnergyMeter, DeviceCategory.Network]),
             ]),
         ],
         PsuDeratingFactor: 0.8m,

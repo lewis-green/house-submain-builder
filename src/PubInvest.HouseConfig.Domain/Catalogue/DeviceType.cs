@@ -12,6 +12,19 @@ public enum DeviceCategory
     Dimmer0_10V,
     Relay,
 
+    /// Roller shutter or blind controller: two channels drive one cover, up and
+    /// down, so its channel count is not a count of circuits.
+    Cover,
+
+    /// Multi-channel constant-voltage LED controller (RGB plus white).
+    LedController,
+
+    /// Energy meter. Measures; switches nothing and feeds no circuit.
+    EnergyMeter,
+
+    /// Network gear in the panel, such as a DIN-mount LAN switch.
+    Network,
+
     /// 12-way +24V distribution block. One way per LED tape circuit.
     Dc24VPositive,
 

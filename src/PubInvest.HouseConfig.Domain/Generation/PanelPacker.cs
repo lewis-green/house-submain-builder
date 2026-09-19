@@ -189,7 +189,10 @@ public static class PanelPacker
         private readonly List<int> _left = [];
         private readonly List<int> _right = [];
 
-        public int NextFreeRow => firstRow + Math.Max(_left.Count, 1);
+        /// A zone with nothing in it takes no row. Reserving one would cost every
+        /// panel without tape circuits a rail, and push it onto a coarser rung of
+        /// the ladder than it needs.
+        public int NextFreeRow => firstRow + _left.Count;
 
         public int FirstWithRoom(int width)
         {

@@ -43,6 +43,8 @@ public static class SubmainEndpoints
                     EnclosureTypeId = request.EnclosureTypeId,
                     RuleSetId = request.RuleSetId,
                     Notes = request.Notes,
+                    HasIsolator = request.HasIsolator ?? true,
+                    TerminalsAtBottom = request.TerminalsAtBottom ?? false,
                     LayoutVersion = 0,
                     Circuits = ToRows(request.Circuits)
                 };
@@ -81,6 +83,8 @@ public static class SubmainEndpoints
                 submain.EnclosureTypeId = request.EnclosureTypeId;
                 submain.RuleSetId = request.RuleSetId;
                 submain.Notes = request.Notes;
+                submain.HasIsolator = request.HasIsolator ?? submain.HasIsolator;
+                submain.TerminalsAtBottom = request.TerminalsAtBottom ?? submain.TerminalsAtBottom;
 
                 if (request.Circuits is not null)
                 {
@@ -169,6 +173,6 @@ public static class SubmainEndpoints
     /// An Expression, not a method: EF Core cannot translate a method call inside Select.
     private static readonly Expression<Func<Submain, SubmainResponse>> ToResponse = s => new SubmainResponse(
         s.Id, s.ProjectId, s.Name, s.Reference, s.FeedCableSize, s.OriginBreakerAmps, s.Phase,
-        s.EnclosureTypeId, s.RuleSetId, s.Notes, s.LayoutVersion,
+        s.EnclosureTypeId, s.RuleSetId, s.Notes, s.HasIsolator, s.TerminalsAtBottom, s.LayoutVersion,
         s.Circuits.Count, s.Devices.Count);
 }

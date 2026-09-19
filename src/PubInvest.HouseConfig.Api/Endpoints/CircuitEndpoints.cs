@@ -10,6 +10,10 @@ public static class CircuitEndpoints
     {
         // Renaming changes no geometry, so it carries no layoutVersion and never
         // conflicts with someone renaming a different circuit.
+        //
+        // Name and room are replaced together, as one edit: the device sheet shows
+        // both fields and always sends both. A caller that sends only a name
+        // clears the room.
         app.MapPatch("/circuits/{id:guid}", async (
                 Guid id,
                 UpdateCircuitRequest request,

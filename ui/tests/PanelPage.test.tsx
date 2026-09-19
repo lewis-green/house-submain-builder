@@ -12,6 +12,7 @@ const submain = {
   id: 's1', projectId: 'p1', name: 'Ground Floor', reference: null,
   feedCableSize: null, originBreakerAmps: null, phase: null,
   enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
+  hasIsolator: true, terminalsAtBottom: false,
   layoutVersion: 4, circuitCount: 1, deviceCount: 1,
 }
 
@@ -23,6 +24,7 @@ const stub = (layout: () => Response, rest?: (url: string) => Response | undefin
   vi.fn(async (url: string) => {
     if (url.endsWith('/layout')) return layout()
     if (url === '/api/submains/s1') return json(submain)
+    if (url === '/api/projects/p1/rooms') return json(['Kitchen', 'Snug'])
     return rest?.(url) ?? json({})
   })
 
@@ -36,7 +38,10 @@ const design = (diagnostics: DesignResponse['diagnostics'] = []): DesignResponse
       {
         id: 'd1', deviceTypeId: 'dim', category: 'Dimmer240', rowIndex: 1, startSlot: 0,
         moduleWidth: 3, label: 'Dimmer 1', terminalRole: 'None',
-        channels: [{ channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling', isSpare: false }],
+        channels: [{
+          channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling',
+          circuitRoom: 'Kitchen', isSpare: false,
+        }],
       },
     ],
   },
@@ -106,6 +111,46 @@ describe('PanelPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /free this channel/i }))
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/reloading/i))
+  })
+
+  it('shows the install options as the submain has them stored', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+
+    expect(await screen.findByLabelText(/fit a main isolator/i)).toBeChecked()
+    expect(screen.getByLabelText(/cables enter at the bottom/i)).not.toBeChecked()
+  })
+
+  it('saves the option and rebuilds the panel when the install changes', async () => {
+    const fetchMock = stub(() => json(design()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByLabelText(/cables enter at the bottom/i))
+
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(c => c[1]?.method === 'PATCH' && c[0] === '/api/submains/s1')
+      expect(patch).toBeDefined()
+      expect(JSON.parse(patch![1].body)).toMatchObject({ terminalsAtBottom: true })
+    })
+
+    expect(fetchMock.mock.calls.map(c => c[0])).toContain('/api/submains/s1/design/generate')
+  })
+
+  it('turning the isolator off does not also send the other option', async () => {
+    const fetchMock = stub(() => json(design()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByLabelText(/fit a main isolator/i))
+
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(c => c[1]?.method === 'PATCH' && c[0] === '/api/submains/s1')
+      const body = JSON.parse(patch![1].body)
+      expect(body.hasIsolator).toBe(false)
+      expect(body).not.toHaveProperty('terminalsAtBottom')
+    })
   })
 
   it('tells the engineer when a submain has no panel yet', async () => {

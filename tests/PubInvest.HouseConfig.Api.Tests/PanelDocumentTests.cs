@@ -105,6 +105,15 @@ public class PanelDocumentTests
     }
 
     [Fact]
+    public void The_schedule_names_the_room_each_circuit_feeds()
+    {
+        var text = PdfText(Document().GeneratePdf());
+
+        Assert.Contains("Kitchen ceiling", text);
+        Assert.Contains("Airing cupboard", text);
+    }
+
+    [Fact]
     public void The_schedule_shows_a_spare_channel_rather_than_omitting_it()
     {
         var text = PdfText(Document().GeneratePdf());

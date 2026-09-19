@@ -78,7 +78,9 @@ public sealed class DesignService(HouseConfigDbContext db)
             DomainMapper.ToDomain(ruleSetRow),
             catalogue,
             allEnclosures,
-            positionOverrides);
+            positionOverrides,
+            overrides?.HasIsolator ?? submain.HasIsolator,
+            overrides?.TerminalsAtBottom ?? submain.TerminalsAtBottom);
 
         return (new DesignInputs(submain, request, circuits), null);
     }
@@ -180,7 +182,7 @@ public sealed class DesignService(HouseConfigDbContext db)
         IReadOnlyList<Circuit> circuits,
         IReadOnlyDictionary<string, Guid>? persisted = null)
     {
-        var circuitNames = circuits.ToDictionary(c => c.Id, c => c.Name);
+        var byId = circuits.ToDictionary(c => c.Id);
 
         var devices = result.Layout.Devices
             .OrderBy(d => d.RowIndex).ThenBy(d => d.StartSlot)
@@ -198,11 +200,15 @@ public sealed class DesignService(HouseConfigDbContext db)
                     d.ModuleWidth,
                     d.Label,
                     d.TerminalRole.ToString(),
-                    d.Channels.Select(c => new ChannelResponse(
-                        c.ChannelIndex,
-                        c.CircuitId,
-                        c.CircuitId is not null && circuitNames.TryGetValue(c.CircuitId.Value, out var name) ? name : null,
-                        c.IsSpare)).ToList());
+                    d.Channels.Select(c =>
+                    {
+                        var circuit = c.CircuitId is not null && byId.TryGetValue(c.CircuitId.Value, out var match)
+                            ? match
+                            : null;
+
+                        return new ChannelResponse(
+                            c.ChannelIndex, c.CircuitId, circuit?.Name, circuit?.Room, c.IsSpare);
+                    }).ToList());
             })
             .ToList();
 

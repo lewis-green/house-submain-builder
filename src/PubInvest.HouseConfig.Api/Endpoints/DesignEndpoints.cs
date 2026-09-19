@@ -75,7 +75,7 @@ public static class DesignEndpoints
                     ? null
                     : await db.Enclosures.SingleOrDefaultAsync(e => e.Id == submain.EnclosureTypeId, ct);
 
-                var names = submain.Circuits.ToDictionary(c => c.Id, c => c.Name);
+                var byId = submain.Circuits.ToDictionary(c => c.Id);
 
                 var placed = devices.Select(d => new PlacedDeviceResponse(
                     d.Id,
@@ -86,11 +86,15 @@ public static class DesignEndpoints
                     d.ModuleWidth,
                     d.Label,
                     d.TerminalRole,
-                    d.Channels.OrderBy(c => c.ChannelIndex).Select(c => new ChannelResponse(
-                        c.ChannelIndex,
-                        c.CircuitId,
-                        c.CircuitId is not null && names.TryGetValue(c.CircuitId.Value, out var n) ? n : null,
-                        c.IsSpare)).ToList())).ToList();
+                    d.Channels.OrderBy(c => c.ChannelIndex).Select(c =>
+                    {
+                        var circuit = c.CircuitId is not null && byId.TryGetValue(c.CircuitId.Value, out var found)
+                            ? found
+                            : null;
+
+                        return new ChannelResponse(
+                            c.ChannelIndex, c.CircuitId, circuit?.Name, circuit?.Room, c.IsSpare);
+                    }).ToList())).ToList();
 
                 var rowsUsed = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
                 var rows = enclosure?.Rows ?? 0;

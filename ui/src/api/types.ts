@@ -33,6 +33,8 @@ export interface SubmainResponse {
   ruleSetId: string | null
   notes: string | null
   layoutVersion: number
+  hasIsolator: boolean
+  terminalsAtBottom: boolean
   circuitCount: number
   deviceCount: number
 }
@@ -41,6 +43,7 @@ export interface ChannelResponse {
   channelIndex: number
   circuitId: string | null
   circuitName: string | null
+  circuitRoom: string | null
   isSpare: boolean
 }
 

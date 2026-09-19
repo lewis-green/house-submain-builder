@@ -71,13 +71,16 @@ don't commit it filled.
 ## Seeing it work
 
 1. **Add a house** on the first screen.
-2. **Add submain**. Pick the 3-row enclosure, then enter circuit counts — say 4
-   dimmed and 2 switched. The preview updates as you type and tells you what the
-   panel needs and whether it fits.
+2. **Add submain**. Pick the 3-row enclosure, say how the panel is installed —
+   whether the cables enter at the bottom, and whether it needs its own isolator
+   — then enter circuit counts, say 4 dimmed and 2 switched. The preview updates
+   as you type and tells you what the panel needs and whether it fits.
 3. **Generate panel**. The drawing appears to scale: termination across the top
    row — circuit terminals, then a +24V and a -24V joint for each tape run, then
    the two-pole isolator hard against the right — and the Shelly kit below it.
-4. **Tap a device** to name its channels. Names propagate straight back to the drawing.
+4. **Tap a device** to name its channels: a room and a circuit name for each
+   one, with the rooms already used in the house offered as you type. Both reach
+   the drawing and the schedule.
 5. **Long-press and drag** a device to move it. Invalid targets go red; the move
    is saved and survives re-generation.
 6. **Issue & download PDF** on the panel screen. Page 1 is the drawing, page 2
@@ -108,8 +111,8 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 173 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 92 tests
+dotnet test          # 198 tests. Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 101 tests
 cd ui && npm run build   # the real typecheck: `tsc -b` is stricter than `tsc --noEmit`
 ```
 
@@ -142,6 +145,12 @@ converted back to modules first.
 **The server decides every layout.** The UI never computes one — it draws what
 `/design/preview` or `/design/generate` returned. That is what keeps the drawing,
 the schedule and the parts list from ever disagreeing.
+
+**Two facts about the install, not the rules.** Whether the cables enter at the
+top or the bottom, and whether this submain is isolated upstream, are stored on
+the submain and changeable on the panel screen. The packer always builds
+downward from row 0; a bottom-fed panel is the same layout mirrored, so one
+ladder of rules describes both and the spare row ends up away from the glands.
 
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or

@@ -19,6 +19,7 @@ export function PanelPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [rooms, setRooms] = useState<string[]>([])
   const svgWrapper = useRef<HTMLDivElement>(null)
 
   // The stored layout, not /design/preview: preview regenerates and returns
@@ -29,7 +30,13 @@ export function PanelPage() {
       // Also the submain itself: without it there is no project to go back to.
       api.get<SubmainResponse>(`/submains/${submainId}`),
     ])
-      .then(([layout, s]) => { setDesign(layout); setSubmain(s) })
+      .then(([layout, s]) => {
+        setDesign(layout)
+        setSubmain(s)
+        // Rooms already used in this house, offered before anyone types one.
+        // A failure here costs a suggestion list, not the panel.
+        api.get<string[]>(`/projects/${s.projectId}/rooms`).then(setRooms).catch(() => setRooms([]))
+      })
       .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
   useEffect(() => { void load() }, [load])
@@ -78,9 +85,11 @@ export function PanelPage() {
     toPanelPoint,
   })
 
-  async function renameCircuit(circuitId: string, name: string) {
+  // Name and room are one edit. Sending only the name would clear the room,
+  // which is exactly what this used to do.
+  async function saveCircuit(circuitId: string, name: string, room: string | null) {
     try {
-      await api.patch(`/circuits/${circuitId}`, { name, room: null })
+      await api.patch(`/circuits/${circuitId}`, { name, room })
       await load()
     } catch (e) {
       setNotice((e as ApiError).message)
@@ -167,7 +176,8 @@ export function PanelPage() {
       {selected && selected.id && (
         <DeviceSheet
           device={selected}
-          onRenameCircuit={renameCircuit}
+          onSaveCircuit={saveCircuit}
+          rooms={rooms}
           onFreeChannel={index => freeChannel(selected.id!, index)}
           onClose={() => setSelectedId(null)}
         />

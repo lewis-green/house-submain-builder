@@ -5,7 +5,8 @@ public sealed record PreviewRequest(
     Guid? RuleSetId,
     IReadOnlyList<CircuitRequest>? Circuits);
 
-public sealed record ChannelResponse(int ChannelIndex, Guid? CircuitId, string? CircuitName, bool IsSpare);
+public sealed record ChannelResponse(
+    int ChannelIndex, Guid? CircuitId, string? CircuitName, string? CircuitRoom, bool IsSpare);
 
 public sealed record PlacedDeviceResponse(
     Guid? Id,

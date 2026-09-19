@@ -23,6 +23,7 @@ const stub = (layout: () => Response, rest?: (url: string) => Response | undefin
   vi.fn(async (url: string) => {
     if (url.endsWith('/layout')) return layout()
     if (url === '/api/submains/s1') return json(submain)
+    if (url === '/api/projects/p1/rooms') return json(['Kitchen', 'Snug'])
     return rest?.(url) ?? json({})
   })
 
@@ -36,7 +37,10 @@ const design = (diagnostics: DesignResponse['diagnostics'] = []): DesignResponse
       {
         id: 'd1', deviceTypeId: 'dim', category: 'Dimmer240', rowIndex: 1, startSlot: 0,
         moduleWidth: 3, label: 'Dimmer 1', terminalRole: 'None',
-        channels: [{ channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling', isSpare: false }],
+        channels: [{
+          channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling',
+          circuitRoom: 'Kitchen', isSpare: false,
+        }],
       },
     ],
   },

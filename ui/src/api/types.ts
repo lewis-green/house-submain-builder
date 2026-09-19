@@ -41,6 +41,7 @@ export interface ChannelResponse {
   channelIndex: number
   circuitId: string | null
   circuitName: string | null
+  circuitRoom: string | null
   isSpare: boolean
 }
 

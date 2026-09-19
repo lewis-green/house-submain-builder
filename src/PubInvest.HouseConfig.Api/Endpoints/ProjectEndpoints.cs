@@ -27,6 +27,18 @@ public static class ProjectEndpoints
             return project is null ? Results.NotFound() : Results.Ok(project);
         });
 
+        // Rooms already named somewhere in this house. The device sheet offers
+        // these before someone types, so one room does not end up spelled three
+        // ways across a panel schedule.
+        group.MapGet("/{id:guid}/rooms", async (Guid id, HouseConfigDbContext db, CancellationToken ct) =>
+            await (from circuit in db.Circuits
+                   join submain in db.Submains on circuit.SubmainId equals submain.Id
+                   where submain.ProjectId == id && circuit.Room != null && circuit.Room != ""
+                   select circuit.Room!)
+                .Distinct()
+                .OrderBy(room => room)
+                .ToListAsync(ct));
+
         group.MapPost("/", async (
             CreateProjectRequest request,
             HouseConfigDbContext db,

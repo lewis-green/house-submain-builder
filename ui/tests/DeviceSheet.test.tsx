@@ -8,54 +8,130 @@ const device: PlacedDeviceResponse = {
   id: 'd1', deviceTypeId: 'dim', category: 'Dimmer240', rowIndex: 1, startSlot: 0,
   moduleWidth: 3, label: 'Dimmer 1', terminalRole: 'None',
   channels: [
-    { channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling', isSpare: false },
-    { channelIndex: 1, circuitId: null, circuitName: null, isSpare: true },
+    { channelIndex: 0, circuitId: 'c1', circuitName: 'Ceiling spots', circuitRoom: 'Kitchen', isSpare: false },
+    { channelIndex: 1, circuitId: null, circuitName: null, circuitRoom: null, isSpare: true },
   ],
 }
 
 const noop = () => {}
+const rooms = ['Boot room', 'Kitchen', 'Snug']
+
+function show(props: Partial<React.ComponentProps<typeof DeviceSheet>> = {}) {
+  return render(
+    <DeviceSheet
+      device={device}
+      rooms={rooms}
+      onSaveCircuit={noop}
+      onFreeChannel={noop}
+      onClose={noop}
+      {...props}
+    />,
+  )
+}
 
 describe('DeviceSheet', () => {
   it('shows the device, its width in modules and each channel', () => {
-    render(<DeviceSheet device={device} onRenameCircuit={noop} onFreeChannel={noop} onClose={noop} />)
+    show()
 
     expect(screen.getByRole('heading', { name: 'Dimmer 1' })).toBeInTheDocument()
     expect(screen.getByText(/1T/)).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Kitchen ceiling')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Ceiling spots')).toBeInTheDocument()
     expect(screen.getByText(/spare/i)).toBeInTheDocument()
   })
 
-  it('renames a circuit through its channel', async () => {
-    const onRenameCircuit = vi.fn()
-    render(<DeviceSheet device={device} onRenameCircuit={onRenameCircuit} onFreeChannel={noop} onClose={noop} />)
+  it('shows the room the channel feeds next to its circuit name', () => {
+    show()
 
-    const input = screen.getByDisplayValue('Kitchen ceiling')
-    await userEvent.clear(input)
-    await userEvent.type(input, 'Kitchen island')
-    await userEvent.tab()
-
-    expect(onRenameCircuit).toHaveBeenCalledWith('c1', 'Kitchen island')
+    expect(screen.getByLabelText('Room')).toHaveValue('Kitchen')
+    expect(screen.getByLabelText('Circuit name')).toHaveValue('Ceiling spots')
   })
 
-  it('does not call the API when the name comes back unchanged', async () => {
-    const onRenameCircuit = vi.fn()
-    render(<DeviceSheet device={device} onRenameCircuit={onRenameCircuit} onFreeChannel={noop} onClose={noop} />)
+  it('offers the rooms already used in the house', () => {
+    const { container } = show()
 
-    await userEvent.click(screen.getByDisplayValue('Kitchen ceiling'))
-    await userEvent.tab()
-
-    expect(onRenameCircuit).not.toHaveBeenCalled()
+    const options = [...container.querySelectorAll('datalist option')].map(o => o.getAttribute('value'))
+    expect(options).toEqual(rooms)
+    expect(screen.getByLabelText('Room')).toHaveAttribute('list', 'known-rooms')
   })
 
-  it('offers no rename box for a spare channel', () => {
-    render(<DeviceSheet device={device} onRenameCircuit={noop} onFreeChannel={noop} onClose={noop} />)
+  it('saves the room and the name together, so neither wipes the other', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
 
-    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    const name = screen.getByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Island pendants')
+    await userEvent.tab()
+
+    expect(onSaveCircuit).toHaveBeenCalledWith('c1', 'Island pendants', 'Kitchen')
+  })
+
+  it('saves the name alongside a changed room', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    const room = screen.getByLabelText('Room')
+    await userEvent.clear(room)
+    await userEvent.type(room, 'Snug')
+    await userEvent.tab()
+
+    expect(onSaveCircuit).toHaveBeenCalledWith('c1', 'Ceiling spots', 'Snug')
+  })
+
+  it('sends no room rather than an empty one when the field is cleared', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    await userEvent.clear(screen.getByLabelText('Room'))
+    await userEvent.tab()
+
+    expect(onSaveCircuit).toHaveBeenCalledWith('c1', 'Ceiling spots', null)
+  })
+
+  it('saves once when tabbing across both fields after a single change', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    const room = screen.getByLabelText('Room')
+    await userEvent.clear(room)
+    await userEvent.type(room, 'Snug')
+    await userEvent.tab()
+    await userEvent.tab()
+
+    expect(onSaveCircuit).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call the API when nothing changed', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    await userEvent.click(screen.getByLabelText('Circuit name'))
+    await userEvent.tab()
+
+    expect(onSaveCircuit).not.toHaveBeenCalled()
+  })
+
+  it('does not save a circuit with its name cleared', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    await userEvent.clear(screen.getByLabelText('Circuit name'))
+    await userEvent.tab()
+
+    expect(onSaveCircuit).not.toHaveBeenCalled()
+  })
+
+  it('offers no name or room boxes for a spare channel', () => {
+    show()
+
+    // One assigned channel and one spare: exactly one pair of fields.
+    expect(screen.getAllByLabelText('Room')).toHaveLength(1)
+    expect(screen.getAllByLabelText('Circuit name')).toHaveLength(1)
   })
 
   it('frees a channel on request', async () => {
     const onFreeChannel = vi.fn()
-    render(<DeviceSheet device={device} onRenameCircuit={noop} onFreeChannel={onFreeChannel} onClose={noop} />)
+    show({ onFreeChannel })
 
     await userEvent.click(screen.getByRole('button', { name: /free this channel/i }))
 
@@ -64,7 +140,7 @@ describe('DeviceSheet', () => {
 
   it('closes on escape', async () => {
     const onClose = vi.fn()
-    render(<DeviceSheet device={device} onRenameCircuit={noop} onFreeChannel={noop} onClose={onClose} />)
+    show({ onClose })
 
     await userEvent.keyboard('{Escape}')
 

@@ -5,6 +5,7 @@ import type { DesignResponse, EnclosureType, SubmainResponse } from '../api/type
 import { Button } from '../components/Button'
 import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
+import { Toggle } from '../components/Toggle'
 import { Spinner } from '../components/Spinner'
 import { PreviewSummary } from '../wizard/PreviewSummary'
 import { buildCircuits, type TapeInput } from '../wizard/buildCircuits'
@@ -27,6 +28,8 @@ export function NewSubmainPage() {
   const [dimmed, setDimmed] = useState('0')
   const [switched, setSwitched] = useState('0')
   const [tape, setTape] = useState<TapeInput[]>([])
+  const [hasIsolator, setHasIsolator] = useState(true)
+  const [terminalsAtBottom, setTerminalsAtBottom] = useState(false)
 
   const [submainId, setSubmainId] = useState<string | null>(null)
   const [design, setDesign] = useState<DesignResponse | null>(null)
@@ -63,7 +66,7 @@ export function NewSubmainPage() {
     clearTimeout(debounce.current)
     debounce.current = setTimeout(() => { void preview() }, PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(debounce.current)
-  }, [enclosureId, dimmed, switched, JSON.stringify(tape)])
+  }, [enclosureId, dimmed, switched, hasIsolator, terminalsAtBottom, JSON.stringify(tape)])
 
   async function ensureSubmain(): Promise<string> {
     if (submainId) return submainId
@@ -71,6 +74,8 @@ export function NewSubmainPage() {
     const created = await api.post<SubmainResponse>(`/projects/${projectId}/submains`, {
       name: name.trim() || 'New submain',
       enclosureTypeId: enclosureId,
+      hasIsolator,
+      terminalsAtBottom,
       circuits: [],
     })
     setSubmainId(created.id)
@@ -83,6 +88,8 @@ export function NewSubmainPage() {
       const id = await ensureSubmain()
       setDesign(await api.post<DesignResponse>(`/submains/${id}/design/preview`, {
         enclosureTypeId: enclosureId,
+        hasIsolator,
+        terminalsAtBottom,
         circuits,
       }))
     } catch (e) {
@@ -101,6 +108,8 @@ export function NewSubmainPage() {
       await api.patch<SubmainResponse>(`/submains/${id}`, {
         name: name.trim() || 'New submain',
         enclosureTypeId: enclosureId,
+        hasIsolator,
+        terminalsAtBottom,
         circuits,
       })
       await api.post<DesignResponse>(`/submains/${id}/design/generate`, { circuits })
@@ -144,6 +153,22 @@ export function NewSubmainPage() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+        <h2 className="text-sm font-semibold text-slate-700">The install</h2>
+        <Toggle
+          label="Cables enter at the bottom"
+          hint="Puts the terminations on the bottom rail instead of the top."
+          checked={terminalsAtBottom}
+          onChange={setTerminalsAtBottom}
+        />
+        <Toggle
+          label="Fit a main isolator"
+          hint="Turn this off for a submain already isolated upstream."
+          checked={hasIsolator}
+          onChange={setHasIsolator}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

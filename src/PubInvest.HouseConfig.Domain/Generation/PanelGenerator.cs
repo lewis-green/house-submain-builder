@@ -13,7 +13,13 @@ public sealed record GenerationRequest(
     RuleSetPayload Rules,
     DeviceCatalogue Catalogue,
     IReadOnlyList<EnclosureType> AllEnclosures,
-    IReadOnlyList<PositionOverride>? Overrides = null);
+    IReadOnlyList<PositionOverride>? Overrides = null,
+    /// False for a submain isolated upstream: no isolator is fitted and none is
+    /// asked for.
+    bool IncludeIsolator = true,
+    /// True when the enclosure is glanded from below, so the terminations belong
+    /// on the bottom rail rather than the top.
+    bool TerminalsAtBottom = false);
 
 public sealed record GenerationResult(
     PanelLayout Layout,
@@ -29,8 +35,14 @@ public static class PanelGenerator
     {
         var diagnostics = new List<Diagnostic>();
 
-        var (isolator, isolatorDiagnostics) = IsolatorBuilder.Build(request.Rules, request.Catalogue);
-        diagnostics.AddRange(isolatorDiagnostics);
+        RequiredDevice? isolator = null;
+
+        if (request.IncludeIsolator)
+        {
+            var built = IsolatorBuilder.Build(request.Rules, request.Catalogue);
+            isolator = built.Device;
+            diagnostics.AddRange(built.Diagnostics);
+        }
 
         var terminals = TerminalBandBuilder.Build(request.Circuits, request.Rules, request.Catalogue);
         diagnostics.AddRange(terminals.Diagnostics);
@@ -41,14 +53,15 @@ public static class PanelGenerator
         var tape = TapeSupplySizer.Size(request.Circuits, request.Rules, request.Catalogue);
         diagnostics.AddRange(tape.Diagnostics);
 
-        // The isolator leads: it is the first thing on the top row.
+        // The isolator leads: it is the first thing on the termination row.
         var allDevices = (isolator is null ? Enumerable.Empty<RequiredDevice>() : [isolator])
             .Concat(terminals.Devices)
             .Concat(demand.Devices)
             .Concat(tape.Blocks)
             .ToList();
 
-        var packed = PanelPacker.Pack(allDevices, request.Enclosure, request.Rules, request.AllEnclosures);
+        var packed = PanelPacker.Pack(
+            allDevices, request.Enclosure, request.Rules, request.AllEnclosures, request.TerminalsAtBottom);
         diagnostics.AddRange(packed.Diagnostics);
 
         // Overrides run after packing and before the BOM, so the parts list counts

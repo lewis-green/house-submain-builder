@@ -17,13 +17,18 @@ public sealed record PackResult(PanelLayout Layout, IReadOnlyList<Diagnostic> Di
 /// Every zone starts on a fresh row, so the Shelly gear never shares a rail with
 /// the terminations. Within a zone the two ends grow toward each other and a row
 /// is full when they would meet.
+///
+/// Packing always runs downward from row 0. A panel glanded from below asks for
+/// the same arrangement upside down, and gets it by mirroring the finished
+/// layout rather than by packing differently: see <see cref="Mirror"/>.
 public static class PanelPacker
 {
     public static PackResult Pack(
         IReadOnlyList<RequiredDevice> devices,
         EnclosureType enclosure,
         RuleSetPayload rules,
-        IReadOnlyList<EnclosureType> allEnclosures)
+        IReadOnlyList<EnclosureType> allEnclosures,
+        bool terminalsAtBottom = false)
     {
         var diagnostics = new List<Diagnostic>();
         var placeable = devices.Where(d => d.ModuleWidth > 0).ToList();
@@ -42,6 +47,8 @@ public static class PanelPacker
         var placed = BestFitting(fits, enclosure, rules);
         var rowsUsed = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
 
+        if (terminalsAtBottom) placed = Mirror(placed, enclosure, rowsUsed);
+
         if (rowsUsed > enclosure.Rows)
         {
             var suggestion = SuggestEnclosure(fits, rules, allEnclosures, enclosure);
@@ -57,6 +64,25 @@ public static class PanelPacker
         }
 
         return new PackResult(new PanelLayout(enclosure.Rows, enclosure.SlotsPerRow, placed), diagnostics);
+    }
+
+    /// Turns the layout upside down: the zone that packed first ends up on the
+    /// bottom rail, and any spare row rises to the top, away from the glands.
+    ///
+    /// Mirroring the whole panel rather than reordering the zones keeps one rule
+    /// — the ladder in the ruleset — describing both arrangements, and keeps the
+    /// terminal band filling outward from the cable entry when it runs to a
+    /// second row.
+    ///
+    /// A design that overflows its enclosure is mirrored over the rows it
+    /// actually used, so no device is pushed to a negative row while Pack is
+    /// still reporting the overflow against it.
+    private static List<PlacedDevice> Mirror(
+        IReadOnlyList<PlacedDevice> placed, EnclosureType enclosure, int rowsUsed)
+    {
+        var last = Math.Max(enclosure.Rows, rowsUsed) - 1;
+
+        return placed.Select(d => d with { RowIndex = last - d.RowIndex }).ToList();
     }
 
     /// The finest layout that fits, or the densest one if none of them do —

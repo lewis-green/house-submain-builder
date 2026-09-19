@@ -33,6 +33,8 @@ export interface SubmainResponse {
   ruleSetId: string | null
   notes: string | null
   layoutVersion: number
+  hasIsolator: boolean
+  terminalsAtBottom: boolean
   circuitCount: number
   deviceCount: number
 }

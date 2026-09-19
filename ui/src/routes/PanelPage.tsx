@@ -6,6 +6,7 @@ import { Button } from '../components/Button'
 import { Diagnostics } from '../components/Diagnostics'
 import { ErrorNote } from '../components/ErrorNote'
 import { Spinner } from '../components/Spinner'
+import { Toggle } from '../components/Toggle'
 import { DeviceSheet } from '../panel/DeviceSheet'
 import { IssueButton } from '../panel/IssueButton'
 import { PanelSvg } from '../panel/PanelSvg'
@@ -20,6 +21,7 @@ export function PanelPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
+  const [reworking, setReworking] = useState(false)
   const svgWrapper = useRef<HTMLDivElement>(null)
 
   // The stored layout, not /design/preview: preview regenerates and returns
@@ -96,6 +98,30 @@ export function PanelPage() {
     }
   }
 
+  /**
+   * Both of these change how the panel is laid out, so the panel has to be built
+   * again — there is no way to apply them to the devices already placed.
+   */
+  async function setInstallOption(option: { hasIsolator?: boolean; terminalsAtBottom?: boolean }) {
+    if (!submain) return
+    setReworking(true)
+    setNotice(null)
+    try {
+      setSubmain(await api.patch<SubmainResponse>(`/submains/${submain.id}`, {
+        name: submain.name,
+        enclosureTypeId: submain.enclosureTypeId,
+        ...option,
+      }))
+      await api.post(`/submains/${submain.id}/design/generate`, {})
+      await load()
+    } catch (e) {
+      setNotice((e as ApiError).message)
+      await load()
+    } finally {
+      setReworking(false)
+    }
+  }
+
   async function freeChannel(deviceId: string, channelIndex: number) {
     if (!design) return
     try {
@@ -142,6 +168,26 @@ export function PanelPage() {
         <p className="text-slate-500">This submain has no panel yet. Generate one from the wizard.</p>
       ) : (
         <>
+          <div className="mb-3 space-y-3 rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold text-slate-700">
+              The install {reworking && <span className="font-normal text-slate-400">rebuilding…</span>}
+            </h2>
+            <Toggle
+              label="Cables enter at the bottom"
+              hint="Puts the terminations on the bottom rail. Rebuilds the panel."
+              checked={submain?.terminalsAtBottom ?? false}
+              disabled={reworking || !submain}
+              onChange={terminalsAtBottom => void setInstallOption({ terminalsAtBottom })}
+            />
+            <Toggle
+              label="Fit a main isolator"
+              hint="Turn this off for a submain already isolated upstream. Rebuilds the panel."
+              checked={submain?.hasIsolator ?? true}
+              disabled={reworking || !submain}
+              onChange={hasIsolator => void setInstallOption({ hasIsolator })}
+            />
+          </div>
+
           <div className="mb-2 flex items-center gap-2">
             <Button variant="secondary" onClick={() => setZoom(z => Math.max(0.4, z - 0.2))}>−</Button>
             <Button variant="secondary" onClick={() => setZoom(z => Math.min(3, z + 0.2))}>+</Button>

@@ -3,6 +3,10 @@ namespace PubInvest.HouseConfig.Api.Contracts;
 public sealed record PreviewRequest(
     Guid? EnclosureTypeId,
     Guid? RuleSetId,
+    // Absent means "as the submain is stored" — the wizard previews a change
+    // before it has been saved.
+    bool? HasIsolator,
+    bool? TerminalsAtBottom,
     IReadOnlyList<CircuitRequest>? Circuits);
 
 public sealed record ChannelResponse(

@@ -78,7 +78,9 @@ public sealed class DesignService(HouseConfigDbContext db)
             DomainMapper.ToDomain(ruleSetRow),
             catalogue,
             allEnclosures,
-            positionOverrides);
+            positionOverrides,
+            overrides?.HasIsolator ?? submain.HasIsolator,
+            overrides?.TerminalsAtBottom ?? submain.TerminalsAtBottom);
 
         return (new DesignInputs(submain, request, circuits), null);
     }

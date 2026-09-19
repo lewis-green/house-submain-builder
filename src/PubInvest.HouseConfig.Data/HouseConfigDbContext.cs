@@ -21,6 +21,10 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
         b.Entity<Project>().HasMany(p => p.Submains).WithOne(s => s.Project!)
             .HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
 
+        // Panels built before this column existed all have an isolator, and so
+        // does a submain created without saying either way.
+        b.Entity<Submain>().Property(s => s.HasIsolator).HasDefaultValue(true);
+
         b.Entity<Submain>().HasMany(s => s.Circuits).WithOne()
             .HasForeignKey(c => c.SubmainId).OnDelete(DeleteBehavior.Cascade);
 

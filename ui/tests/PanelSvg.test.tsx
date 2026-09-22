@@ -13,8 +13,8 @@ const dimmer: PlacedDeviceResponse = {
   id: 'd1', deviceTypeId: 'dim', category: 'Dimmer240', rowIndex: 1, startSlot: 0,
   moduleWidth: 3, label: 'Dimmer 1', terminalRole: 'None',
   channels: [
-    { channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling', isSpare: false },
-    { channelIndex: 1, circuitId: null, circuitName: null, isSpare: true },
+    { channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen ceiling', circuitRoom: null, isSpare: false },
+    { channelIndex: 1, circuitId: null, circuitName: null, circuitRoom: null, isSpare: true },
   ],
 }
 

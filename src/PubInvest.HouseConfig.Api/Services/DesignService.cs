@@ -25,6 +25,7 @@ public sealed class DesignService(HouseConfigDbContext db)
     {
         var submain = await db.Submains
             .Include(s => s.Circuits)
+            .Include(s => s.ExtraFixtures)
             .SingleOrDefaultAsync(s => s.Id == submainId, ct);
 
         if (submain is null) return (null, null);
@@ -72,6 +73,12 @@ public sealed class DesignService(HouseConfigDbContext db)
             .Select(o => new PositionOverride(o.Label, o.RowIndex, o.StartSlot))
             .ToList();
 
+        var extras = (overrides?.ExtraFixtures is not null
+                ? overrides.ExtraFixtures.Select(f => new ExtraFixture(f.DeviceTypeId, f.Quantity))
+                : submain.ExtraFixtures.OrderBy(f => f.Sequence)
+                    .Select(f => new ExtraFixture(f.DeviceTypeId, f.Quantity)))
+            .ToList();
+
         var request = new GenerationRequest(
             circuits,
             DomainMapper.ToDomain(enclosureRow),
@@ -80,7 +87,8 @@ public sealed class DesignService(HouseConfigDbContext db)
             allEnclosures,
             positionOverrides,
             overrides?.HasIsolator ?? submain.HasIsolator,
-            overrides?.TerminalsAtBottom ?? submain.TerminalsAtBottom);
+            overrides?.TerminalsAtBottom ?? submain.TerminalsAtBottom,
+            extras);
 
         return (new DesignInputs(submain, request, circuits), null);
     }

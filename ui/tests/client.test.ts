@@ -17,7 +17,7 @@ describe('api client', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       json({ message: 'changed', currentLayoutVersion: 7 }, 409)))
 
-    const error = await api.patch('/devices/1/position', {}).catch(e => e as ApiError)
+    const error = await api.patch('/devices/1/position', {}).catch(e => e) as ApiError
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error.conflict).toBe(true)
@@ -28,7 +28,7 @@ describe('api client', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       json({ title: 'invalid', errors: { name: ['A circuit name is required.'] } }, 400, 'application/problem+json')))
 
-    const error = await api.post('/projects', {}).catch(e => e as ApiError)
+    const error = await api.post('/projects', {}).catch(e => e) as ApiError
 
     expect(error.fieldErrors.name).toEqual(['A circuit name is required.'])
   })
@@ -36,7 +36,7 @@ describe('api client', () => {
   it('does not treat a 422 as a conflict', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ message: 'no room' }, 422)))
 
-    const error = await api.patch('/devices/1/position', {}).catch(e => e as ApiError)
+    const error = await api.patch('/devices/1/position', {}).catch(e => e) as ApiError
 
     expect(error.conflict).toBe(false)
     expect(error.status).toBe(422)

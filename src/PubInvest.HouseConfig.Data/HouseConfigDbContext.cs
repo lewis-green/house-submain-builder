@@ -8,6 +8,7 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Submain> Submains => Set<Submain>();
     public DbSet<CircuitRow> Circuits => Set<CircuitRow>();
+    public DbSet<ExtraFixtureRow> ExtraFixtures => Set<ExtraFixtureRow>();
     public DbSet<DeviceInstance> DeviceInstances => Set<DeviceInstance>();
     public DbSet<DeviceChannelRow> DeviceChannels => Set<DeviceChannelRow>();
     public DbSet<PanelRevision> PanelRevisions => Set<PanelRevision>();
@@ -27,6 +28,9 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
 
         b.Entity<Submain>().HasMany(s => s.Circuits).WithOne()
             .HasForeignKey(c => c.SubmainId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<Submain>().HasMany(s => s.ExtraFixtures).WithOne()
+            .HasForeignKey(f => f.SubmainId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Submain>().HasMany(s => s.Devices).WithOne()
             .HasForeignKey(d => d.SubmainId).OnDelete(DeleteBehavior.Cascade);

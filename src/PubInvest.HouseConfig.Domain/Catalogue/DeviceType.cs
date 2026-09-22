@@ -51,4 +51,10 @@ public sealed record DeviceType(
     bool Active)
 {
     public string Description => $"{Manufacturer} {Model}";
+
+    /// How many circuits this device can carry, which is not always its channel
+    /// count. An RGBWW controller's five channels are the colour outputs of one
+    /// run, not five runs, so it carries one circuit and shows one channel to
+    /// name.
+    public int CircuitCapacity => Category == DeviceCategory.LedController ? 1 : ChannelCount;
 }

@@ -12,6 +12,7 @@ const submain: SubmainResponse = {
   id: 's1', projectId: 'p1', name: 'Ground Floor', reference: null,
   feedCableSize: null, originBreakerAmps: null, phase: null,
   enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
+  hasIsolator: true, terminalsAtBottom: false, extraFixtures: [],
   layoutVersion: 2, circuitCount: 3, deviceCount: 5,
 }
 
@@ -22,7 +23,7 @@ const design: DesignResponse = {
     devices: [{
       id: 'd1', deviceTypeId: 'dt', category: 'Dimmer240', rowIndex: 1, startSlot: 0,
       moduleWidth: 3, label: 'Dimmer 1', terminalRole: 'None',
-      channels: [{ channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen', isSpare: false }],
+      channels: [{ channelIndex: 0, circuitId: 'c1', circuitName: 'Kitchen', circuitRoom: null, isSpare: false }],
     }],
   },
   diagnostics: [], bom: [],

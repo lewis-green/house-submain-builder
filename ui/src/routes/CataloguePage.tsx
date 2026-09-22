@@ -1,25 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError, api } from '../api/client'
-import type { DeviceCategory, EnclosureType } from '../api/types'
+import type { DeviceTypeResponse, EnclosureType } from '../api/types'
 import { Button } from '../components/Button'
 import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
 import { Spinner } from '../components/Spinner'
 import { SLOT_UNITS_PER_MODULE, formatModules } from '../units'
 
-interface DeviceTypeView {
-  id: string
-  manufacturer: string
-  model: string
-  partNumber: string
-  category: DeviceCategory
-  moduleWidth: number
-  channelCount: number
-  maxLoadPerChannelW: number | null
-  maxTotalLoadW: number | null
-  active: boolean
-}
+type DeviceTypeView = DeviceTypeResponse
 
 /**
  * Widths are entered and shown in DIN modules and converted on save. An admin

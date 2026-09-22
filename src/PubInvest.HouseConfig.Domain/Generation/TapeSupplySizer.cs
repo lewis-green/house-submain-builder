@@ -23,7 +23,12 @@ public static class TapeSupplySizer
         DeviceCatalogue catalogue)
     {
         var diagnostics = new List<Diagnostic>();
-        var tape = circuits.Where(c => c.Type == CircuitType.LedTape).OrderBy(c => c.Sequence).ToList();
+        // Colour tape runs off the same 24V supply as plain tape: its controller
+        // is fed from the driver and its output is made off at the same joints.
+        var tape = circuits
+            .Where(c => c.Type is CircuitType.LedTape or CircuitType.RgbwTape)
+            .OrderBy(c => c.Sequence)
+            .ToList();
 
         if (tape.Count == 0) return new TapeSupply([], [], []);
 

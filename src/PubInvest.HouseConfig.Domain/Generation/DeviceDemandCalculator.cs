@@ -23,6 +23,8 @@ public static class DeviceDemandCalculator
         Build(CircuitType.DimmedLighting, rules.PreferredDevice.Dimmer240, "Dimmer");
         Build(CircuitType.Switched, rules.PreferredDevice.Relay, "Relay");
         Build(CircuitType.LedTape, rules.PreferredDevice.Dimmer0_10V, "Tape Dimmer");
+        Build(CircuitType.Cover, rules.PreferredDevice.Cover, "Cover");
+        Build(CircuitType.RgbwTape, rules.PreferredDevice.LedController, "LED");
 
         return new DeviceDemand(devices, diagnostics);
 
@@ -42,7 +44,7 @@ public static class DeviceDemandCalculator
                 return;
             }
 
-            if (deviceType.ChannelCount <= 0)
+            if (deviceType.CircuitCapacity <= 0)
             {
                 diagnostics.Add(new Diagnostic(
                     DiagnosticSeverity.Error,
@@ -51,14 +53,15 @@ public static class DeviceDemandCalculator
                 return;
             }
 
-            var deviceCount = (int)Math.Ceiling(ofType.Count / (double)deviceType.ChannelCount);
+            var perDevice = deviceType.CircuitCapacity;
+            var deviceCount = (int)Math.Ceiling(ofType.Count / (double)perDevice);
 
             for (var i = 0; i < deviceCount; i++)
             {
-                var channels = new List<ChannelAssignment>(deviceType.ChannelCount);
-                for (var ch = 0; ch < deviceType.ChannelCount; ch++)
+                var channels = new List<ChannelAssignment>(perDevice);
+                for (var ch = 0; ch < perDevice; ch++)
                 {
-                    var circuitIndex = i * deviceType.ChannelCount + ch;
+                    var circuitIndex = i * perDevice + ch;
                     channels.Add(circuitIndex < ofType.Count
                         ? new ChannelAssignment(ch, ofType[circuitIndex].Id, IsSpare: false)
                         : new ChannelAssignment(ch, null, IsSpare: true));

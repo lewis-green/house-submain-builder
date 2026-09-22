@@ -423,7 +423,7 @@
     {
       "id": "f1000000-0000-4000-8000-000000000001",
       "name": "House default",
-      "version": 1,
+      "version": 3,
       "isDefault": true,
       "payload": {
         "layouts": [
@@ -521,6 +521,39 @@
               },
               {
                 "fromLeft": [
+                  "Dimmer240"
+                ],
+                "fromRight": [
+                  "Dimmer0_10V"
+                ]
+              },
+              {
+                "fromLeft": [
+                  "Cover",
+                  "LedController"
+                ],
+                "fromRight": [
+                  "Relay",
+                  "EnergyMeter",
+                  "Network"
+                ]
+              }
+            ]
+          },
+          {
+            "zones": [
+              {
+                "fromLeft": [
+                  "Terminal240",
+                  "Dc24VPositive",
+                  "Dc24VNegative"
+                ],
+                "fromRight": [
+                  "Isolator"
+                ]
+              },
+              {
+                "fromLeft": [
                   "Dimmer240",
                   "Dimmer0_10V",
                   "Cover",
@@ -541,6 +574,8 @@
           "dimmer240": "d1000000-0000-4000-8000-000000000001",
           "dimmer0_10V": "d1000000-0000-4000-8000-000000000002",
           "relay": "d1000000-0000-4000-8000-000000000003",
+          "cover": "d1000000-0000-4000-8000-000000000106",
+          "ledController": "d1000000-0000-4000-8000-000000000108",
           "dc24VPositive": "d1000000-0000-4000-8000-00000000000b",
           "dc24VNegative": "d1000000-0000-4000-8000-00000000000c",
           "externalDriver": [
@@ -559,5 +594,5 @@
       }
     }
   ],
-  "_layout": "Layouts are tried finest first and the first that fits wins. When two kinds of device share a row they start from opposite ends and work inwards, never one running straight on from the other. Termination stays on the top row: circuit terminals then the 24V joints from the left, the two-pole isolator hard right. Each tape run gets its own +24V and -24V block, since those are the joints where that tape's output is made off. Covers and LED controllers fill from the left of their own rail, energy meters and network gear from the right."
+  "_layout": "Layouts are tried finest first and the first that fits wins. When two kinds of device share a row they start from opposite ends and work inwards, never one running straight on from the other. Termination stays on the top row: circuit terminals then the 24V joints from the left, the two-pole isolator hard right. Each tape run gets its own +24V and -24V block, since those are the joints where that tape's output is made off. Covers and LED controllers fill from the left of their own rail, energy meters and network gear from the right; when rows run short they join the relay rail before everything is merged onto one."
 }

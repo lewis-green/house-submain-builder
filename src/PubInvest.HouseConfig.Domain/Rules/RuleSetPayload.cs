@@ -19,6 +19,8 @@ public sealed record PreferredDevices(
     Guid Dimmer240,
     Guid Dimmer0_10V,
     Guid Relay,
+    Guid Cover,
+    Guid LedController,
     Guid Dc24VPositive,
     Guid Dc24VNegative,
     /// Not panel-mounted. Sized from the tape load and costed, never placed.

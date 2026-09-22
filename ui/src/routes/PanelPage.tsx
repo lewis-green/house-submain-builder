@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
-import type { DesignResponse, SubmainResponse } from '../api/types'
+import type {
+  DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse,
+} from '../api/types'
 import { Button } from '../components/Button'
 import { Diagnostics } from '../components/Diagnostics'
 import { ErrorNote } from '../components/ErrorNote'
@@ -10,6 +12,7 @@ import { Toggle } from '../components/Toggle'
 import { DeviceSheet } from '../panel/DeviceSheet'
 import { IssueButton } from '../panel/IssueButton'
 import { PanelSvg } from '../panel/PanelSvg'
+import { FixturePicker } from '../wizard/FixturePicker'
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 
 export function PanelPage() {
@@ -22,6 +25,7 @@ export function PanelPage() {
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
   const [reworking, setReworking] = useState(false)
+  const [catalogue, setCatalogue] = useState<DeviceTypeResponse[]>([])
   const svgWrapper = useRef<HTMLDivElement>(null)
 
   // The stored layout, not /design/preview: preview regenerates and returns
@@ -38,6 +42,7 @@ export function PanelPage() {
         // Rooms already used in this house, offered before anyone types one.
         // A failure here costs a suggestion list, not the panel.
         api.get<string[]>(`/projects/${s.projectId}/rooms`).then(setRooms).catch(() => setRooms([]))
+        api.get<DeviceTypeResponse[]>('/catalogue/device-types').then(setCatalogue).catch(() => setCatalogue([]))
       })
       .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
@@ -102,7 +107,9 @@ export function PanelPage() {
    * Both of these change how the panel is laid out, so the panel has to be built
    * again — there is no way to apply them to the devices already placed.
    */
-  async function setInstallOption(option: { hasIsolator?: boolean; terminalsAtBottom?: boolean }) {
+  async function setInstallOption(
+    option: { hasIsolator?: boolean; terminalsAtBottom?: boolean; extraFixtures?: ExtraFixture[] },
+  ) {
     if (!submain) return
     setReworking(true)
     setNotice(null)
@@ -186,6 +193,16 @@ export function PanelPage() {
               disabled={reworking || !submain}
               onChange={hasIsolator => void setInstallOption({ hasIsolator })}
             />
+
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-slate-700">Other devices</h3>
+              <FixturePicker
+                catalogue={catalogue}
+                fixtures={submain?.extraFixtures ?? []}
+                disabled={reworking || !submain}
+                onChange={extraFixtures => void setInstallOption({ extraFixtures })}
+              />
+            </div>
           </div>
 
           <div className="mb-2 flex items-center gap-2">

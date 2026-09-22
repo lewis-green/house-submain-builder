@@ -7,14 +7,23 @@ namespace PubInvest.HouseConfig.Data.Seeding;
 
 public static class CatalogueSeeder
 {
-    /// Additive and idempotent: a row whose id already exists is left untouched,
-    /// so an admin's edit is never overwritten by a redeploy.
+    /// Additive and idempotent for catalogue rows: one whose id already exists is
+    /// left untouched, so an admin's edit is never overwritten by a redeploy.
+    ///
+    /// Rulesets are the exception. They are versioned, and a shipped ruleset whose
+    /// version has gone up replaces the stored one. Without that, a database
+    /// seeded before a rule existed keeps the old rules for ever: adding a
+    /// preferred device for a new kind of circuit would leave every existing
+    /// house generating nothing for it, with only a diagnostic to show for it.
+    /// Rulesets cannot be edited in place through the API — an admin makes their
+    /// own — so nobody's work is at stake.
     public static async Task<int> SeedAsync(
         HouseConfigDbContext db,
         SeedDocument seed,
         CancellationToken cancellationToken)
     {
         var inserted = 0;
+        var upgraded = 0;
 
         var existingDeviceIds = await db.DeviceTypes.Select(d => d.Id).ToListAsync(cancellationToken);
         foreach (var d in seed.DeviceTypes.Where(d => !existingDeviceIds.Contains(d.Id)))
@@ -40,18 +49,32 @@ public static class CatalogueSeeder
             inserted++;
         }
 
-        var existingRuleSetIds = await db.RuleSets.Select(r => r.Id).ToListAsync(cancellationToken);
-        foreach (var r in seed.RuleSets.Where(r => !existingRuleSetIds.Contains(r.Id)))
+        var existingRuleSets = await db.RuleSets.ToDictionaryAsync(r => r.Id, cancellationToken);
+        foreach (var r in seed.RuleSets)
         {
-            db.RuleSets.Add(new RuleSetRow
+            var payload = JsonSerializer.Serialize(r.Payload, DomainMapper.Json);
+
+            if (!existingRuleSets.TryGetValue(r.Id, out var stored))
             {
-                Id = r.Id, Name = r.Name, Version = r.Version, IsDefault = r.IsDefault,
-                PayloadJson = JsonSerializer.Serialize(r.Payload, DomainMapper.Json)
-            });
-            inserted++;
+                db.RuleSets.Add(new RuleSetRow
+                {
+                    Id = r.Id, Name = r.Name, Version = r.Version, IsDefault = r.IsDefault,
+                    PayloadJson = payload
+                });
+                inserted++;
+                continue;
+            }
+
+            if (stored.Version >= r.Version) continue;
+
+            stored.Name = r.Name;
+            stored.Version = r.Version;
+            stored.IsDefault = r.IsDefault;
+            stored.PayloadJson = payload;
+            upgraded++;
         }
 
-        if (inserted > 0) await db.SaveChangesAsync(cancellationToken);
+        if (inserted > 0 || upgraded > 0) await db.SaveChangesAsync(cancellationToken);
         return inserted;
     }
 }

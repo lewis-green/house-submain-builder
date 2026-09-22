@@ -8,11 +8,19 @@ import type { DesignResponse } from '../src/api/types'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
+const deviceTypes = [
+  {
+    id: 'meter', manufacturer: 'Shelly', model: 'Pro 3EM', partNumber: 'SHELLY-PRO-3EM-120',
+    category: 'EnergyMeter', moduleWidth: 9, channelCount: 3,
+    maxLoadPerChannelW: null, maxTotalLoadW: null, active: true,
+  },
+]
+
 const submain = {
   id: 's1', projectId: 'p1', name: 'Ground Floor', reference: null,
   feedCableSize: null, originBreakerAmps: null, phase: null,
   enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
-  hasIsolator: true, terminalsAtBottom: false,
+  hasIsolator: true, terminalsAtBottom: false, extraFixtures: [],
   layoutVersion: 4, circuitCount: 1, deviceCount: 1,
 }
 
@@ -21,10 +29,11 @@ const submain = {
  * the layout and the submain together.
  */
 const stub = (layout: () => Response, rest?: (url: string) => Response | undefined) =>
-  vi.fn(async (url: string) => {
+  vi.fn(async (url: string, _init?: RequestInit) => {
     if (url.endsWith('/layout')) return layout()
     if (url === '/api/submains/s1') return json(submain)
     if (url === '/api/projects/p1/rooms') return json(['Kitchen', 'Snug'])
+    if (url === '/api/catalogue/device-types') return json(deviceTypes)
     return rest?.(url) ?? json({})
   })
 
@@ -49,6 +58,14 @@ const design = (diagnostics: DesignResponse['diagnostics'] = []): DesignResponse
   bom: [],
   summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 216, deviceCount: 1, spareChannels: 0 },
 })
+
+/** The body of the one PATCH sent to `url`, parsed. */
+const patchBody = (mock: ReturnType<typeof stub>, url: string) => {
+  const call = mock.mock.calls.find(c => c[1]?.method === 'PATCH' && c[0] === url)
+
+  expect(call, `no PATCH to ${url}`).toBeDefined()
+  return JSON.parse(String(call![1]!.body))
+}
 
 const renderPage = () =>
   render(
@@ -130,9 +147,7 @@ describe('PanelPage', () => {
     await userEvent.click(await screen.findByLabelText(/cables enter at the bottom/i))
 
     await waitFor(() => {
-      const patch = fetchMock.mock.calls.find(c => c[1]?.method === 'PATCH' && c[0] === '/api/submains/s1')
-      expect(patch).toBeDefined()
-      expect(JSON.parse(patch![1].body)).toMatchObject({ terminalsAtBottom: true })
+      expect(patchBody(fetchMock, '/api/submains/s1')).toMatchObject({ terminalsAtBottom: true })
     })
 
     expect(fetchMock.mock.calls.map(c => c[0])).toContain('/api/submains/s1/design/generate')
@@ -146,8 +161,7 @@ describe('PanelPage', () => {
     await userEvent.click(await screen.findByLabelText(/fit a main isolator/i))
 
     await waitFor(() => {
-      const patch = fetchMock.mock.calls.find(c => c[1]?.method === 'PATCH' && c[0] === '/api/submains/s1')
-      const body = JSON.parse(patch![1].body)
+      const body = patchBody(fetchMock, '/api/submains/s1')
       expect(body.hasIsolator).toBe(false)
       expect(body).not.toHaveProperty('terminalsAtBottom')
     })

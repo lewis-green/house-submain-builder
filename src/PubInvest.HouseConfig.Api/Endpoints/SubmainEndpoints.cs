@@ -46,7 +46,16 @@ public static class SubmainEndpoints
                     HasIsolator = request.HasIsolator ?? true,
                     TerminalsAtBottom = request.TerminalsAtBottom ?? false,
                     LayoutVersion = 0,
-                    Circuits = ToRows(request.Circuits)
+                    Circuits = ToRows(request.Circuits),
+                    ExtraFixtures = (request.ExtraFixtures ?? [])
+                        .Where(f => f.Quantity > 0)
+                        .Select((f, i) => new ExtraFixtureRow
+                        {
+                            Id = Guid.NewGuid(),
+                            DeviceTypeId = f.DeviceTypeId,
+                            Quantity = f.Quantity,
+                            Sequence = i
+                        }).ToList()
                 };
 
                 db.Submains.Add(submain);
@@ -69,7 +78,10 @@ public static class SubmainEndpoints
                 HouseConfigDbContext db,
                 CancellationToken ct) =>
             {
-                var submain = await db.Submains.Include(s => s.Circuits).SingleOrDefaultAsync(s => s.Id == id, ct);
+                var submain = await db.Submains
+                    .Include(s => s.Circuits)
+                    .Include(s => s.ExtraFixtures)
+                    .SingleOrDefaultAsync(s => s.Id == id, ct);
                 if (submain is null) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
@@ -89,6 +101,11 @@ public static class SubmainEndpoints
                 if (request.Circuits is not null)
                 {
                     ApplyCircuits(db, submain, ToRows(request.Circuits));
+                }
+
+                if (request.ExtraFixtures is not null)
+                {
+                    ApplyExtraFixtures(db, submain, request.ExtraFixtures);
                 }
 
                 await db.SaveChangesAsync(ct);
@@ -167,6 +184,29 @@ public static class SubmainEndpoints
             LengthMetres = c.LengthMetres
         }).ToList();
 
+    /// Replaces the fixture list wholesale, like the circuits. There is nothing
+    /// on a fixture worth preserving across an edit — no name, no wiring — so the
+    /// rows are simply rebuilt.
+    internal static void ApplyExtraFixtures(
+        HouseConfigDbContext db, Submain submain, IReadOnlyList<ExtraFixtureRequest> incoming)
+    {
+        db.ExtraFixtures.RemoveRange(submain.ExtraFixtures);
+        submain.ExtraFixtures.Clear();
+
+        var sequence = 0;
+        foreach (var fixture in incoming.Where(f => f.Quantity > 0))
+        {
+            submain.ExtraFixtures.Add(new ExtraFixtureRow
+            {
+                Id = Guid.NewGuid(),
+                SubmainId = submain.Id,
+                DeviceTypeId = fixture.DeviceTypeId,
+                Quantity = fixture.Quantity,
+                Sequence = sequence++
+            });
+        }
+    }
+
     private static async Task<SubmainResponse?> Load(HouseConfigDbContext db, Guid id, CancellationToken ct)
         => await db.Submains.Where(s => s.Id == id).Select(ToResponse).SingleOrDefaultAsync(ct);
 
@@ -174,5 +214,7 @@ public static class SubmainEndpoints
     private static readonly Expression<Func<Submain, SubmainResponse>> ToResponse = s => new SubmainResponse(
         s.Id, s.ProjectId, s.Name, s.Reference, s.FeedCableSize, s.OriginBreakerAmps, s.Phase,
         s.EnclosureTypeId, s.RuleSetId, s.Notes, s.HasIsolator, s.TerminalsAtBottom, s.LayoutVersion,
-        s.Circuits.Count, s.Devices.Count);
+        s.Circuits.Count, s.Devices.Count,
+        s.ExtraFixtures.OrderBy(f => f.Sequence)
+            .Select(f => new ExtraFixtureResponse(f.DeviceTypeId, f.Quantity)).ToList());
 }

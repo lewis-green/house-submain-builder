@@ -1,6 +1,20 @@
 namespace PubInvest.HouseConfig.Domain.Circuits;
 
-public enum CircuitType { DimmedLighting, Switched, LedTape }
+public enum CircuitType
+{
+    DimmedLighting,
+    Switched,
+
+    /// Constant-voltage 24V tape on a 0-10V dimmer, fed by an external driver.
+    LedTape,
+
+    /// A blind or roller shutter.
+    Cover,
+
+    /// Colour tape on an RGBWW controller. Fed from the same 24V supply as
+    /// LedTape, so it is sized with it.
+    RgbwTape,
+}
 
 public sealed record Circuit(
     Guid Id,

@@ -222,17 +222,42 @@ public class PanelPackerTests
     }
 
     [Fact]
+    public void A_zone_with_nothing_in_it_costs_no_row()
+    {
+        // No tape circuits, so the 0-10V zone is empty. It must not hold a rail
+        // open: the relays would be pushed down a row and a three-row enclosure
+        // would fall to a coarser layout than it needs.
+        var devices = new List<RequiredDevice>();
+        for (var n = 1; n <= 4; n++) devices.Add(Device(DeviceCategory.Terminal240, 1, $"C{n}"));
+        devices.Add(Device(DeviceCategory.Dimmer240, 3, "Dimmer 1"));
+        devices.Add(Device(DeviceCategory.Relay, 9, "Relay 1"));
+
+        var enclosure = new EnclosureType(
+            new Guid("22222222-0000-0000-0000-000000000006"), "Test", "3x8", 3, 24, "IP30");
+
+        var layout = PanelPacker.Pack(devices, enclosure,
+            CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
+
+        var dimmer = layout.Devices.Single(d => d.Label == "Dimmer 1");
+        var relay = layout.Devices.Single(d => d.Label == "Relay 1");
+
+        Assert.Equal(1, dimmer.RowIndex);
+        Assert.Equal(2, relay.RowIndex);
+    }
+
+    [Fact]
     public void Two_kinds_sharing_a_row_each_start_from_an_end()
     {
         // Never one type running straight on from another: each works inwards
         // from its own end of the rail.
-        var devices = new List<RequiredDevice>
-        {
-            Device(DeviceCategory.Dimmer240, 3, "Dimmer 1"),
-            Device(DeviceCategory.Dimmer0_10V, 3, "Tape Dimmer 1"),
-        };
+        // Terminals fill the first row, so the two sorts of dimmer have one row
+        // left between them. A panel always has terminals; a zone with nothing
+        // in it takes no row at all, so leaving them out would not force the
+        // sharing this test is about.
+        var devices = new List<RequiredDevice> { Device(DeviceCategory.Dimmer240, 3, "Dimmer 1") };
+        devices.Add(Device(DeviceCategory.Dimmer0_10V, 3, "Tape Dimmer 1"));
+        for (var n = 1; n <= 7; n++) devices.Add(Device(DeviceCategory.Terminal240, 1, $"C{n}"));
 
-        // Two rows: one for termination, one shared by the two sorts of dimmer.
         var layout = PanelPacker.Pack(devices, TwoRows(),
             CatalogueFixture.Rules(), CatalogueFixture.AllEnclosures()).Layout;
 

@@ -19,7 +19,9 @@ public sealed record GenerationRequest(
     bool IncludeIsolator = true,
     /// True when the enclosure is glanded from below, so the terminations belong
     /// on the bottom rail rather than the top.
-    bool TerminalsAtBottom = false);
+    bool TerminalsAtBottom = false,
+    /// Devices asked for by hand: meters, network gear, a spare relay.
+    IReadOnlyList<ExtraFixture>? ExtraFixtures = null);
 
 public sealed record GenerationResult(
     PanelLayout Layout,
@@ -59,6 +61,12 @@ public static class PanelGenerator
             .Concat(demand.Devices)
             .Concat(tape.Blocks)
             .ToList();
+
+        // Last, so hand-added devices continue the labels the generated ones used.
+        var extras = ExtraFixtureBuilder.Build(
+            request.ExtraFixtures ?? [], allDevices, request.Catalogue);
+        diagnostics.AddRange(extras.Diagnostics);
+        allDevices.AddRange(extras.Devices);
 
         var packed = PanelPacker.Pack(
             allDevices, request.Enclosure, request.Rules, request.AllEnclosures, request.TerminalsAtBottom);

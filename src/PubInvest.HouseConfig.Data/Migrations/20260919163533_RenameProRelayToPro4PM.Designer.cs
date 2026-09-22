@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PubInvest.HouseConfig.Data;
@@ -11,9 +12,11 @@ using PubInvest.HouseConfig.Data;
 namespace PubInvest.HouseConfig.Data.Migrations
 {
     [DbContext(typeof(HouseConfigDbContext))]
-    partial class HouseConfigDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260919163533_RenameProRelayToPro4PM")]
+    partial class RenameProRelayToPro4PM
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -201,31 +204,6 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Enclosures");
-                });
-
-            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.ExtraFixtureRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DeviceTypeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Sequence")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SubmainId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubmainId");
-
-                    b.ToTable("ExtraFixtures");
                 });
 
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PanelRevision", b =>
@@ -420,15 +398,6 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.ExtraFixtureRow", b =>
-                {
-                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
-                        .WithMany("ExtraFixtures")
-                        .HasForeignKey("SubmainId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PositionOverrideRow", b =>
                 {
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
@@ -464,8 +433,6 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.Navigation("Circuits");
 
                     b.Navigation("Devices");
-
-                    b.Navigation("ExtraFixtures");
                 });
 #pragma warning restore 612, 618
         }

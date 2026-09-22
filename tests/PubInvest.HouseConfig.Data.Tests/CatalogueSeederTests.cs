@@ -65,7 +65,8 @@ public class CatalogueSeederTests(PostgresFixture fixture)
                         ]),
                     ],
                     PsuDeratingFactor: 0.8m,
-                    PreferredDevice: new PreferredDevices(isolator, dimmer, tapeDimmer, relay, dcPos, dcNeg, [psu]),
+                    PreferredDevice: new PreferredDevices(
+                        isolator, dimmer, tapeDimmer, relay, relay, relay, dcPos, dcNeg, [psu]),
                     Terminals: new TerminalRules(
                         DeviceTypeId: terminal,
                         BlocksPerCircuit: 1,
@@ -104,6 +105,59 @@ public class CatalogueSeederTests(PostgresFixture fixture)
 
         db.ChangeTracker.Clear();
         Assert.Equal("Edited by an admin", (await db.DeviceTypes.SingleAsync(d => d.Id == row.Id)).Model);
+    }
+
+    [Fact]
+    public async Task A_shipped_ruleset_with_a_higher_version_replaces_the_stored_one()
+    {
+        // Rules added after a database was seeded have to reach it. Without this
+        // a house seeded last month would generate nothing for a new kind of
+        // circuit, and say only that no preferred device was configured.
+        await using var db = fixture.CreateContext();
+        var first = Document("dddd0001");
+        await CatalogueSeeder.SeedAsync(db, first, CancellationToken.None);
+
+        var next = first with
+        {
+            RuleSets = [first.RuleSets[0] with
+            {
+                Version = first.RuleSets[0].Version + 1,
+                Name = "House default v2",
+                Payload = first.RuleSets[0].Payload with { PsuDeratingFactor = 0.5m },
+            }],
+        };
+
+        await CatalogueSeeder.SeedAsync(db, next, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var row = await db.RuleSets.SingleAsync(r => r.Id == first.RuleSets[0].Id);
+
+        Assert.Equal("House default v2", row.Name);
+        Assert.Equal(first.RuleSets[0].Version + 1, row.Version);
+        Assert.Equal(0.5m, DomainMapper.ToDomain(row).PsuDeratingFactor);
+    }
+
+    [Fact]
+    public async Task A_shipped_ruleset_at_the_same_version_leaves_the_stored_one_alone()
+    {
+        await using var db = fixture.CreateContext();
+        var seed = Document("dddd0002");
+        await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
+
+        var sameVersion = seed with
+        {
+            RuleSets = [seed.RuleSets[0] with
+            {
+                Payload = seed.RuleSets[0].Payload with { PsuDeratingFactor = 0.1m },
+            }],
+        };
+
+        await CatalogueSeeder.SeedAsync(db, sameVersion, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var row = await db.RuleSets.SingleAsync(r => r.Id == seed.RuleSets[0].Id);
+
+        Assert.Equal(0.8m, DomainMapper.ToDomain(row).PsuDeratingFactor);
     }
 
     [Fact]

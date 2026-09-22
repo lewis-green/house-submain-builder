@@ -111,9 +111,9 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 198 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 101 tests
-cd ui && npm run build   # the real typecheck: `tsc -b` is stricter than `tsc --noEmit`
+dotnet test          # 230 tests. Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 113 tests
+cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -145,6 +145,19 @@ converted back to modules first.
 **The server decides every layout.** The UI never computes one — it draws what
 `/design/preview` or `/design/generate` returned. That is what keeps the drawing,
 the schedule and the parts list from ever disagreeing.
+
+**Circuits ask for devices; fixtures are asked for by hand.** A light, a
+switched load, a blind and a tape run are circuits: they carry a room and a
+name, and the ruleset says which device drives each kind. An energy meter or a
+LAN switch feeds nothing, so no count of anything will ever imply one — those are
+added to the submain by device type and quantity, and packed like everything
+else.
+
+**A ruleset is versioned, and the seeder upgrades it.** Catalogue rows are left
+alone once they exist, but a shipped ruleset whose version has gone up replaces
+the stored one. Without that, a database seeded before a rule existed would keep
+the old rules for ever — adding a preferred device for a new kind of circuit
+would leave every existing house generating nothing for it.
 
 **Two facts about the install, not the rules.** Whether the cables enter at the
 top or the bottom, and whether this submain is isolated upstream, are stored on

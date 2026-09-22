@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
-import type { DesignResponse, EnclosureType, SubmainResponse } from '../api/types'
+import type {
+  DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, SubmainResponse,
+} from '../api/types'
 import { Button } from '../components/Button'
 import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
 import { Toggle } from '../components/Toggle'
 import { Spinner } from '../components/Spinner'
+import { FixturePicker } from '../wizard/FixturePicker'
 import { PreviewSummary } from '../wizard/PreviewSummary'
 import { buildCircuits, type TapeInput } from '../wizard/buildCircuits'
 
@@ -27,7 +30,10 @@ export function NewSubmainPage() {
   const [enclosureId, setEnclosureId] = useState('')
   const [dimmed, setDimmed] = useState('0')
   const [switched, setSwitched] = useState('0')
+  const [blinds, setBlinds] = useState('0')
   const [tape, setTape] = useState<TapeInput[]>([])
+  const [fixtures, setFixtures] = useState<ExtraFixture[]>([])
+  const [catalogue, setCatalogue] = useState<DeviceTypeResponse[]>([])
   const [hasIsolator, setHasIsolator] = useState(true)
   const [terminalsAtBottom, setTerminalsAtBottom] = useState(false)
 
@@ -40,9 +46,13 @@ export function NewSubmainPage() {
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    api.get<EnclosureType[]>('/catalogue/enclosures')
-      .then(list => {
+    Promise.all([
+      api.get<EnclosureType[]>('/catalogue/enclosures'),
+      api.get<DeviceTypeResponse[]>('/catalogue/device-types'),
+    ])
+      .then(([list, devices]) => {
         setEnclosures(list)
+        setCatalogue(devices)
         if (list.length > 0) setEnclosureId(list[0].id)
       })
       .catch((e: ApiError) => setLoadError(e.message))
@@ -51,6 +61,7 @@ export function NewSubmainPage() {
   const counts = {
     dimmed: Number(dimmed) || 0,
     switched: Number(switched) || 0,
+    blinds: Number(blinds) || 0,
     tape,
   }
   const circuits = buildCircuits(counts)
@@ -58,7 +69,7 @@ export function NewSubmainPage() {
   // Preview persists nothing, so an abandoned wizard leaves an empty submain
   // and no devices.
   useEffect(() => {
-    if (!enclosureId || circuits.length === 0) {
+    if (!enclosureId || (circuits.length === 0 && fixtures.length === 0)) {
       setDesign(null)
       return
     }
@@ -66,7 +77,10 @@ export function NewSubmainPage() {
     clearTimeout(debounce.current)
     debounce.current = setTimeout(() => { void preview() }, PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(debounce.current)
-  }, [enclosureId, dimmed, switched, hasIsolator, terminalsAtBottom, JSON.stringify(tape)])
+  }, [
+    enclosureId, dimmed, switched, blinds, hasIsolator, terminalsAtBottom,
+    JSON.stringify(tape), JSON.stringify(fixtures),
+  ])
 
   async function ensureSubmain(): Promise<string> {
     if (submainId) return submainId
@@ -91,6 +105,7 @@ export function NewSubmainPage() {
         hasIsolator,
         terminalsAtBottom,
         circuits,
+        extraFixtures: fixtures,
       }))
     } catch (e) {
       const error = e as ApiError
@@ -111,6 +126,7 @@ export function NewSubmainPage() {
         hasIsolator,
         terminalsAtBottom,
         circuits,
+        extraFixtures: fixtures,
       })
       await api.post<DesignResponse>(`/submains/${id}/design/generate`, { circuits })
       navigate(`/submains/${id}/panel`)
@@ -174,6 +190,7 @@ export function NewSubmainPage() {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Dimmed lighting" value={dimmed} onChange={setDimmed} type="number" inputMode="numeric" />
         <Field label="Switched" value={switched} onChange={setSwitched} type="number" inputMode="numeric" />
+        <Field label="Blinds" value={blinds} onChange={setBlinds} type="number" inputMode="numeric" />
       </div>
 
       <div className="space-y-3">
@@ -194,12 +211,34 @@ export function NewSubmainPage() {
               type="number"
               inputMode="decimal"
             />
+            <label className="col-span-2 flex min-h-11 items-center gap-3">
+              <input
+                type="checkbox"
+                checked={t.colour}
+                onChange={e => setTape(tape.map((x, j) => j === i ? { ...x, colour: e.target.checked } : x))}
+                className="size-5 rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">
+                Colour (RGBW) — runs off a controller instead of a 0-10V dimmer
+              </span>
+            </label>
             <Button variant="ghost" onClick={() => setTape(tape.filter((_, j) => j !== i))}>Remove</Button>
           </div>
         ))}
-        <Button variant="secondary" onClick={() => setTape([...tape, { wattsPerMetre: 14.4, lengthMetres: 5 }])}>
+        <Button
+          variant="secondary"
+          onClick={() => setTape([...tape, { wattsPerMetre: 14.4, lengthMetres: 5, colour: false }])}
+        >
           Add tape circuit
         </Button>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-700">Other devices</h2>
+        <p className="text-xs text-slate-500">
+          Gear no circuit asks for: an energy meter, a LAN switch, a relay for later.
+        </p>
+        <FixturePicker catalogue={catalogue} fixtures={fixtures} onChange={setFixtures} />
       </div>
 
       <div className="rounded-lg border border-slate-200 p-4">

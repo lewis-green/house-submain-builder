@@ -12,6 +12,19 @@ public enum DeviceCategory
     Dimmer0_10V,
     Relay,
 
+    /// Roller shutter or blind controller: two channels drive one cover, up and
+    /// down, so its channel count is not a count of circuits.
+    Cover,
+
+    /// Multi-channel constant-voltage LED controller (RGB plus white).
+    LedController,
+
+    /// Energy meter. Measures; switches nothing and feeds no circuit.
+    EnergyMeter,
+
+    /// Network gear in the panel, such as a DIN-mount LAN switch.
+    Network,
+
     /// 12-way +24V distribution block. One way per LED tape circuit.
     Dc24VPositive,
 
@@ -38,4 +51,10 @@ public sealed record DeviceType(
     bool Active)
 {
     public string Description => $"{Manufacturer} {Model}";
+
+    /// How many circuits this device can carry, which is not always its channel
+    /// count. An RGBWW controller's five channels are the colour outputs of one
+    /// run, not five runs, so it carries one circuit and shows one channel to
+    /// name.
+    public int CircuitCapacity => Category == DeviceCategory.LedController ? 1 : ChannelCount;
 }

@@ -4,6 +4,10 @@ export type DeviceCategory =
   | 'Dimmer240'
   | 'Dimmer0_10V'
   | 'Relay'
+  | 'Cover'
+  | 'LedController'
+  | 'EnergyMeter'
+  | 'Network'
   | 'Dc24VPositive'
   | 'Dc24VNegative'
   /** Sized and costed but never placed: LED drivers are not DIN mount. */
@@ -11,7 +15,7 @@ export type DeviceCategory =
   | 'Accessory'
 export type TerminalRole = 'None' | 'All' | 'Line' | 'Neutral' | 'Earth'
 export type Severity = 'Info' | 'Warning' | 'Error'
-export type CircuitType = 'DimmedLighting' | 'Switched' | 'LedTape'
+export type CircuitType = 'DimmedLighting' | 'Switched' | 'LedTape' | 'Cover' | 'RgbwTape'
 
 export interface ProjectResponse {
   id: string
@@ -35,6 +39,7 @@ export interface SubmainResponse {
   layoutVersion: number
   hasIsolator: boolean
   terminalsAtBottom: boolean
+  extraFixtures: ExtraFixture[]
   circuitCount: number
   deviceCount: number
 }
@@ -106,6 +111,25 @@ export interface EnclosureType {
   ipRating: string
   totalSlots: number
   description: string
+}
+
+/** A device on the panel that no circuit asks for: a meter, a LAN switch. */
+export interface ExtraFixture {
+  deviceTypeId: string
+  quantity: number
+}
+
+export interface DeviceTypeResponse {
+  id: string
+  manufacturer: string
+  model: string
+  partNumber: string
+  category: DeviceCategory
+  moduleWidth: number
+  channelCount: number
+  maxLoadPerChannelW: number | null
+  maxTotalLoadW: number | null
+  active: boolean
 }
 
 export interface CircuitInput {

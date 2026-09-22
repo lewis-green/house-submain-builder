@@ -7,7 +7,8 @@ public sealed record PreviewRequest(
     // before it has been saved.
     bool? HasIsolator,
     bool? TerminalsAtBottom,
-    IReadOnlyList<CircuitRequest>? Circuits);
+    IReadOnlyList<CircuitRequest>? Circuits,
+    IReadOnlyList<ExtraFixtureRequest>? ExtraFixtures);
 
 public sealed record ChannelResponse(
     int ChannelIndex, Guid? CircuitId, string? CircuitName, string? CircuitRoom, bool IsSpare);

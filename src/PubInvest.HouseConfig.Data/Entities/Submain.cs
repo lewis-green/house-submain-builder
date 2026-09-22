@@ -25,5 +25,6 @@ public class Submain
     public int LayoutVersion { get; set; }
 
     public List<CircuitRow> Circuits { get; set; } = [];
+    public List<ExtraFixtureRow> ExtraFixtures { get; set; } = [];
     public List<DeviceInstance> Devices { get; set; } = [];
 }

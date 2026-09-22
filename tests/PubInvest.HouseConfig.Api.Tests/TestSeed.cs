@@ -19,6 +19,10 @@ public static class TestSeed
     public static readonly Guid DcNegId    = new("aaaa0000-0000-4000-8000-00000000000b");
     public static readonly Guid BridgeId   = new("aaaa0000-0000-4000-8000-000000000008");
     public static readonly Guid EndStopId  = new("aaaa0000-0000-4000-8000-000000000009");
+    public static readonly Guid CoverId    = new("aaaa0000-0000-4000-8000-00000000000c");
+    public static readonly Guid RgbwId     = new("aaaa0000-0000-4000-8000-00000000000d");
+    public static readonly Guid MeterId    = new("aaaa0000-0000-4000-8000-00000000000e");
+    public static readonly Guid LanId      = new("aaaa0000-0000-4000-8000-00000000000f");
 
     public static readonly Guid EnclosureId     = new("bbbb0000-0000-4000-8000-000000000001");
     public static readonly Guid TinyEnclosureId = new("bbbb0000-0000-4000-8000-000000000002");
@@ -29,6 +33,12 @@ public static class TestSeed
     private static PackingZone Termination => new(
         FromLeft: [DeviceCategory.Terminal240, DeviceCategory.Dc24VPositive, DeviceCategory.Dc24VNegative],
         FromRight: [DeviceCategory.Isolator]);
+
+    /// Covers and LED controllers from the left, meters and network gear from
+    /// the right — the same rail the shipped seed gives them.
+    private static PackingZone Extras => new(
+        FromLeft: [DeviceCategory.Cover, DeviceCategory.LedController],
+        FromRight: [DeviceCategory.EnergyMeter, DeviceCategory.Network]);
 
     public static SeedDocument Document() => new(
         Version: 1,
@@ -44,7 +54,11 @@ public static class TestSeed
             new SeedDeviceType(DcNegId,    "WAGO",   "12-way -24V",     "T-DC-",    "Dc24VNegative", 4, 12, null, null, true),
             new SeedDeviceType(TerminalId, "Test",   "Terminal",        "T-TB",     "Terminal240", 1, 0, null, null, true),
             new SeedDeviceType(BridgeId,   "Test",   "Jumper bar",      "T-BAR",    "Accessory",   0, 0, null, null, true),
-            new SeedDeviceType(EndStopId,  "Test",   "End stop",        "T-STOP",   "Accessory",   0, 0, null, null, true)
+            new SeedDeviceType(EndStopId,  "Test",   "End stop",        "T-STOP",   "Accessory",   0, 0, null, null, true),
+            new SeedDeviceType(CoverId,    "Shelly", "Test Dual Cover", "T-COVER",  "Cover",       4, 2, null, null, true),
+            new SeedDeviceType(RgbwId,     "Shelly", "Test RGBWW",      "T-RGBWW",  "LedController", 4, 5, null, null, true),
+            new SeedDeviceType(MeterId,    "Shelly", "Test 3EM",        "T-3EM",    "EnergyMeter", 6, 3, null, null, true),
+            new SeedDeviceType(LanId,      "Shelly", "Test LAN Switch", "T-LAN",    "Network",     4, 5, null, null, true)
         ],
         Enclosures:
         [
@@ -63,6 +77,7 @@ public static class TestSeed
                         new PackingZone([DeviceCategory.Dimmer240], []),
                         new PackingZone([DeviceCategory.Dimmer0_10V], []),
                         new PackingZone([], [DeviceCategory.Relay]),
+                        Extras,
                     ]),
 
                     // Then: the two sorts of dimmer share a row, but from opposite ends
@@ -73,6 +88,18 @@ public static class TestSeed
                         Termination,
                         new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Dimmer0_10V]),
                         new PackingZone([], [DeviceCategory.Relay]),
+                        Extras,
+                    ]),
+
+                    // Then: the new gear joins the relay rail rather than everything
+                    // being merged onto one.
+                    new PanelLayoutOption(
+                    [
+                        Termination,
+                        new PackingZone([DeviceCategory.Dimmer240], [DeviceCategory.Dimmer0_10V]),
+                        new PackingZone(
+                            [DeviceCategory.Cover, DeviceCategory.LedController],
+                            [DeviceCategory.Relay, DeviceCategory.EnergyMeter, DeviceCategory.Network]),
                     ]),
 
                     // Last resort: all three on one row. A row has only two ends, so the
@@ -81,8 +108,9 @@ public static class TestSeed
                     [
                         Termination,
                         new PackingZone(
-                            [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V],
-                            [DeviceCategory.Relay]),
+                            [DeviceCategory.Dimmer240, DeviceCategory.Dimmer0_10V,
+                             DeviceCategory.Cover, DeviceCategory.LedController],
+                            [DeviceCategory.Relay, DeviceCategory.EnergyMeter, DeviceCategory.Network]),
                     ]),
                 ],
                 PsuDeratingFactor: 0.8m,
@@ -91,6 +119,8 @@ public static class TestSeed
                     Dimmer240: DimmerId,
                     Dimmer0_10V: TapeDimId,
                     Relay: RelayId,
+                    Cover: CoverId,
+                    LedController: RgbwId,
                     Dc24VPositive: DcPosId,
                     Dc24VNegative: DcNegId,
                     ExternalDriver: [Psu240Id, Psu100Id]),

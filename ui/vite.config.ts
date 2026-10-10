@@ -8,10 +8,11 @@ export default defineConfig({
   server: {
     port: 5173,
     // One origin in development, so CORS is a production concern rather than
-    // something to fight locally.
+    // something to fight locally. The target can be overridden so the e2e
+    // suite can run its own Vite against its own, throwaway API.
     proxy: {
       '/api': {
-        target: 'http://localhost:5020',
+        target: process.env.API_URL ?? 'http://localhost:5020',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api/, ''),
       },

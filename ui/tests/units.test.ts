@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SLOT_UNITS_PER_MODULE, formatModules, toModules } from '../src/units'
+import { SLOT_UNITS_PER_MODULE, formatModuleCount, formatModules, toModules } from '../src/units'
 
 describe('slot units', () => {
   it('counts three slot units to a DIN module', () => {
@@ -9,12 +9,18 @@ describe('slot units', () => {
   })
 
   it('formats a whole module without a decimal point', () => {
-    expect(formatModules(3)).toBe('1T')
-    expect(formatModules(9)).toBe('3T')
+    expect(formatModuleCount(3)).toBe('1')
+    expect(formatModuleCount(9)).toBe('3')
   })
 
   it('formats a part module to one decimal place', () => {
-    expect(formatModules(1)).toBe('0.3T')
-    expect(formatModules(4)).toBe('1.3T')
+    expect(formatModuleCount(1)).toBe('0.3')
+    expect(formatModuleCount(4)).toBe('1.3')
+  })
+
+  it('spells the unit out, because "T" means nothing to a newcomer', () => {
+    expect(formatModules(3)).toBe('1 module')
+    expect(formatModules(4)).toBe('1.3 modules')
+    expect(formatModules(9)).toBe('3 modules')
   })
 })

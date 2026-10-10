@@ -1,9 +1,20 @@
 import type { PlacedDeviceResponse } from '../api/types'
 
-/** Pixels per slot unit. A DIN module is three of these, so a module is 24px. */
-export const SLOT_PX = 8
-export const ROW_PX = 72
-export const ROW_GAP = 16
+/**
+ * Pixels per slot unit at zoom 1. A DIN module is three of these, so a module
+ * is 54px: wide enough that a one-module dimmer, drawn with its gutters, is
+ * still a 45px target under a thumb at default zoom.
+ */
+export const SLOT_PX = 18
+export const ROW_PX = 96
+export const ROW_GAP = 24
+
+/**
+ * Breathing space between neighbours on the rail, so two 1T dimmers read as
+ * two: with a 1px stroke that leaves 8px between them and 45px of device to
+ * tap, and 8px still once a selected device's 3px accent stroke is drawn.
+ */
+export const DEVICE_INSET = 5
 
 export const slotToX = (slot: number) => slot * SLOT_PX
 export const rowToY = (row: number) => row * (ROW_PX + ROW_GAP)

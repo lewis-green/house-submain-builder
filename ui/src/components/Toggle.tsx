@@ -6,20 +6,22 @@ interface Props {
   onChange: (checked: boolean) => void
 }
 
-/** A checkbox with room for a line explaining what it changes. */
+/** A checkbox with room for a line explaining what it changes. The whole row is the target. */
 export function Toggle({ label, hint, checked, disabled, onChange }: Props) {
   return (
-    <label className="flex min-h-11 items-start gap-3">
+    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg active:bg-press">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={e => onChange(e.target.checked)}
-        className="mt-1 size-5 shrink-0 rounded border-slate-300"
+        className="checkbox"
       />
-      <span>
-        <span className="block text-sm font-medium text-slate-700">{label}</span>
-        {hint && <span className="block text-xs text-slate-500">{hint}</span>}
+      {/* min-w-0 and wrap-anywhere: beside a 44px box on a 320px phone at 200% text,
+          a word like "terminations" has to break rather than push the page sideways. */}
+      <span className="min-w-0 wrap-anywhere">
+        <span className="block font-medium">{label}</span>
+        {hint && <span className="block text-sm text-ink-2">{hint}</span>}
       </span>
     </label>
   )

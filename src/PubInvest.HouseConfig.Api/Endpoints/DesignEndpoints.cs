@@ -31,6 +31,27 @@ public static class DesignEndpoints
             })
             .WithTags("Design");
 
+        // Stateless: the wizard previews a submain that does not exist yet, so
+        // backing out of it leaves nothing behind in the house.
+        app.MapPost("/projects/{projectId:guid}/design/preview", async (
+                Guid projectId,
+                PreviewRequest request,
+                HouseConfigDbContext db,
+                DesignService service,
+                CancellationToken ct) =>
+            {
+                if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return Results.NotFound();
+
+                var (response, error) = await service.PreviewUnsavedAsync(request, ct);
+                if (error is not null)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["design"] = [error] });
+                }
+
+                return Results.Ok(response);
+            })
+            .WithTags("Design");
+
         app.MapPost("/submains/{id:guid}/design/generate", async (
                 Guid id,
                 PreviewRequest? request,

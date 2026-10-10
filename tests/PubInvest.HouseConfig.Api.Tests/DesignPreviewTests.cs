@@ -95,6 +95,55 @@ public class DesignPreviewTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task A_house_can_preview_a_submain_that_has_not_been_saved()
+    {
+        var client = factory.CreateClient();
+        await using (var db = factory.NewDbContext())
+        {
+            await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
+        }
+
+        var project = await (await client.PostAsJsonAsync("/projects", new { name = $"Unsaved {Guid.NewGuid()}" }))
+            .Content.ReadFromJsonAsync<ProjectDto>();
+
+        var response = await client.PostAsJsonAsync($"/projects/{project!.Id}/design/preview", new
+        {
+            enclosureTypeId = TestSeed.EnclosureId,
+            ruleSetId = TestSeed.RuleSetId,
+            hasIsolator = true,
+            circuits = new object[]
+            {
+                new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 },
+                new { type = "Switched", name = "Switched 1", sequence = 2 }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var design = await response.Content.ReadFromJsonAsync<DesignDto>();
+        Assert.Contains(design!.Layout.Devices, d => d.Category == "Dimmer240");
+        Assert.Contains(design.Layout.Devices, d => d.Category == "Isolator");
+
+        // The whole point: the house still has no submain in it.
+        var submains = await client.GetFromJsonAsync<SubmainDto[]>($"/projects/{project.Id}/submains");
+        Assert.Empty(submains!);
+    }
+
+    [Fact]
+    public async Task An_unsaved_preview_without_an_enclosure_is_a_validation_problem()
+    {
+        var client = factory.CreateClient();
+        var project = await (await client.PostAsJsonAsync("/projects", new { name = "No enclosure" }))
+            .Content.ReadFromJsonAsync<ProjectDto>();
+
+        var response = await client.PostAsJsonAsync($"/projects/{project!.Id}/design/preview", new
+        {
+            circuits = new object[] { new { type = "Switched", name = "Switched 1", sequence = 1 } }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Preview_honours_an_overridden_circuit_list()
     {
         var client = factory.CreateClient();

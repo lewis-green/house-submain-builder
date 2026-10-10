@@ -177,6 +177,12 @@ public sealed class PanelDocument(
     private static string Modules(int slotUnits) =>
         DinUnits.ToModules(slotUnits).ToString("0.##", CultureInfo.InvariantCulture);
 
+    /// A position as the screen says it: the first module is module 1, and a
+    /// device starting a third of the way in is at "module 1.3" — the same one
+    /// decimal the device sheet shows (ui/src/units.ts formatModuleCount).
+    private static string ModulePosition(int startSlot) =>
+        (DinUnits.ToModules(startSlot) + 1).ToString("0.#", CultureInfo.InvariantCulture);
+
     private Dictionary<Guid, string> CircuitNames() =>
         snapshot.Circuits.ToDictionary(c => c.Id, c => c.Name);
 
@@ -186,7 +192,7 @@ public sealed class PanelDocument(
         foreach (var category in present)
         {
             var count = snapshot.Layout.Devices.Count(d => d.Category == category);
-            yield return $"{count} × {category}";
+            yield return $"{count} × {Wording.Kind(category)}";
         }
     }
 
@@ -207,10 +213,10 @@ public sealed class PanelDocument(
                 yield return new ScheduleRow(
                     circuit?.Name ?? "— spare —",
                     circuit?.Room ?? "",
-                    circuit?.Type ?? "",
+                    circuit is null ? "" : Wording.CircuitType(circuit.Type),
                     device.Label,
                     (channel.ChannelIndex + 1).ToString(CultureInfo.InvariantCulture),
-                    $"row {device.RowIndex + 1}, module {Modules(device.StartSlot)}");
+                    $"row {device.RowIndex + 1}, module {ModulePosition(device.StartSlot)}");
             }
         }
     }

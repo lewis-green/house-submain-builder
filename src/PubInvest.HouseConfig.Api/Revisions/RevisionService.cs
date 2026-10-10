@@ -17,12 +17,70 @@ public sealed class RevisionService(HouseConfigDbContext db)
         string issuedBy,
         CancellationToken ct)
     {
+        var (snapshot, submain, error) = await BuildAsync(submainId, ct);
+        if (snapshot is null || submain is null) return (null, error);
+
+        var revision = new PanelRevision
+        {
+            Id = Guid.NewGuid(),
+            SubmainId = submainId,
+            LayoutVersion = submain.LayoutVersion,
+            SnapshotJson = JsonSerializer.Serialize(snapshot, DomainMapper.Json),
+            IssuedAt = DateTimeOffset.UtcNow,
+            IssuedBy = issuedBy,
+        };
+
+        db.PanelRevisions.Add(revision);
+        await db.SaveChangesAsync(ct);
+
+        return (revision, null);
+    }
+
+    /// Whether a revision still says what the submain says now: its embedded
+    /// snapshot is compared, byte for byte, with the one issuing this moment
+    /// would embed. That covers everything the drawing and schedule print — a
+    /// moved device, a renamed circuit or room, a changed fixture or install
+    /// option, a renamed submain — without the client having to know which
+    /// edits matter. LayoutVersion alone cannot: a rename changes no geometry,
+    /// so it never bumped the version, and the PDF went quietly out of date.
+    /// A submain that can no longer be issued (no panel, say) is current to
+    /// no revision.
+    public async Task<Func<PanelRevision, bool>> CurrentCheckAsync(Guid submainId, CancellationToken ct)
+    {
+        var (snapshot, _, _) = await BuildAsync(submainId, ct);
+        var now = snapshot is null ? null : JsonSerializer.Serialize(snapshot, DomainMapper.Json);
+        // The stored JSON goes once through the model before the comparison, so a
+        // revision issued before a field joined the snapshot is judged on what it
+        // says, not on the shape of its text.
+        return revision => now is not null && JsonSerializer.Serialize(Read(revision), DomainMapper.Json) == now;
+    }
+
+    /// Where a revision stands in its submain's history, counted from one in the
+    /// order they were issued: the "revision 3" a drawing is referred to by. The
+    /// same order as ListAsync, so the number a revision is issued with is the
+    /// number the list gives it — including when two were issued in the same
+    /// tick, where the clock alone could not separate them.
+    public async Task<int> NumberOfAsync(PanelRevision revision, CancellationToken ct)
+        => (await Ordered(revision.SubmainId).Select(r => r.Id).ToListAsync(ct)).IndexOf(revision.Id) + 1;
+
+    /// Oldest first. A timestamp can tie, so the id breaks the tie, and every
+    /// place that orders revisions comes here to agree on it.
+    private IOrderedQueryable<PanelRevision> Ordered(Guid submainId)
+        => db.PanelRevisions
+            .Where(r => r.SubmainId == submainId)
+            .OrderBy(r => r.IssuedAt)
+            .ThenBy(r => r.Id);
+
+    private async Task<(RevisionSnapshot? Snapshot, Submain? Submain, string? Error)> BuildAsync(
+        Guid submainId,
+        CancellationToken ct)
+    {
         var submain = await db.Submains
             .Include(s => s.Circuits)
             .Include(s => s.Project)
             .SingleOrDefaultAsync(s => s.Id == submainId, ct);
 
-        if (submain is null) return (null, null);
+        if (submain is null) return (null, null, null);
 
         var devices = await db.DeviceInstances
             .Include(d => d.Channels)
@@ -32,22 +90,22 @@ public sealed class RevisionService(HouseConfigDbContext db)
 
         if (devices.Count == 0)
         {
-            return (null, "This submain has no panel yet. Generate one before issuing a revision.");
+            return (null, null, "This submain has no panel yet. Generate one before issuing a revision.");
         }
 
         if (submain.EnclosureTypeId is null)
         {
-            return (null, "This submain has no enclosure.");
+            return (null, null, "This submain has no enclosure.");
         }
 
         var enclosureRow = await db.Enclosures.SingleOrDefaultAsync(e => e.Id == submain.EnclosureTypeId, ct);
-        if (enclosureRow is null) return (null, "This submain's enclosure is not in the catalogue.");
+        if (enclosureRow is null) return (null, null, "This submain's enclosure is not in the catalogue.");
 
         var ruleSetRow = submain.RuleSetId is null
             ? await db.RuleSets.FirstOrDefaultAsync(r => r.IsDefault, ct)
             : await db.RuleSets.SingleOrDefaultAsync(r => r.Id == submain.RuleSetId, ct);
 
-        if (ruleSetRow is null) return (null, "No ruleset is available.");
+        if (ruleSetRow is null) return (null, null, "No ruleset is available.");
 
         // Only the device types actually placed: a revision records what this
         // panel is made of, not the whole catalogue as it happened to look.
@@ -106,38 +164,22 @@ public sealed class RevisionService(HouseConfigDbContext db)
             rules,
             catalogue.Concat(accessoryTypes).DistinctBy(t => t.Id).OrderBy(t => t.PartNumber).ToList(),
             DomainMapper.ToDomain(enclosureRow),
-            bom);
+            bom,
+            submain.HasIsolator,
+            submain.TerminalsAtBottom);
 
-        var revision = new PanelRevision
-        {
-            Id = Guid.NewGuid(),
-            SubmainId = submainId,
-            LayoutVersion = submain.LayoutVersion,
-            SnapshotJson = JsonSerializer.Serialize(snapshot, DomainMapper.Json),
-            IssuedAt = DateTimeOffset.UtcNow,
-            IssuedBy = issuedBy,
-        };
-
-        db.PanelRevisions.Add(revision);
-        await db.SaveChangesAsync(ct);
-
-        return (revision, null);
+        return (snapshot, submain, null);
     }
 
     public async Task<PanelRevision?> FindAsync(Guid revisionId, CancellationToken ct)
         => await db.PanelRevisions.SingleOrDefaultAsync(r => r.Id == revisionId, ct);
 
     public async Task<PanelRevision?> LatestAsync(Guid submainId, CancellationToken ct)
-        => await db.PanelRevisions
-            .Where(r => r.SubmainId == submainId)
-            .OrderByDescending(r => r.IssuedAt)
-            .FirstOrDefaultAsync(ct);
+        => await Ordered(submainId).LastOrDefaultAsync(ct);
 
+    /// Newest first.
     public async Task<List<PanelRevision>> ListAsync(Guid submainId, CancellationToken ct)
-        => await db.PanelRevisions
-            .Where(r => r.SubmainId == submainId)
-            .OrderByDescending(r => r.IssuedAt)
-            .ToListAsync(ct);
+        => await Ordered(submainId).Reverse().ToListAsync(ct);
 
     public static RevisionSnapshot Read(PanelRevision revision)
         => JsonSerializer.Deserialize<RevisionSnapshot>(revision.SnapshotJson, DomainMapper.Json)

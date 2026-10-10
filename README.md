@@ -78,13 +78,17 @@ don't commit it filled.
 3. **Generate panel**. The drawing appears to scale: termination across the top
    row — circuit terminals, then a +24V and a -24V joint for each tape run, then
    the two-pole isolator hard against the right — and the Shelly kit below it.
+   The submain and its panel are saved in one transaction, so a design the
+   generator refuses, or a request that fails on the way, leaves nothing in the
+   house.
 4. **Tap a device** to name its channels: a room and a circuit name for each
    one, with the rooms already used in the house offered as you type. Both reach
    the drawing and the schedule.
 5. **Long-press and drag** a device to move it. Invalid targets go red; the move
    is saved and survives re-generation.
 6. **Issue & download PDF** on the panel screen. Page 1 is the drawing, page 2
-   the circuit schedule and bill of materials.
+   the circuit schedule and bill of materials. Revisions are numbered by the
+   server, and the screen says when the PDF on offer is behind the panel.
 7. **Bill of materials** lists the parts to order, with anything not mounted in
    the panel (the LED driver) marked as external.
 
@@ -111,17 +115,35 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 230 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 113 tests
+dotnet test          # 284 tests. Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 207 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
+cd ui && npm run lint    # oxlint, 0 warnings
 ```
 
 CI runs all of these on every push and pull request, builds both container
 images, and pushes them to GHCR from `main`.
 
-`ui/e2e/` holds a Playwright suite covering the touch-drag path. It has never
-been run here — the chromium download times out on this network. `npx playwright
-install chromium` then `npm run test:e2e`, with the API and database already up.
+### End to end, in Mobile Safari's engine
+
+`ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
+touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
+horizontal overflow at four widths and again with 200% text, the wizard, Home
+Screen metadata, and a few checks with a mouse (30 tests). It brings up its own stack and takes it down again, so it needs
+nothing running first and never touches a development database:
+
+```bash
+cd ui
+npx playwright install webkit   # once
+npm run test:e2e
+```
+
+What it starts (see `ui/e2e/stack.ts`): a throwaway `postgres:17` container
+on port 55434, the API on port 5021 pointed at it (`dotnet run`, so the API
+must have been restored and built once), and Vite on port 5199 proxying
+`/api` to that API. All three ports, the `docker` and `dotnet` binaries, can
+be overridden with `E2E_DB_PORT`, `E2E_API_PORT`, `E2E_UI_PORT`, `E2E_DOCKER`
+and `E2E_DOTNET`. The container is removed afterwards, data and all.
 
 ## How it fits together
 
@@ -164,8 +186,23 @@ top or the bottom, and whether this submain is isolated upstream, are stored on
 the submain and changeable on the panel screen. The packer always builds
 downward from row 0; a bottom-fed panel is the same layout mirrored, so one
 ladder of rules describes both and the spare row ends up away from the glands.
+Changing either on the panel screen is one request — `PATCH /submains/{id}`
+with `rebuild: true` — that saves the option and regenerates the panel in the
+same transaction, so a rebuild the generator refuses leaves the option as it
+was. (`POST /projects/{id}/submains` with `generate: true` is the wizard's
+equivalent.)
 
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or
 a part next month cannot retroactively change what a drawing in someone's folder
-said.
+said. The same snapshot is how the server knows whether a PDF is still current:
+`GET /submains/{id}/revisions` compares what each revision embeds with what
+issuing now would embed, so a renamed circuit or room — which moves no device
+and bumps no layout version — still marks the PDF on offer as out of date. The
+snapshot includes the two install options, so an option saved without a rebuild
+reads as out of date too.
+
+**Sign-in is a separate chunk.** `main.tsx` imports the OIDC provider and gate
+only when the runtime config names an identity provider, so installs that leave
+sign-in off (development, and any deployment with the two settings blank) never
+download that code.

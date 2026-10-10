@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -117,6 +117,61 @@ describe('PanelPage', () => {
     expect(screen.getByDisplayValue('Kitchen ceiling')).toBeInTheDocument()
   })
 
+  it('asks the server again whether the PDF is current after a circuit is renamed', async () => {
+    // The server decides staleness by comparing snapshots; the page only has to
+    // ask again after a save. Here the list says "current" until the rename lands.
+    let renamed = false
+    const fetchMock = stub(
+      () => json(design()),
+      url => {
+        if (url === '/api/submains/s1/revisions') {
+          return json([{ id: 'r1', submainId: 's1', number: 1, layoutVersion: 4, issuedAt: '2026-01-01', issuedBy: 'a', current: !renamed }])
+        }
+        if (url === '/api/circuits/c1') { renamed = true; return json({ id: 'c1', name: 'Island pendants', room: 'Kitchen' }) }
+        return undefined
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    expect(await screen.findByRole('link', { name: /open pdf \(revision 1\)/i })).toBeInTheDocument()
+    expect(screen.queryByText(/changed since that pdf/i)).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /dimmer 1/i }))
+    const name = await screen.findByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Island pendants{Enter}')
+
+    expect(await screen.findByText(/changed since that pdf was issued/i)).toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(c => c[0] === '/api/submains/s1/revisions').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('says when a circuit save fails and sends the same words again on the next Return', async () => {
+    let failures = 1
+    const fetchMock = stub(
+      () => json(design()),
+      url => {
+        if (url !== '/api/circuits/c1') return undefined
+        if (failures-- > 0) return json({ title: 'Store down' }, 500)
+        return json({ id: 'c1', name: 'Retry me', room: 'Kitchen' })
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: /dimmer 1/i }))
+    const name = await screen.findByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Retry me{Enter}')
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/not saved: store down/i))
+    expect(name).toHaveValue('Retry me')
+
+    await userEvent.click(name)
+    await userEvent.keyboard('{Enter}')
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/saved retry me/i))
+    expect(fetchMock.mock.calls.filter(c => c[0] === '/api/circuits/c1' && c[1]?.method === 'PATCH')).toHaveLength(2)
+  })
+
   it('reloads rather than erroring when an edit conflicts', async () => {
     const fetchMock = stub(
       () => json(design()),
@@ -126,6 +181,7 @@ describe('PanelPage', () => {
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: /dimmer 1/i }))
     await userEvent.click(screen.getByRole('button', { name: /free this channel/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^free it$/i }))
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/reloading/i))
   })
@@ -139,7 +195,7 @@ describe('PanelPage', () => {
     expect(screen.getByLabelText(/cables enter at the bottom/i)).not.toBeChecked()
   })
 
-  it('saves the option and rebuilds the panel when the install changes', async () => {
+  it('saves the option and rebuilds the panel in one request when the install changes', async () => {
     const fetchMock = stub(() => json(design()))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -147,10 +203,67 @@ describe('PanelPage', () => {
     await userEvent.click(await screen.findByLabelText(/cables enter at the bottom/i))
 
     await waitFor(() => {
-      expect(patchBody(fetchMock, '/api/submains/s1')).toMatchObject({ terminalsAtBottom: true })
+      expect(patchBody(fetchMock, '/api/submains/s1')).toMatchObject({ terminalsAtBottom: true, rebuild: true })
     })
 
-    expect(fetchMock.mock.calls.map(c => c[0])).toContain('/api/submains/s1/design/generate')
+    // One transaction on the server, so there is no second call for a failure to fall between.
+    expect(fetchMock.mock.calls.map(c => c[0])).not.toContain('/api/submains/s1/design/generate')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/panel rebuilt/i))
+  })
+
+  it('rebuilds once when a fixture is added twice in the same tick', async () => {
+    const fetchMock = stub(() => json(design()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.selectOptions(await screen.findByLabelText('Device to add'), 'meter')
+    // Before React has rendered the controls disabled: only a synchronous guard stops the second rebuild.
+    const add = screen.getByRole('button', { name: 'Add' })
+    await act(async () => { add.click(); add.click() })
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/panel rebuilt/i))
+    expect(fetchMock.mock.calls.filter(c => c[0] === '/api/submains/s1' && c[1]?.method === 'PATCH')).toHaveLength(1)
+  })
+
+  it('leaves the toggle as stored and says why when the server refuses to rebuild', async () => {
+    // The refused design comes back as a 422 with its diagnostics; nothing was stored.
+    const refused = {
+      ...design(),
+      diagnostics: [{ severity: 'Error', code: 'ENCLOSURE_TOO_SMALL', message: 'This design needs 5 rows of 18 modules; the box has 4.', suggestion: null }],
+    }
+    const underlying = stub(() => json(design()))
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) =>
+      url === '/api/submains/s1' && init?.method === 'PATCH' ? json(refused, 422) : underlying(url, init)))
+
+    renderPage()
+    const toggle = await screen.findByLabelText(/cables enter at the bottom/i)
+    await userEvent.click(toggle)
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/panel not rebuilt: this design needs 5 rows/i))
+    // The server stored nothing, so the option reads as it did; no half-applied state.
+    expect(screen.getByLabelText(/cables enter at the bottom/i)).not.toBeChecked()
+    expect(screen.getByLabelText(/cables enter at the bottom/i)).toBeEnabled()
+  })
+
+  it('says so in Other devices, with a retry, when the catalogue fails to load', async () => {
+    let failing = true
+    const underlying = stub(() => json(design()))
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) =>
+      url === '/api/catalogue/device-types' && failing ? json({ title: 'Catalogue down' }, 500) : underlying(url, init)))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/device catalogue could not be loaded/i)
+    expect(alert).toHaveTextContent(/catalogue down/i)
+    expect(screen.queryByLabelText('Device to add')).not.toBeInTheDocument()
+
+    failing = false
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }))
+
+    expect(await screen.findByLabelText('Device to add')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('turning the isolator off does not also send the other option', async () => {
@@ -165,6 +278,92 @@ describe('PanelPage', () => {
       expect(body.hasIsolator).toBe(false)
       expect(body).not.toHaveProperty('terminalsAtBottom')
     })
+  })
+
+  it('says when a circuit has been saved, and keeps saying it for a screen reader', async () => {
+    const fetchMock = stub(() => json(design()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: /dimmer 1/i }))
+    const name = screen.getByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Island pendants')
+    await userEvent.tab()
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/saved island pendants/i))
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('keeps the keyboard in the field being typed in while a save lands', async () => {
+    const fetchMock = stub(() => json(design()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: /dimmer 1/i }))
+
+    // Room commits when the thumb moves on to Circuit name; the PATCH and the
+    // reload then land while the next word is being typed.
+    const room = screen.getByLabelText('Room')
+    await userEvent.clear(room)
+    await userEvent.type(room, 'Snug')
+    await userEvent.tab()
+    const name = screen.getByLabelText('Circuit name')
+    expect(document.activeElement).toBe(name)
+    await userEvent.type(name, ' Isl')
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/saved/i))
+    await waitFor(() => expect(fetchMock.mock.calls.filter(c => String(c[0]).endsWith('/layout'))).toHaveLength(2))
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Circuit name'))
+    expect(screen.getByLabelText('Circuit name')).toHaveValue('Kitchen ceiling Isl')
+  })
+
+  it('puts the drawing before the install options, the PDF action in the action bar and the parts list in the nav', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+
+    const drawing = screen.getByRole('group', { name: /^panel/i })
+    const options = screen.getByText(/install options/i)
+    expect(drawing.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: /issue pdf/i })).toBeInTheDocument()
+    // Bill of materials is a place to go, so it lives with the title and leaves the bar to the PDF pair.
+    const bom = screen.getByRole('link', { name: /bill of materials/i })
+    expect(screen.getByRole('navigation').contains(bom)).toBe(true)
+    expect(screen.getByRole('main')).toBeInTheDocument()
+    expect(document.title).toMatch(/ground floor/i)
+  })
+
+  it('keeps the row labels outside the drawing, where they stay on screen, and offers an overview strip', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+
+    const svg = screen.getByRole('group', { name: /^panel/i })
+    expect(svg.textContent).not.toMatch(/Row 1/)
+    const gutter = screen.getByText('Row 2').parentElement!
+    expect(gutter.className).toMatch(/sticky/)
+    expect(gutter.querySelectorAll('div')).toHaveLength(4)
+    // jsdom has no layout, so the strip cannot know what is in view and says so plainly.
+    expect(screen.getByText(/18 modules wide\. scroll sideways/i)).toBeInTheDocument()
+  })
+
+  it('says when the devices are too small to tap, so Fit width is honest about what it shows', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+    expect(screen.getByText(/tap a device to name its circuits/i)).toBeInTheDocument()
+
+    // Four steps out from 1× is 0.41×: a one-module dimmer is 12px wide.
+    for (let i = 0; i < 4; i++) await userEvent.click(screen.getByRole('button', { name: 'Zoom out' }))
+
+    expect(screen.getByText(/too small to tap/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '1×' }))
+    expect(screen.getByText(/tap a device to name its circuits/i)).toBeInTheDocument()
   })
 
   it('tells the engineer when a submain has no panel yet', async () => {

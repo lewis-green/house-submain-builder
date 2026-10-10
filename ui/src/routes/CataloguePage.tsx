@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type { DeviceTypeResponse, EnclosureType } from '../api/types'
+import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
-import { Spinner } from '../components/Spinner'
+import { Skeleton } from '../components/Skeleton'
+import { announce } from '../components/status'
 import { SLOT_UNITS_PER_MODULE, formatModules } from '../units'
 
 type DeviceTypeView = DeviceTypeResponse
@@ -32,59 +33,71 @@ export function CataloguePage() {
 
   useEffect(() => { void load() }, [])
 
-  if (error) return <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />
-  if (!devices || !enclosures) return <Spinner label="Loading catalogue" />
+  const loaded = devices !== null && enclosures !== null
 
   return (
-    <div className="space-y-6 p-4">
-      <div>
-        <Link to="/" className="text-sm text-slate-500">← Houses</Link>
-        <h1 className="mt-1 text-xl font-semibold">Catalogue</h1>
-      </div>
+    <AppShell
+      title="Catalogue"
+      subtitle="The parts a panel can be built from"
+      back={{ to: '/', label: 'Houses' }}
+    >
+      {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
+      {!loaded && !error && <Skeleton label="Loading catalogue" rows={5} rowClass="h-20" />}
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-700">Devices</h2>
-        <ul className="space-y-2">
-          {devices.map(device => (
-            <li key={device.id} className="rounded-lg border border-slate-200 p-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">{device.manufacturer} {device.model}</span>
-                <span className="shrink-0 text-sm text-slate-500">
-                  {device.category === 'Terminal240'
-                    ? `${SLOT_UNITS_PER_MODULE / device.moduleWidth} per module`
-                    : formatModules(device.moduleWidth)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500">{device.partNumber}</p>
-              {!device.active && <p className="text-sm text-amber-700">Inactive</p>}
-              <Button variant="ghost" className="mt-1" onClick={() => setEditing(device)}>Edit</Button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {loaded && (
+        <>
+          <section aria-labelledby="devices-heading">
+            <h2 id="devices-heading" className="mb-2 font-semibold">Devices</h2>
+            <ul className="divide-y divide-rule border-y border-rule">
+              {devices.map(device => (
+                <li key={device.id} className="py-3">
+                  {editing?.id === device.id ? (
+                    <DeviceTypeForm
+                      device={device}
+                      onClose={() => setEditing(null)}
+                      onSaved={() => { setEditing(null); announce(`Saved ${device.manufacturer} ${device.model}`, 'ok'); void load() }}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{device.manufacturer} {device.model}</p>
+                        <p className="text-ink-2">
+                          {device.partNumber}
+                          {' · '}
+                          {device.category === 'Terminal240'
+                            ? `${SLOT_UNITS_PER_MODULE / device.moduleWidth} per module`
+                            : device.moduleWidth === 0
+                              ? 'takes no rail space'
+                              : `${formatModules(device.moduleWidth)} wide`}
+                        </p>
+                        {!device.active && <p className="text-sm font-medium text-warn">Inactive</p>}
+                      </div>
+                      <Button variant="secondary" onClick={() => setEditing(device)} aria-label={`Edit ${device.manufacturer} ${device.model}`}>
+                        Edit
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-700">Enclosures</h2>
-        <ul className="space-y-2">
-          {enclosures.map(enclosure => (
-            <li key={enclosure.id} className="rounded-lg border border-slate-200 p-3">
-              <span className="font-medium">{enclosure.description}</span>
-              <span className="block text-sm text-slate-500">
-                {enclosure.rows} rows of {enclosure.slotsPerRow / SLOT_UNITS_PER_MODULE} modules
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {editing && (
-        <DeviceTypeForm
-          device={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); void load() }}
-        />
+          <section aria-labelledby="enclosures-heading" className="mt-8">
+            <h2 id="enclosures-heading" className="mb-2 font-semibold">Enclosures</h2>
+            <ul className="divide-y divide-rule border-y border-rule">
+              {enclosures.map(enclosure => (
+                <li key={enclosure.id} className="py-3">
+                  <p className="font-semibold">{enclosure.description}</p>
+                  <p className="text-ink-2">
+                    {enclosure.rows} rows of {enclosure.slotsPerRow / SLOT_UNITS_PER_MODULE} modules
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
-    </div>
+    </AppShell>
   )
 }
 
@@ -141,8 +154,11 @@ export function DeviceTypeForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-300 p-4">
-      <h3 className="font-medium">{device.manufacturer} {device.model}</h3>
+    <form
+      className="space-y-3 rounded-lg border border-rule bg-sheet p-4"
+      onSubmit={e => { e.preventDefault(); void save() }}
+    >
+      <h3 className="font-semibold">{device.manufacturer} {device.model}</h3>
 
       <Field
         label={isTerminal ? 'Blocks per DIN module' : 'Width in DIN modules'}
@@ -150,6 +166,7 @@ export function DeviceTypeForm({
         onChange={setModules}
         type="number"
         inputMode="decimal"
+        enterKeyHint={isTerminal ? 'done' : 'next'}
         hint={isTerminal ? 'Three 2003-7646 fit in one module.' : 'A Shelly Pro Dimmer is 1.'}
         errors={fieldErrors.moduleWidth}
       />
@@ -161,16 +178,17 @@ export function DeviceTypeForm({
           onChange={setChannels}
           type="number"
           inputMode="numeric"
+          enterKeyHint="done"
           errors={fieldErrors.channelCount}
         />
       )}
 
-      {fieldErrors.form && <p role="alert" className="text-sm text-red-600">{fieldErrors.form[0]}</p>}
+      {fieldErrors.form && <p role="alert" className="font-medium text-danger">{fieldErrors.form[0]}</p>}
 
       <div className="flex gap-2">
-        <Button onClick={save} disabled={saving}>Save</Button>
+        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
       </div>
-    </div>
+    </form>
   )
 }

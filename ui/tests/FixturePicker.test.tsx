@@ -73,13 +73,17 @@ describe('FixturePicker', () => {
     // text alone would pass without a row ever being rendered.
     show([{ deviceTypeId: 'lan', quantity: 1 }])
 
-    expect(screen.getByLabelText('Quantity of Shelly LAN Switch')).toHaveValue(1)
+    expect(screen.getByLabelText('Quantity of Shelly LAN Switch')).toHaveValue('1')
   })
 
   it('removes a device from the list', async () => {
     const onChange = show([{ deviceTypeId: 'meter', quantity: 2 }, { deviceTypeId: 'lan', quantity: 1 }])
 
+    // Two taps: a brush against Remove must not rebuild the panel.
     await userEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0])
+    expect(onChange).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove it' }))
 
     expect(onChange).toHaveBeenCalledWith([{ deviceTypeId: 'lan', quantity: 1 }])
   })
@@ -90,6 +94,16 @@ describe('FixturePicker', () => {
     const quantity = screen.getByLabelText(/Quantity of Shelly Pro 3EM/)
     await userEvent.clear(quantity)
 
+    expect(onChange).toHaveBeenLastCalledWith([{ deviceTypeId: 'meter', quantity: 1 }])
+  })
+
+  it('steps a quantity up and down with buttons a thumb can hit', async () => {
+    const onChange = show([{ deviceTypeId: 'meter', quantity: 2 }])
+
+    await userEvent.click(screen.getByRole('button', { name: /more quantity of shelly pro 3em/i }))
+    expect(onChange).toHaveBeenLastCalledWith([{ deviceTypeId: 'meter', quantity: 3 }])
+
+    await userEvent.click(screen.getByRole('button', { name: /fewer quantity of shelly pro 3em/i }))
     expect(onChange).toHaveBeenLastCalledWith([{ deviceTypeId: 'meter', quantity: 1 }])
   })
 

@@ -1,13 +1,15 @@
-import { Link } from 'react-router'
+import { AppShell } from '../components/AppShell'
+import { ButtonLink } from '../components/Button'
+import { EmptyState } from '../components/EmptyState'
 
 export function NotFoundPage() {
   return (
-    <div className="space-y-3 p-6">
-      <h1 className="text-xl font-semibold">Nothing here</h1>
-      <p className="text-slate-600">
-        That address does not match anything in the app.
-      </p>
-      <Link to="/" className="text-sm underline">Back to houses</Link>
-    </div>
+    <AppShell title="Nothing here" back={{ to: '/', label: 'Houses' }}>
+      <EmptyState
+        title="That address does not match anything in the app"
+        hint="The link may be old, or the house it pointed at has gone."
+        action={<ButtonLink to="/" variant="primary">Open the houses list</ButtonLink>}
+      />
+    </AppShell>
   )
 }

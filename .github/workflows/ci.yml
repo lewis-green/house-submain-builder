@@ -62,17 +62,9 @@ jobs:
     name: End to end
     runs-on: ubuntu-latest
     needs: [backend, ui]
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: HouseConfig
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U postgres -d HouseConfig"
-          --health-interval 5s --health-timeout 5s --health-retries 10
+    # No database service and no API step: the suite brings up its own stack —
+    # a throwaway Postgres in Docker, the API and Vite on ports of their own —
+    # and takes it down again (see ui/e2e/stack.ts).
     steps:
       - uses: actions/checkout@v4
 
@@ -86,27 +78,19 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Start the API
-        run: |
-          dotnet run --project src/PubInvest.HouseConfig.Api &
-          for i in $(seq 1 60); do
-            curl -sf http://localhost:5020/health && exit 0
-            sleep 2
-          done
-          echo "API did not become healthy"; exit 1
-        env:
-          ConnectionStrings__HouseConfig: "Host=localhost;Port=5432;Database=HouseConfig;Username=postgres;Password=postgres"
-          HouseConfig__AuthEnabled: "false"
-          HouseConfig__SeedOnStartup: "true"
-          ASPNETCORE_ENVIRONMENT: Development
+      # The suite starts the API with `dotnet run --no-restore` and gives it two
+      # minutes to come up, so the restore and the first build happen here.
+      - name: Build the API
+        run: dotnet build src/PubInvest.HouseConfig.Api
 
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci
 
-      - name: Install Chromium
+      # WebKit, because the suite drives the app as an iPhone in Mobile Safari.
+      - name: Install WebKit
         working-directory: ui
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps webkit
 
       - name: Run Playwright
         working-directory: ui
@@ -116,7 +100,9 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: ui/playwright-report/
+          path: |
+            ui/playwright-report/
+            ui/test-results/
 
   images:
     name: Container images

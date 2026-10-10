@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security;
 using System.Text;
+using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Layout;
 
@@ -24,18 +25,41 @@ public static class PanelSvgRenderer
     /// Below this width no horizontal label fits, so it is drawn rotated.
     private const double NarrowMm = 24.0;
 
-    private static readonly Dictionary<DeviceCategory, (string Fill, string Stroke, string Kind)> Styles = new()
+    /// One entry per DeviceCategory, with the same hues the screen uses
+    /// (ui/src/panel/deviceStyle.ts). The kind printed under the label comes from
+    /// <see cref="Wording"/>, shared with the schedule, so the drawing and the
+    /// schedule use one word for each thing.
+    private static readonly Dictionary<DeviceCategory, (string Fill, string Stroke)> Styles = new()
     {
-        [DeviceCategory.Dimmer240] = ("#bae6fd", "#0284c7", "Dimmer"),
-        [DeviceCategory.Dimmer0_10V] = ("#c7d2fe", "#4f46e5", "Tape dimmer"),
-        [DeviceCategory.Relay] = ("#99f6e4", "#0d9488", "Relay"),
-        [DeviceCategory.Isolator]      = ("#fecaca", "#dc2626", "Isolator"),
-        [DeviceCategory.Dc24VPositive] = ("#fde68a", "#d97706", "+24V"),
-        [DeviceCategory.Dc24VNegative] = ("#e2e8f0", "#64748b", "-24V"),
-        [DeviceCategory.ExternalDriver]= ("#f1f5f9", "#cbd5e1", "Driver (external)"),
-        [DeviceCategory.Terminal240] = ("#e2e8f0", "#94a3b8", "Terminal"),
-        [DeviceCategory.Accessory] = ("#f1f5f9", "#cbd5e1", "Accessory"),
+        [DeviceCategory.Terminal240] = ("#e2e8f0", "#94a3b8"),
+        [DeviceCategory.Isolator] = ("#fecaca", "#dc2626"),
+        [DeviceCategory.Dimmer240] = ("#bae6fd", "#0284c7"),
+        [DeviceCategory.Dimmer0_10V] = ("#c7d2fe", "#4f46e5"),
+        [DeviceCategory.Relay] = ("#99f6e4", "#0d9488"),
+        [DeviceCategory.Cover] = ("#ddd6fe", "#7c3aed"),
+        [DeviceCategory.LedController] = ("#f5d0fe", "#c026d3"),
+        [DeviceCategory.EnergyMeter] = ("#d9f99d", "#65a30d"),
+        [DeviceCategory.Network] = ("#e7e5e4", "#78716c"),
+        [DeviceCategory.Dc24VPositive] = ("#fde68a", "#d97706"),
+        [DeviceCategory.Dc24VNegative] = ("#e2e8f0", "#64748b"),
+        [DeviceCategory.ExternalDriver] = ("#f1f5f9", "#cbd5e1"),
+        [DeviceCategory.Accessory] = ("#f1f5f9", "#cbd5e1"),
     };
+
+    /// A category with no entry above is drawn in neutral grey rather than
+    /// failing the whole PDF: a drawing with one unstyled block is still a
+    /// drawing. Four categories were once added to the generator without a
+    /// style here, and every panel containing one printed a 500.
+    private static readonly (string Fill, string Stroke) Fallback = ("#f8fafc", "#94a3b8");
+
+    private static (string Fill, string Stroke, string Kind) Style(DeviceCategory category)
+    {
+        var colours = Styles.TryGetValue(category, out var style) ? style : Fallback;
+        return (colours.Fill, colours.Stroke, Wording.Kind(category));
+    }
+
+    /// For the test that keeps the table complete, so the fallback never ships.
+    public static bool HasStyle(DeviceCategory category) => Styles.ContainsKey(category);
 
     public static string Render(PanelLayout layout, IReadOnlyDictionary<Guid, string> circuitNames)
     {
@@ -85,7 +109,7 @@ public static class PanelSvgRenderer
                 PanelGeometry.SlotToX(group.Slots),
                 PanelGeometry.RowMm);
 
-            var style = Styles[DeviceCategory.Terminal240];
+            var style = Style(DeviceCategory.Terminal240);
 
             svg.Append(CultureInfo.InvariantCulture,
                 $"<rect x=\"{N(x)}\" y=\"{N(y)}\" width=\"{N(w)}\" height=\"{N(h)}\" rx=\"1\" ")
@@ -108,7 +132,7 @@ public static class PanelSvgRenderer
         foreach (var device in layout.Devices.Where(d => d.Category != DeviceCategory.Terminal240))
         {
             var (x, y, w, h) = PanelGeometry.DeviceBox(device);
-            var style = Styles[device.Category];
+            var style = Style(device.Category);
 
             svg.Append(CultureInfo.InvariantCulture,
                 $"<rect x=\"{N(x)}\" y=\"{N(y)}\" width=\"{N(w)}\" height=\"{N(h)}\" rx=\"1\" ")
@@ -133,11 +157,16 @@ public static class PanelSvgRenderer
                .Append(SecurityElement.Escape(device.Label))
                .Append("</text>");
 
-            svg.Append(CultureInfo.InvariantCulture,
-                $"<text x=\"{N(x + 2)}\" y=\"{N(y + 11)}\" font-size=\"2.6\" ")
-               .Append("fill=\"#64748b\">")
-               .Append(SecurityElement.Escape(style.Kind))
-               .Append("</text>");
+            // The kind under the label, unless the label already is the kind:
+            // "Isolator" over "Isolator" says nothing twice, and the screen skips it too.
+            if (style.Kind != device.Label)
+            {
+                svg.Append(CultureInfo.InvariantCulture,
+                    $"<text x=\"{N(x + 2)}\" y=\"{N(y + 11)}\" font-size=\"2.6\" ")
+                   .Append("fill=\"#64748b\">")
+                   .Append(SecurityElement.Escape(style.Kind))
+                   .Append("</text>");
+            }
 
             var line = 0;
             foreach (var channel in device.Channels.Where(c => c.CircuitId is not null))

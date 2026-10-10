@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Security;
+using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Api.Rendering;
 using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Layout;
@@ -99,6 +101,17 @@ public class PanelSvgRendererTests
     }
 
     [Fact]
+    public void A_kind_that_is_already_the_label_is_not_printed_twice()
+    {
+        var svg = PanelSvgRenderer.Render(Layout(), Names());
+
+        // "Isolator" is both the label and the kind; "Relay 1" still gets "Relay" under it.
+        Assert.Equal(1, svg.Split(">Isolator<").Length - 1);
+        Assert.Contains(">Relay 1<", svg);
+        Assert.Contains(">Relay<", svg);
+    }
+
+    [Fact]
     public void Numbers_use_a_dot_even_under_a_comma_decimal_locale()
     {
         var original = CultureInfo.CurrentCulture;
@@ -176,6 +189,48 @@ public class PanelSvgRendererTests
         }
 
         Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings(), actual.ReplaceLineEndings());
+    }
+
+    /// Four categories were once added to the generator and never to the
+    /// renderer; every panel with a blinds controller in it printed a 500. One
+    /// wide device of each category, rendered: it must draw, in its own colours,
+    /// with its kind in words.
+    [Theory]
+    [MemberData(nameof(EveryCategory))]
+    public void Every_device_category_renders_with_its_own_style(DeviceCategory category)
+    {
+        var device = new PlacedDevice(
+            Guid.NewGuid(), category, 1, 0, 9, $"{category} 1", [], TerminalRole.None);
+        var layout = new PanelLayout(2, 54, [device]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.True(PanelSvgRenderer.HasStyle(category), $"{category} would fall back to grey");
+        Assert.Contains($">{SecurityElement.Escape($"{category} 1")}<", svg);
+        if (category != DeviceCategory.Terminal240)
+        {
+            Assert.Contains($">{SecurityElement.Escape(Wording.Kind(category))}<", svg);
+        }
+    }
+
+    [Fact]
+    public void A_blinds_controller_keeps_its_label_and_is_described_as_blinds()
+    {
+        var cover = new PlacedDevice(
+            Guid.NewGuid(), DeviceCategory.Cover, 1, 0, 9, "Cover 1", [], TerminalRole.None);
+
+        var svg = PanelSvgRenderer.Render(new PanelLayout(2, 54, [cover]), new Dictionary<Guid, string>());
+
+        Assert.Contains(">Cover 1<", svg);
+        Assert.Contains(">Blinds<", svg);
+        Assert.DoesNotContain(">Cover<", svg);
+    }
+
+    public static TheoryData<DeviceCategory> EveryCategory()
+    {
+        var data = new TheoryData<DeviceCategory>();
+        foreach (var category in Enum.GetValues<DeviceCategory>()) data.Add(category);
+        return data;
     }
 
     [Fact]

@@ -1,65 +1,74 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type { BomView } from '../api/types'
+import { AppShell } from '../components/AppShell'
+import { ButtonLink } from '../components/Button'
+import { buttonClass } from '../components/buttonClass'
+import { EmptyState } from '../components/EmptyState'
 import { ErrorNote } from '../components/ErrorNote'
-import { Spinner } from '../components/Spinner'
+import { Skeleton } from '../components/Skeleton'
 
 export function BomPage() {
   const { projectId, submainId } = useParams()
   const scope = submainId ? `/submains/${submainId}` : `/projects/${projectId}`
+  const backTo = submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
 
   const [bom, setBom] = useState<BomView | null>(null)
+  const [notIssued, setNotIssued] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = () =>
+  const load = useCallback(() =>
     api.get<BomView>(`${scope}/bom`)
       .then(setBom)
-      .catch((e: ApiError) =>
-        setError(e.status === 404
-          ? 'Nothing has been issued yet. Issue a panel to get a bill of materials.'
-          : e.message))
+      // A 404 is the ordinary state of a panel nobody has issued yet, not a fault.
+      .catch((e: ApiError) => e.status === 404 ? setNotIssued(true) : setError(e.message)), [scope])
 
-  useEffect(() => { void load() }, [scope])
-
-  if (error) return <ErrorNote message={error} />
-  if (!bom) return <Spinner label="Loading bill of materials" />
+  useEffect(() => { void load() }, [load])
 
   return (
-    <div className="space-y-4 p-4">
-      <Link
-        to={submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`}
-        className="text-sm text-slate-500"
-      >
-        ← Back
-      </Link>
-      <h1 className="text-xl font-semibold">Bill of materials</h1>
+    <AppShell
+      title="Bill of materials"
+      subtitle={submainId ? 'For this submain' : 'For the whole house, from each issued PDF'}
+      back={{ to: backTo, label: submainId ? 'Panel' : 'House' }}
+      actions={bom && bom.lines.length > 0 ? (
+        <a href={`/api${scope}/bom.csv`} className={buttonClass('primary')}>Download CSV</a>
+      ) : undefined}
+    >
+      {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
+      {!bom && !notIssued && !error && <Skeleton label="Loading bill of materials" rows={4} rowClass="h-16" />}
 
-      {bom.lines.length === 0 && (
-        <p className="text-slate-500">Nothing issued yet, so there is nothing to order.</p>
+      {notIssued && (
+        <EmptyState
+          title="Nothing has been issued yet"
+          hint="A bill of materials comes from an issued PDF revision, so it lists what was actually drawn."
+          action={<ButtonLink to={backTo} variant="primary">{submainId ? 'Go to the panel' : 'Back to the house'}</ButtonLink>}
+        />
       )}
 
-      <ul className="space-y-2">
-        {bom.lines.map(line => (
-          <li key={line.catalogueId} className="rounded-lg border border-slate-200 p-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="font-medium">{line.description}</span>
-              <span className="shrink-0 text-sm tabular-nums">× {line.quantity}</span>
-            </div>
-            <div className="flex items-baseline justify-between gap-3 text-sm text-slate-500">
-              <span>{line.partNumber}</span>
-              {!line.panelMounted && <span className="shrink-0">external</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
+      {bom && bom.lines.length === 0 && (
+        <EmptyState title="Nothing to order" hint="The issued panel has no parts in it." />
+      )}
 
-      <a
-        href={`/api${scope}/bom.csv`}
-        className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 text-sm font-medium"
-      >
-        Download CSV
-      </a>
-    </div>
+      {bom && bom.lines.length > 0 && (
+        <>
+          <p className="mb-3 text-sm text-ink-2">Part numbers marked assumed need checking against a datasheet before ordering.</p>
+          <ul className="divide-y divide-rule border-y border-rule">
+            {bom.lines.map(line => (
+              <li key={line.catalogueId} className="flex items-start gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{line.description}</p>
+                  <p className="text-ink-2">
+                    {line.partNumber}
+                    {!line.panelMounted && <span className="ml-2 rounded border border-rule px-1.5 text-sm">external</span>}
+                  </p>
+                </div>
+                <span className="shrink-0 text-lg font-semibold">× {line.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </AppShell>
   )
 }

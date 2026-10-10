@@ -159,7 +159,11 @@ export interface BomView {
 export interface RevisionView {
   id: string
   submainId: string
+  /** Where it stands in the submain's history, counted from one by the server. */
+  number: number
   layoutVersion: number
   issuedAt: string
   issuedBy: string
+  /** Server-decided: does this revision still match the submain as it is now? */
+  current: boolean
 }

@@ -1,6 +1,8 @@
 import type { APIRequestContext } from '@playwright/test'
+import { stack } from './stack'
 
-const API = 'http://localhost:5020'
+/** The suite's own API, never the development one: see stack.ts. */
+export const API = stack.apiUrl
 
 export interface SeededSubmain {
   submainId: string

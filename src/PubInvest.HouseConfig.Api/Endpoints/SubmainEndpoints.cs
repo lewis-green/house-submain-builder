@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Services;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
 using PubInvest.HouseConfig.Domain.Circuits;
@@ -24,6 +25,7 @@ public static class SubmainEndpoints
                 Guid projectId,
                 CreateSubmainRequest request,
                 HouseConfigDbContext db,
+                DesignService designs,
                 CancellationToken ct) =>
             {
                 if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return Results.NotFound();
@@ -58,9 +60,20 @@ public static class SubmainEndpoints
                         }).ToList()
                 };
 
+                // One transaction for the save and the layout: leaving this block
+                // without committing — a refused design, an exception — undoes
+                // the insert too, so the house never gains a submain with no panel.
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
                 db.Submains.Add(submain);
                 await db.SaveChangesAsync(ct);
 
+                if (request.Generate == true)
+                {
+                    var refusal = Refusal(await designs.GenerateAsync(submain.Id, null, ct));
+                    if (refusal is not null) return refusal;
+                }
+
+                await transaction.CommitAsync(ct);
                 return Results.Created($"/submains/{submain.Id}", await Load(db, submain.Id, ct));
             })
             .WithTags("Submains");
@@ -76,6 +89,7 @@ public static class SubmainEndpoints
                 Guid id,
                 UpdateSubmainRequest request,
                 HouseConfigDbContext db,
+                DesignService designs,
                 CancellationToken ct) =>
             {
                 var submain = await db.Submains
@@ -86,6 +100,9 @@ public static class SubmainEndpoints
 
                 var problems = Validate(request.Name, request.Circuits);
                 if (problems.Count > 0) return Results.ValidationProblem(problems);
+
+                // As on create: the edit and the rebuild stand or fall together.
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
                 submain.Name = request.Name.Trim();
                 submain.Reference = request.Reference;
@@ -109,11 +126,36 @@ public static class SubmainEndpoints
                 }
 
                 await db.SaveChangesAsync(ct);
+
+                if (request.Rebuild == true)
+                {
+                    var refusal = Refusal(await designs.GenerateAsync(id, null, ct));
+                    if (refusal is not null) return refusal;
+                }
+
+                await transaction.CommitAsync(ct);
                 return Results.Ok(await Load(db, id, ct));
             })
             .WithTags("Submains");
 
         return app;
+    }
+
+    /// The same answers POST /design/generate gives when it stores nothing — a
+    /// validation problem for what the user can fix, the refused design with its
+    /// diagnostics as a 422 — or null when the panel was built. The caller's
+    /// transaction is still open, so returning the refusal rolls the edit back.
+    private static IResult? Refusal((DesignResponse? Response, string? Error, bool HasErrors) generated)
+    {
+        var (response, error, hasErrors) = generated;
+        if (error is not null)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["design"] = [error] });
+        }
+
+        return hasErrors
+            ? Results.Json(response, statusCode: StatusCodes.Status422UnprocessableEntity)
+            : null;
     }
 
     /// Replaces the submain's circuit list wholesale. Circuits the caller sends
@@ -196,7 +238,10 @@ public static class SubmainEndpoints
         var sequence = 0;
         foreach (var fixture in incoming.Where(f => f.Quantity > 0))
         {
-            submain.ExtraFixtures.Add(new ExtraFixtureRow
+            // Through the DbSet, not the navigation: a row that arrives through
+            // the navigation with its Guid already set is taken for an existing
+            // one and UPDATEd — zero rows, and the whole edit fails with a 500.
+            db.ExtraFixtures.Add(new ExtraFixtureRow
             {
                 Id = Guid.NewGuid(),
                 SubmainId = submain.Id,

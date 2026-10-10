@@ -140,6 +140,61 @@ public class PanelOptionTests(HouseConfigApiFactory factory)
         Assert.True(after.LayoutVersion > before.LayoutVersion);
     }
 
+    /// The panel screen's install options: the option and the rebuild are one
+    /// call, so the stored submain can never say "cables at the bottom" over a
+    /// drawing that still has them at the top.
+    [Fact]
+    public async Task Turning_the_panel_over_with_rebuild_saves_the_option_and_regenerates_in_one_call()
+    {
+        var client = factory.CreateClient();
+        var submain = await Submain(client, new
+        {
+            name = "Flip at once", enclosureTypeId = TestSeed.EnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = Circuits,
+        });
+        var before = await Generate(client, submain.Id);
+
+        var response = await client.PatchAsJsonAsync($"/submains/{submain.Id}", new
+        {
+            name = "Flip at once", enclosureTypeId = TestSeed.EnclosureId, terminalsAtBottom = true, rebuild = true,
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        var patched = await response.Content.ReadFromJsonAsync<SubmainDto>();
+        Assert.True(patched!.TerminalsAtBottom);
+        Assert.True(patched.LayoutVersion > before.LayoutVersion);
+        var after = await client.GetFromJsonAsync<DesignDto>($"/submains/{submain.Id}/layout");
+        Assert.Equal(after!.Layout.Rows - 1, RowOf(after, "Terminal240"));
+    }
+
+    [Fact]
+    public async Task A_rebuild_the_generator_refuses_leaves_the_option_and_the_panel_as_they_were()
+    {
+        var client = factory.CreateClient();
+        var submain = await Submain(client, new
+        {
+            name = "Refused", enclosureTypeId = TestSeed.EnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = Circuits,
+        });
+        var before = await Generate(client, submain.Id);
+
+        // Thirty six-module meters will not go in a six-row box, so the whole edit is refused.
+        var response = await client.PatchAsJsonAsync($"/submains/{submain.Id}", new
+        {
+            name = "Refused", enclosureTypeId = TestSeed.EnclosureId, hasIsolator = false,
+            extraFixtures = new[] { new { deviceTypeId = TestSeed.MeterId, quantity = 30 } },
+            rebuild = true,
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var stored = await client.GetFromJsonAsync<SubmainDto>($"/submains/{submain.Id}");
+        Assert.True(stored!.HasIsolator);
+        Assert.Equal(before.LayoutVersion, stored.LayoutVersion);
+        var layout = await client.GetFromJsonAsync<DesignDto>($"/submains/{submain.Id}/layout");
+        Assert.Contains(layout!.Layout.Devices, d => d.Category == "Isolator");
+        Assert.DoesNotContain(layout.Layout.Devices, d => d.Category == "EnergyMeter");
+    }
+
     [Fact]
     public async Task The_wizard_can_preview_both_options_before_the_submain_is_saved_either_way()
     {

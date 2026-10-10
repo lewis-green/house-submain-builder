@@ -30,33 +30,60 @@ public sealed class DesignService(HouseConfigDbContext db)
 
         if (submain is null) return (null, null);
 
-        var enclosureId = overrides?.EnclosureTypeId ?? submain.EnclosureTypeId;
+        var (request, circuits, error) = await BuildAsync(submain, overrides, ct);
+        if (error is not null) return (null, error);
+
+        return (new DesignInputs(submain, request!, circuits!), null);
+    }
+
+    /// A design for a submain that has not been saved. The wizard previews as the
+    /// engineer types, and nothing should reach the house until they choose to
+    /// generate — an abandoned wizard used to leave an empty submain behind.
+    public async Task<(DesignResponse? Response, string? Error)> PreviewUnsavedAsync(
+        PreviewRequest request,
+        CancellationToken ct)
+    {
+        var (generation, circuits, error) = await BuildAsync(null, request, ct);
+        if (error is not null) return (null, error);
+
+        var result = PanelGenerator.Generate(generation!);
+        return (ToResponse(Guid.Empty, 0, result, circuits!), null);
+    }
+
+    /// The submain supplies defaults for anything the request leaves out; with no
+    /// submain, the request has to say everything and dragged positions do not apply.
+    private async Task<(GenerationRequest? Request, IReadOnlyList<Circuit>? Circuits, string? Error)> BuildAsync(
+        Data.Entities.Submain? submain,
+        PreviewRequest? overrides,
+        CancellationToken ct)
+    {
+        var enclosureId = overrides?.EnclosureTypeId ?? submain?.EnclosureTypeId;
         if (enclosureId is null)
         {
-            return (null, "This submain has no enclosure. Choose one before generating a design.");
+            return (null, null, "This submain has no enclosure. Choose one before generating a design.");
         }
 
         var enclosureRow = await db.Enclosures.SingleOrDefaultAsync(e => e.Id == enclosureId, ct);
         if (enclosureRow is null)
         {
-            return (null, $"Enclosure {enclosureId} is not in the catalogue.");
+            return (null, null, $"Enclosure {enclosureId} is not in the catalogue.");
         }
 
-        var ruleSetId = overrides?.RuleSetId ?? submain.RuleSetId;
+        var ruleSetId = overrides?.RuleSetId ?? submain?.RuleSetId;
         var ruleSetRow = ruleSetId is null
             ? await db.RuleSets.FirstOrDefaultAsync(r => r.IsDefault, ct)
             : await db.RuleSets.SingleOrDefaultAsync(r => r.Id == ruleSetId, ct);
 
         if (ruleSetRow is null)
         {
-            return (null, "No ruleset is available. Seed or select one before generating a design.");
+            return (null, null, "No ruleset is available. Seed or select one before generating a design.");
         }
 
         var circuits = overrides?.Circuits is { Count: > 0 }
             ? overrides.Circuits.Select(c => new Circuit(
                 c.Id ?? Guid.NewGuid(), Enum.Parse<CircuitType>(c.Type), c.Name, c.Room, c.Sequence,
                 c.WattsPerMetre, c.LengthMetres)).ToList()
-            : submain.Circuits.Select(DomainMapper.ToDomain).ToList();
+            : (submain?.Circuits ?? []).Select(DomainMapper.ToDomain).ToList();
 
         var catalogue = new DeviceCatalogue(
             (await db.DeviceTypes.ToListAsync(ct)).Select(DomainMapper.ToDomain));
@@ -66,16 +93,18 @@ public sealed class DesignService(HouseConfigDbContext db)
 
         // Positions the engineer chose by dragging. Keyed by label, so they
         // survive the device rows being replaced.
-        var positionOverrides = (await db.PositionOverrides
-                .Where(o => o.SubmainId == submainId)
-                .OrderBy(o => o.Label)
-                .ToListAsync(ct))
-            .Select(o => new PositionOverride(o.Label, o.RowIndex, o.StartSlot))
-            .ToList();
+        var positionOverrides = submain is null
+            ? []
+            : (await db.PositionOverrides
+                    .Where(o => o.SubmainId == submain.Id)
+                    .OrderBy(o => o.Label)
+                    .ToListAsync(ct))
+                .Select(o => new PositionOverride(o.Label, o.RowIndex, o.StartSlot))
+                .ToList();
 
         var extras = (overrides?.ExtraFixtures is not null
                 ? overrides.ExtraFixtures.Select(f => new ExtraFixture(f.DeviceTypeId, f.Quantity))
-                : submain.ExtraFixtures.OrderBy(f => f.Sequence)
+                : (submain?.ExtraFixtures ?? []).OrderBy(f => f.Sequence)
                     .Select(f => new ExtraFixture(f.DeviceTypeId, f.Quantity)))
             .ToList();
 
@@ -86,11 +115,11 @@ public sealed class DesignService(HouseConfigDbContext db)
             catalogue,
             allEnclosures,
             positionOverrides,
-            overrides?.HasIsolator ?? submain.HasIsolator,
-            overrides?.TerminalsAtBottom ?? submain.TerminalsAtBottom,
+            overrides?.HasIsolator ?? submain?.HasIsolator ?? true,
+            overrides?.TerminalsAtBottom ?? submain?.TerminalsAtBottom ?? false,
             extras);
 
-        return (new DesignInputs(submain, request, circuits), null);
+        return (request, circuits, null);
     }
 
     public async Task<(DesignResponse? Response, string? Error, bool HasErrors)> GenerateAsync(

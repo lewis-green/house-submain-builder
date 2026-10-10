@@ -1,27 +1,30 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-
-type Variant = 'primary' | 'secondary' | 'ghost'
-
-const styles: Record<Variant, string> = {
-  primary: 'bg-slate-900 text-white active:bg-slate-700 disabled:bg-slate-300',
-  secondary: 'border border-slate-300 bg-white text-slate-900 active:bg-slate-50 disabled:text-slate-400',
-  ghost: 'text-slate-600 active:bg-slate-100 disabled:text-slate-300',
-}
+import { Link, type LinkProps } from 'react-router'
+import { buttonClass, type Variant } from './buttonClass'
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   children: ReactNode
 }
 
-/** min-h-11 is 44px: the smallest target that is reliably tappable. */
-export function Button({ variant = 'primary', className = '', children, ...rest }: Props) {
+export function Button({ variant = 'primary', className = '', children, type = 'button', ...rest }: Props) {
   return (
-    <button
-      type="button"
-      className={`min-h-11 rounded-lg px-4 text-sm font-medium ${styles[variant]} ${className}`}
-      {...rest}
-    >
+    <button type={type} className={buttonClass(variant, className)} {...rest}>
       {children}
     </button>
+  )
+}
+
+interface LinkButtonProps extends LinkProps {
+  variant?: Variant
+  children: ReactNode
+}
+
+/** A route link drawn and sized like a button, for navigation that is an action. */
+export function ButtonLink({ variant = 'secondary', className = '', children, ...rest }: LinkButtonProps) {
+  return (
+    <Link className={buttonClass(variant, className)} {...rest}>
+      {children}
+    </Link>
   )
 }

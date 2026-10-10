@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { DeviceCategory, DeviceTypeResponse, ExtraFixture } from '../api/types'
 import { Button } from '../components/Button'
+import { ConfirmButton } from '../components/ConfirmButton'
+import { Stepper } from '../components/Stepper'
 
 interface Props {
   catalogue: DeviceTypeResponse[]
@@ -13,6 +15,12 @@ interface Props {
 const order: DeviceCategory[] = [
   'EnergyMeter', 'Network', 'Relay', 'Dimmer240', 'Dimmer0_10V', 'Cover', 'LedController', 'Isolator',
 ]
+
+/** What the option groups say; the category names are code, not English. */
+const groupLabels: Partial<Record<DeviceCategory, string>> = {
+  EnergyMeter: 'Energy meters', Network: 'Network', Relay: 'Relays', Dimmer240: 'Dimmers',
+  Dimmer0_10V: 'Tape dimmers', Cover: 'Blinds', LedController: 'LED controllers', Isolator: 'Isolators',
+}
 
 /**
  * Devices the circuits do not imply. A meter or a LAN switch feeds nothing, so
@@ -44,44 +52,43 @@ export function FixturePicker({ catalogue, fixtures, disabled, onChange }: Props
 
   return (
     <div className="space-y-3">
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {fixtures.map(fixture => (
-          <li key={fixture.deviceTypeId} className="flex items-center gap-3">
-            <span className="flex-1 text-sm">{nameOf(fixture.deviceTypeId)}</span>
-            <input
-              type="number"
-              min={1}
-              inputMode="numeric"
-              aria-label={`Quantity of ${nameOf(fixture.deviceTypeId)}`}
+          <li key={fixture.deviceTypeId} className="rounded-lg border border-rule bg-sheet p-3">
+            <Stepper
+              label={`Quantity of ${nameOf(fixture.deviceTypeId)}`}
               value={fixture.quantity}
+              min={1}
               disabled={disabled}
-              onChange={e => onChange(fixtures.map(f => f.deviceTypeId === fixture.deviceTypeId
-                ? { ...f, quantity: Math.max(1, Number(e.target.value) || 1) }
+              onChange={quantity => onChange(fixtures.map(f => f.deviceTypeId === fixture.deviceTypeId
+                ? { ...f, quantity }
                 : f))}
-              className="min-h-11 w-20 rounded-lg border border-slate-300 px-3"
             />
-            <Button
-              variant="ghost"
+            <ConfirmButton
+              label="Remove"
+              question={`Remove the ${nameOf(fixture.deviceTypeId)}?`}
+              confirmLabel="Remove it"
               disabled={disabled}
-              onClick={() => onChange(fixtures.filter(f => f.deviceTypeId !== fixture.deviceTypeId))}
-            >
-              Remove
-            </Button>
+              onConfirm={() => onChange(fixtures.filter(f => f.deviceTypeId !== fixture.deviceTypeId))}
+              className="mt-2"
+            />
           </li>
         ))}
       </ul>
 
-      <div className="flex items-center gap-3">
+      {/* Stacked, not side by side: a select is as wide as its longest option
+          and cannot shrink, which is what used to push the page sideways. */}
+      <div className="space-y-2">
         <select
           aria-label="Device to add"
           value={chosen}
           disabled={disabled}
           onChange={e => setChosen(e.target.value)}
-          className="min-h-11 flex-1 rounded-lg border border-slate-300 px-3"
+          className="select w-full min-w-0 rounded-lg border border-rule bg-sheet pl-3"
         >
           <option value="">Choose a device…</option>
           {groups.map(group => (
-            <optgroup key={group.category} label={group.category}>
+            <optgroup key={group.category} label={groupLabels[group.category] ?? group.category}>
               {group.devices.map(device => (
                 <option key={device.id} value={device.id}>
                   {device.manufacturer} {device.model}
@@ -90,7 +97,9 @@ export function FixturePicker({ catalogue, fixtures, disabled, onChange }: Props
             </optgroup>
           ))}
         </select>
-        <Button variant="secondary" disabled={disabled || !chosen} onClick={add}>Add</Button>
+        <Button variant="secondary" disabled={disabled || !chosen} onClick={add} className="w-full">
+          Add
+        </Button>
       </div>
     </div>
   )

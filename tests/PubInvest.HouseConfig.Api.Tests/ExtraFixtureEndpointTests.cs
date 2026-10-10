@@ -139,6 +139,64 @@ public class ExtraFixtureEndpointTests(HouseConfigApiFactory factory)
         Assert.Equal(TestSeed.MeterId, patched!.ExtraFixtures.Single().DeviceTypeId);
     }
 
+    /// The panel screen's "Other devices": a meter added to a submain that had
+    /// none, after its panel exists. This used to 500 — the new row went in
+    /// through the navigation and EF took it for an edit of a row that was not there.
+    [Fact]
+    public async Task Adding_a_fixture_to_a_generated_submain_that_had_none_places_it_on_rebuild()
+    {
+        var client = factory.CreateClient();
+        var submain = await Submain(client, new
+        {
+            name = "Later", enclosureTypeId = TestSeed.EnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = new[] { new { type = "Switched", name = "Immersion", sequence = 1 } },
+        });
+        await Generate(client, submain.Id);
+
+        var patched = await client.PatchAsJsonAsync($"/submains/{submain.Id}", new
+        {
+            name = "Later", enclosureTypeId = TestSeed.EnclosureId,
+            extraFixtures = new[]
+            {
+                new { deviceTypeId = TestSeed.MeterId, quantity = 1 },
+                new { deviceTypeId = TestSeed.LanId, quantity = 2 },
+            },
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, patched.StatusCode);
+        var body = await patched.Content.ReadFromJsonAsync<SubmainDto>();
+        Assert.Equal(2, body!.ExtraFixtures.Length);
+
+        var design = await Generate(client, submain.Id);
+        Assert.Single(design.Layout.Devices, d => d.Category == "EnergyMeter");
+        Assert.Equal(2, design.Layout.Devices.Count(d => d.Category == "Network"));
+    }
+
+    [Fact]
+    public async Task A_fixture_added_with_rebuild_is_on_the_panel_when_the_call_returns()
+    {
+        var client = factory.CreateClient();
+        var submain = await Submain(client, new
+        {
+            name = "At once", enclosureTypeId = TestSeed.EnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = new[] { new { type = "Switched", name = "Immersion", sequence = 1 } },
+        });
+        var before = await Generate(client, submain.Id);
+
+        var patched = await client.PatchAsJsonAsync($"/submains/{submain.Id}", new
+        {
+            name = "At once", enclosureTypeId = TestSeed.EnclosureId,
+            extraFixtures = new[] { new { deviceTypeId = TestSeed.LanId, quantity = 1 } },
+            rebuild = true,
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, patched.StatusCode);
+        var body = await patched.Content.ReadFromJsonAsync<SubmainDto>();
+        Assert.True(body!.LayoutVersion > before.LayoutVersion);
+        var stored = await client.GetFromJsonAsync<DesignDto>($"/submains/{submain.Id}/layout");
+        Assert.Single(stored!.Layout.Devices, d => d.Category == "Network");
+    }
+
     [Fact]
     public async Task Sending_an_empty_fixture_list_clears_them()
     {

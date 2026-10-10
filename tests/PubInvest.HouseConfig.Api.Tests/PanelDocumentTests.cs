@@ -22,16 +22,16 @@ public class PanelDocumentTests
     private static readonly Guid DimmerType = new("77777777-0000-4000-8000-000000000010");
     private static readonly Guid RelayType = new("77777777-0000-4000-8000-000000000011");
 
-    private static RevisionSnapshot Snapshot()
-    {
-        var devices = new List<PlacedDevice>
-        {
-            new(DimmerType, DeviceCategory.Dimmer240, 1, 0, 3, "Dimmer 1",
-                [new ChannelAssignment(0, CircuitA, false), new ChannelAssignment(1, null, true)], TerminalRole.None),
-            new(RelayType, DeviceCategory.Relay, 2, 0, 9, "Relay 1",
-                [new ChannelAssignment(0, CircuitB, false)], TerminalRole.None),
-        };
+    private static RevisionSnapshot Snapshot() => Snapshot(
+    [
+        new(DimmerType, DeviceCategory.Dimmer240, 1, 0, 3, "Dimmer 1",
+            [new ChannelAssignment(0, CircuitA, false), new ChannelAssignment(1, null, true)], TerminalRole.None),
+        new(RelayType, DeviceCategory.Relay, 2, 0, 9, "Relay 1",
+            [new ChannelAssignment(0, CircuitB, false)], TerminalRole.None),
+    ]);
 
+    private static RevisionSnapshot Snapshot(List<PlacedDevice> devices)
+    {
         return new RevisionSnapshot(
             "Willow House",
             "Ground Floor West",
@@ -130,6 +130,68 @@ public class PanelDocumentTests
 
         Assert.Contains("module", text);
         Assert.DoesNotContain("slot unit", text);
+    }
+
+    /// The screen counts modules from 1 ("Row 2, from module 1"); so must the
+    /// schedule, or a relay the sheet puts at module 22 is printed at module 21.
+    [Fact]
+    public void Positions_count_from_one_the_way_the_screen_does()
+    {
+        var text = PdfText(Document().GeneratePdf());
+
+        Assert.Contains("row 2, module 1", text);   // Dimmer 1: rowIndex 1, slot 0
+        Assert.Contains("row 3, module 1", text);   // Relay 1: rowIndex 2, slot 0
+        Assert.DoesNotContain("module 0", text);
+    }
+
+    [Fact]
+    public void A_device_a_third_of_a_module_in_is_at_module_one_point_three()
+    {
+        var snapshot = Snapshot([
+            new(DimmerType, DeviceCategory.Dimmer240, 0, 1, 3, "Dimmer 1",
+                [new ChannelAssignment(0, CircuitA, false)], TerminalRole.None),
+        ]);
+
+        var text = PdfText(new PanelDocument(snapshot, DateTimeOffset.UnixEpoch, "tester").GeneratePdf());
+
+        Assert.Contains("row 1, module 1.3", text);
+    }
+
+    [Fact]
+    public void The_schedule_and_legend_use_words_not_enum_names()
+    {
+        var text = PdfText(Document().GeneratePdf());
+
+        Assert.Contains("Dimmed lighting", text);
+        Assert.Contains("1 × Dimmer", text);
+        Assert.Contains("1 × Relay", text);
+        Assert.DoesNotContain("DimmedLighting", text);
+        Assert.DoesNotContain("Dimmer240", text);
+    }
+
+    /// The four categories the generator gained after the renderer was written.
+    [Fact]
+    public void Blinds_led_meter_and_network_devices_print_with_their_kinds()
+    {
+        var snapshot = Snapshot([
+            new(Guid.NewGuid(), DeviceCategory.Cover, 1, 0, 4, "Cover 1",
+                [new ChannelAssignment(0, CircuitB, false)], TerminalRole.None),
+            new(Guid.NewGuid(), DeviceCategory.LedController, 1, 4, 4, "LED 1", [], TerminalRole.None),
+            new(Guid.NewGuid(), DeviceCategory.EnergyMeter, 1, 8, 6, "Meter 1", [], TerminalRole.None),
+            new(Guid.NewGuid(), DeviceCategory.Network, 1, 14, 4, "LAN 1", [], TerminalRole.None),
+        ]);
+
+        var bytes = new PanelDocument(snapshot, DateTimeOffset.UnixEpoch, "tester").GeneratePdf();
+        var text = PdfText(bytes);
+
+        Assert.Equal("%PDF"u8.ToArray(), bytes.Take(4).ToArray());
+        Assert.Contains("Cover 1", text);
+        Assert.Contains("1 × Blinds", text);
+        Assert.Contains("1 × LED controller", text);
+        Assert.Contains("1 × Energy meter", text);
+        Assert.Contains("1 × Network", text);
+        Assert.DoesNotContain("LedController", text);
+        Assert.DoesNotContain("EnergyMeter", text);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DeviceSheet } from '../src/panel/DeviceSheet'
@@ -34,7 +34,7 @@ describe('DeviceSheet', () => {
     show()
 
     expect(screen.getByRole('heading', { name: 'Dimmer 1' })).toBeInTheDocument()
-    expect(screen.getByText(/1T/)).toBeInTheDocument()
+    expect(screen.getByText(/1 module wide/)).toBeInTheDocument()
     expect(screen.getByDisplayValue('Ceiling spots')).toBeInTheDocument()
     expect(screen.getByText(/spare/i)).toBeInTheDocument()
   })
@@ -133,9 +133,47 @@ describe('DeviceSheet', () => {
     const onFreeChannel = vi.fn()
     show({ onFreeChannel })
 
+    // Asked first: freeing a channel unwires a circuit, and a thumb slips.
     await userEvent.click(screen.getByRole('button', { name: /free this channel/i }))
+    expect(onFreeChannel).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: /^free it$/i }))
 
     expect(onFreeChannel).toHaveBeenCalledWith(0)
+  })
+
+  it('saves on Return as well as on leaving the box', async () => {
+    const onSaveCircuit = vi.fn()
+    show({ onSaveCircuit })
+
+    const name = screen.getByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Island pendants{Enter}')
+
+    expect(onSaveCircuit).toHaveBeenCalledTimes(1)
+    expect(onSaveCircuit).toHaveBeenCalledWith('c1', 'Island pendants', 'Kitchen')
+  })
+
+  it('says what a device without channels is and where it sits, rather than showing an empty list', () => {
+    show({ device: { ...device, id: 'iso', category: 'Isolator', label: 'Isolator', rowIndex: 0, startSlot: 63, moduleWidth: 6, channels: [] } })
+
+    expect(screen.getByRole('heading', { name: 'Isolator' })).toBeInTheDocument()
+    expect(screen.getByText(/two-pole main switch/i)).toBeInTheDocument()
+    expect(screen.getByText(/row 1, from module 22/i)).toBeInTheDocument()
+    expect(screen.getByText(/drag it on the drawing — on a touchscreen, hold it first/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no channels to name/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    // The subtitle does not repeat the title.
+    expect(screen.getByText('2 modules wide · row 1')).toBeInTheDocument()
+  })
+
+  it('has a close button big enough for a thumb', async () => {
+    const onClose = vi.fn()
+    show({ onClose })
+
+    await userEvent.click(screen.getByRole('button', { name: /close/i }))
+
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('closes on escape', async () => {
@@ -145,5 +183,43 @@ describe('DeviceSheet', () => {
     await userEvent.keyboard('{Escape}')
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('saves a room typed and then dismissed with Escape, as the sheet promises for leaving a box', async () => {
+    const onSaveCircuit = vi.fn()
+    const onClose = vi.fn()
+    show({ onSaveCircuit, onClose })
+
+    const room = screen.getByLabelText('Room')
+    await userEvent.clear(room)
+    await userEvent.type(room, 'Kitchen 219')
+    await userEvent.keyboard('{Escape}')
+
+    expect(onSaveCircuit).toHaveBeenCalledWith('c1', 'Ceiling spots', 'Kitchen 219')
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('tries again on Return after a failed save, without the text having to change', async () => {
+    const onSaveCircuit = vi.fn()
+      .mockRejectedValueOnce(new Error('Store down'))
+      .mockResolvedValue(undefined)
+    show({ onSaveCircuit })
+
+    const name = screen.getByLabelText('Circuit name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Retry me{Enter}')
+    await waitFor(() => expect(onSaveCircuit).toHaveBeenCalledTimes(1))
+
+    // Return blurs the box, so back into it and Return once more with the same words.
+    await userEvent.click(name)
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(onSaveCircuit).toHaveBeenCalledTimes(2))
+    expect(onSaveCircuit).toHaveBeenLastCalledWith('c1', 'Retry me', 'Kitchen')
+
+    // Once it has succeeded, the same words are saved and are not sent a third time.
+    await userEvent.click(name)
+    await userEvent.keyboard('{Enter}')
+    await userEvent.tab()
+    expect(onSaveCircuit).toHaveBeenCalledTimes(2)
   })
 })

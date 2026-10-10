@@ -126,6 +126,64 @@ public class DesignGenerateTests(HouseConfigApiFactory factory)
             && d.Message.Contains(droppedCircuitId.ToString()));
     }
 
+    /// The wizard's Generate is one call: the submain and its panel are saved
+    /// together, so a design the generator refuses creates nothing and a retry
+    /// cannot leave a second, empty submain in the house.
+    [Fact]
+    public async Task Creating_with_generate_saves_the_submain_and_its_panel_in_one_call()
+    {
+        var client = factory.CreateClient();
+        await using (var db = factory.NewDbContext())
+        {
+            await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
+        }
+        var project = await (await client.PostAsJsonAsync("/projects", new { name = $"Atomic {Guid.NewGuid()}" }))
+            .Content.ReadFromJsonAsync<ProjectDto>();
+
+        var response = await client.PostAsJsonAsync($"/projects/{project!.Id}/submains", new
+        {
+            name = "Generated at once", enclosureTypeId = TestSeed.EnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = new object[] { new { type = "DimmedLighting", name = "Lighting 1", sequence = 1 } },
+            generate = true,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var submain = await response.Content.ReadFromJsonAsync<SubmainDto>();
+        Assert.Equal(1, submain!.LayoutVersion);
+        var stored = await client.GetFromJsonAsync<DesignDto>($"/submains/{submain.Id}/layout");
+        Assert.Contains(stored!.Layout.Devices, d => d.Label == "Dimmer 1");
+    }
+
+    [Fact]
+    public async Task A_refused_design_creates_no_submain_at_all()
+    {
+        var client = factory.CreateClient();
+        await using (var db = factory.NewDbContext())
+        {
+            await CatalogueSeeder.SeedAsync(db, TestSeed.Document(), CancellationToken.None);
+        }
+        var project = await (await client.PostAsJsonAsync("/projects", new { name = $"Refused {Guid.NewGuid()}" }))
+            .Content.ReadFromJsonAsync<ProjectDto>();
+
+        var response = await client.PostAsJsonAsync($"/projects/{project!.Id}/submains", new
+        {
+            name = "Too big", enclosureTypeId = TestSeed.TinyEnclosureId, ruleSetId = TestSeed.RuleSetId,
+            circuits = Enumerable.Range(1, 30)
+                .Select(i => new { type = "DimmedLighting", name = $"Lighting {i}", sequence = i })
+                .ToArray(),
+            generate = true,
+        });
+
+        // The refused design comes back with its diagnostics, as from /design/generate ...
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var design = await response.Content.ReadFromJsonAsync<DesignDto>();
+        Assert.Contains(design!.Diagnostics, d => d.Severity == "Error");
+
+        // ... and the house is exactly as it was.
+        var submains = await client.GetFromJsonAsync<SubmainDto[]>($"/projects/{project.Id}/submains");
+        Assert.Empty(submains!);
+    }
+
     [Fact]
     public async Task A_design_that_does_not_fit_is_rejected_and_nothing_is_persisted()
     {

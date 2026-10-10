@@ -21,6 +21,13 @@ public sealed record RevisionSnapshot(
     /// slots, so they are not placed devices and cannot be recovered from the
     /// layout alone — storing the priced BOM is what makes a revision able to
     /// re-cost itself years later.
-    BillOfMaterials Bom);
+    BillOfMaterials Bom,
+    /// The two facts about the install the drawing was built for. They shape
+    /// the layout, so a change normally shows there too; recording them here
+    /// means a revision also reads as out of date when an option was saved but
+    /// the panel was never rebuilt for it. Defaulted, so revisions issued before
+    /// they were recorded still read.
+    bool HasIsolator = true,
+    bool TerminalsAtBottom = false);
 
 public sealed record CircuitSnapshot(Guid Id, string Type, string Name, string? Room, int Sequence);

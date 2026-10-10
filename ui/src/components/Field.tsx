@@ -1,6 +1,6 @@
-import { useId } from 'react'
+import { useId, type InputHTMLAttributes } from 'react'
 
-interface Props {
+interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
   label: string
   value: string
   onChange: (value: string) => void
@@ -10,15 +10,20 @@ interface Props {
   inputMode?: 'text' | 'numeric' | 'decimal'
 }
 
-export function Field({ label, value, onChange, hint, errors, type = 'text', inputMode }: Props) {
+/**
+ * A labelled text box. Keyboard hints (autocapitalize, autocomplete,
+ * enterkeyhint) pass straight through, because the right keyboard for a house
+ * name is not the right one for a wattage.
+ */
+export function Field({ label, value, onChange, hint, errors, type = 'text', inputMode, className = '', ...rest }: Props) {
   const id = useId()
   const hintId = `${id}-hint`
   const errorId = `${id}-error`
   const invalid = (errors?.length ?? 0) > 0
 
   return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
+    <div className={className}>
+      <label htmlFor={id} className="block font-medium">{label}</label>
       <input
         id={id}
         type={type}
@@ -27,12 +32,13 @@ export function Field({ label, value, onChange, hint, errors, type = 'text', inp
         onChange={e => onChange(e.target.value)}
         aria-invalid={invalid}
         aria-describedby={[hint ? hintId : null, invalid ? errorId : null].filter(Boolean).join(' ') || undefined}
-        className={`mt-1 min-h-11 w-full rounded-lg border px-3 ${invalid ? 'border-red-500' : 'border-slate-300'}`}
+        className={`mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-sheet px-3 ${invalid ? 'border-danger' : 'border-rule'}`}
+        {...rest}
       />
-      {hint && <p id={hintId} className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p id={hintId} className="mt-1 text-sm text-ink-2">{hint}</p>}
       {invalid && (
         <ul id={errorId} className="mt-1 space-y-0.5">
-          {errors!.map(e => <li key={e} className="text-xs text-red-600">{e}</li>)}
+          {errors!.map(e => <li key={e} className="text-sm font-medium text-danger">{e}</li>)}
         </ul>
       )}
     </div>

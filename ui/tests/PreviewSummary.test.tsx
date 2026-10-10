@@ -23,12 +23,18 @@ const design = (
 })
 
 describe('PreviewSummary', () => {
+  it('says a fixtures-only panel fits but still needs a circuit, in the words the Generate button uses', () => {
+    render(<PreviewSummary design={design()} hasCircuits={false} />)
+
+    expect(screen.getByText(/fits in this enclosure\. add at least one circuit to generate a panel/i)).toBeInTheDocument()
+  })
+
   it('counts devices by kind in modules, not slot units', () => {
     render(<PreviewSummary design={design()} />)
 
     expect(screen.getByText(/1 dimmer/i)).toBeInTheDocument()
     expect(screen.getByText(/1 relay/i)).toBeInTheDocument()
-    expect(screen.getByText(/12T of 72T/i)).toBeInTheDocument()
+    expect(screen.getByText(/12 of 72 modules/i)).toBeInTheDocument()
   })
 
   it('shows an error diagnostic with its suggestion', () => {

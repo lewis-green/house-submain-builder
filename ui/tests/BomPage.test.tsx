@@ -57,7 +57,11 @@ describe('BomPage', () => {
 
     renderPage()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/nothing has been issued yet/i)
+    // An empty state inside the page, with a way on, rather than an alert that replaces it.
+    expect(await screen.findByText(/nothing has been issued yet/i)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /go to the panel/i })).toHaveAttribute('href', '/submains/s1/panel')
+    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/submains/s1/panel')
   })
 
   it('says so when there is nothing to order', async () => {

@@ -12,6 +12,8 @@ interface Props {
   cabinets: RackTypeResponse[]
   submains: SubmainResponse[]
   onSaved: (rack: RackResponse) => void
+  /** The rack changed under this form: reload it, as the rest of the screen does. */
+  onConflict: () => void
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * install options are: set once, and rarely changed after. A shorter cabinet
  * is refused by the server with the U to clear, shown under the cabinet.
  */
-export function RackSettings({ rack, cabinets, submains, onSaved }: Props) {
+export function RackSettings({ rack, cabinets, submains, onSaved, onConflict }: Props) {
   const once = useSingleFlight()
   const [name, setName] = useState(rack.name)
   const [rackTypeId, setRackTypeId] = useState(rack.rackTypeId)
@@ -40,6 +42,11 @@ export function RackSettings({ rack, cabinets, submains, onSaved }: Props) {
       announce('Rack settings saved', 'ok')
     } catch (e) {
       const error = e as ApiError
+      if (error.conflict) {
+        announce('This rack changed elsewhere — reloading')
+        onConflict()
+        return
+      }
       setFieldErrors(error.fieldErrors)
       announce(Object.keys(error.fieldErrors).length > 0 ? 'Rack settings not saved — see the form' : error.message, 'error')
     } finally {

@@ -37,8 +37,9 @@ export function RackPage() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  // Bumped by every port save, so the PDF's currency is asked again: a label
-  // moves nothing, so the layout version alone would never notice it.
+  // Bumped by every port save and settings save, so the PDF's currency is
+  // asked again: a label, a rename, a cabinet or a feed change moves nothing,
+  // so the layout version alone would never notice them.
   const [syncKey, setSyncKey] = useState(0)
   const drawing = useRef<HTMLDivElement | null>(null)
   const once = useSingleFlight()
@@ -237,7 +238,8 @@ export function RackPage() {
               rack={rack}
               cabinets={cabinets}
               submains={submains}
-              onSaved={saved => { setRack(saved); void load() }}
+              onSaved={saved => { setRack(saved); setSyncKey(n => n + 1); void load() }}
+              onConflict={() => void load()}
             />
           </div>
         </>

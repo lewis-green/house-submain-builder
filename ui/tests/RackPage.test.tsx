@@ -161,4 +161,38 @@ describe('RackPage', () => {
     await vi.waitFor(() =>
       expect(fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/revisions').length).toBeGreaterThan(revisionsBefore))
   })
+
+  it('saves the rack settings and makes the PDF ask again whether it is current', async () => {
+    // Stateful, as the server is: the reload after the save must see the new name.
+    let name = rack.name
+    const fetchMock = stub({
+      'PATCH /api/racks/r1': () => { name = 'Plant room'; return json({ ...rack, name }) },
+      'GET /api/racks/r1': () => json({ ...rack, name }),
+    })
+    show()
+
+    await screen.findByRole('button', { name: /^Switch 1/ })
+    const revisionsBefore = fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/revisions').length
+    await userEvent.clear(screen.getByLabelText('Rack name'))
+    await userEvent.type(screen.getByLabelText('Rack name'), 'Plant room')
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Plant room' })).toBeInTheDocument()
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/revisions').length).toBeGreaterThan(revisionsBefore))
+  })
+
+  it('reloads the rack when a settings save finds it changed elsewhere', async () => {
+    const fetchMock = stub({ 'PATCH /api/racks/r1': () => json({ message: 'This rack changed since you loaded it.', currentLayoutVersion: 5 }, 409) })
+    show()
+
+    await screen.findByRole('button', { name: /^Switch 1/ })
+    const layoutsBefore = fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/layout').length
+    await userEvent.type(screen.getByLabelText('Rack name'), ' 2')
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('This rack changed elsewhere — reloading')
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/layout').length).toBeGreaterThan(layoutsBefore))
+  })
 })

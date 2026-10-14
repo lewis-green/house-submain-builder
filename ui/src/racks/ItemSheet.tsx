@@ -56,7 +56,7 @@ export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose 
       {rows.length > 0 && <FrontPanel item={item} onPick={focusPort} />}
 
       {item.portGroups.map(group => (
-        <section key={group.name} className="mt-4">
+        <section key={group.from} className="mt-4">
           <h3 className="font-semibold">
             {group.name} · ports {group.from}–{group.to}{group.poeTick ? '' : ' (no PoE)'}
           </h3>

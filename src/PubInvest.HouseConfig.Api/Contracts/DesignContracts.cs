@@ -22,7 +22,9 @@ public sealed record PlacedDeviceResponse(
     int ModuleWidth,
     string Label,
     string TerminalRole,
-    IReadOnlyList<ChannelResponse> Channels);
+    IReadOnlyList<ChannelResponse> Channels,
+    /// Terminals only: the circuit landing on this block.
+    Guid? CircuitId = null);
 
 public sealed record LayoutResponse(int Rows, int SlotsPerRow, IReadOnlyList<PlacedDeviceResponse> Devices);
 

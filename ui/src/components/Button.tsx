@@ -1,10 +1,11 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import { buttonClass, type Variant } from './buttonClass'
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   children: ReactNode
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({ variant = 'primary', className = '', children, type = 'button', ...rest }: Props) {

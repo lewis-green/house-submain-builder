@@ -45,6 +45,12 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.Property<Guid>("SubmainId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("TerminalCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TerminalPosition")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text");
@@ -97,6 +103,9 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("CircuitId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DeviceTypeId")
                         .HasColumnType("uuid");

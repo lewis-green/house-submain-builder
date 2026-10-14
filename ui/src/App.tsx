@@ -2,7 +2,7 @@ import { Route, Routes } from 'react-router'
 import { BomPage } from './routes/BomPage'
 import { CataloguePage } from './routes/CataloguePage'
 import { NewRackPage } from './routes/NewRackPage'
-import { NewSubmainPage } from './routes/NewSubmainPage'
+import { EditSubmainPage, NewSubmainPage } from './routes/SubmainForm'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PanelPage } from './routes/PanelPage'
 import { ProjectPage } from './routes/ProjectPage'
@@ -19,6 +19,7 @@ export function App() {
       <Route path="/projects/:projectId/submains/new" element={<NewSubmainPage />} />
       <Route path="/projects/:projectId/racks/new" element={<NewRackPage />} />
       <Route path="/submains/:submainId/panel" element={<PanelPage />} />
+      <Route path="/submains/:submainId/edit" element={<EditSubmainPage />} />
       <Route path="/submains/:submainId/bom" element={<BomPage />} />
       <Route path="/racks/:rackId" element={<RackPage />} />
       <Route path="/racks/:rackId/bom" element={<BomPage />} />

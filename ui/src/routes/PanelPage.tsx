@@ -1,8 +1,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
+import { currentDetails } from '../api/submainDetails'
 import type {
-  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, SubmainResponse,
+  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, SubmainResponse, TerminalCircuit, TerminalsResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button, ButtonLink } from '../components/Button'
@@ -17,6 +18,7 @@ import { DeviceSheet } from '../panel/DeviceSheet'
 import { IssueButton } from '../panel/IssueButton'
 import { PanelOverview } from '../panel/PanelOverview'
 import { PanelSvg } from '../panel/PanelSvg'
+import { TerminalSheet } from '../panel/TerminalSheet'
 import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geometry'
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
@@ -34,12 +36,17 @@ const PAD_PX = 8
 /** The smallest target a thumb can rely on; below it a device is for looking at, not tapping. */
 const TAPPABLE_PX = 44
 
+/** The screen's nav links, alike so neither reads as the main one. */
+const navLink = 'inline-flex min-h-11 min-w-0 items-center rounded-lg px-3 text-right font-medium text-ink-2 active:bg-press'
+
 export function PanelPage() {
   const { submainId } = useParams()
   const [design, setDesign] = useState<DesignResponse | null>(null)
   const [submain, setSubmain] = useState<SubmainResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // The circuits in terminal order while the sheet is open; null when it is shut.
+  const [terminals, setTerminals] = useState<TerminalCircuit[] | null>(null)
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
   const [reworking, setReworking] = useState(false)
@@ -51,6 +58,11 @@ export function PanelPage() {
   const svgWrapper = useRef<HTMLDivElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const once = useSingleFlight()
+  // Its own guard: a rebuild in flight must not swallow a tap on the terminals, nor the reverse.
+  const openingTerminals = useSingleFlight()
+  // Mirrors selectedId so an async open can see a device sheet opened while it waited.
+  const selectedIdRef = useRef<string | null>(null)
+  useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
 
   // The stored layout, not /design/preview: preview regenerates and returns
   // id: null on every device, so nothing would be draggable.
@@ -164,8 +176,7 @@ export function PanelPage() {
     setReworking(true)
     try {
       setSubmain(await api.patch<SubmainResponse>(`/submains/${submain.id}`, {
-        name: submain.name,
-        enclosureTypeId: submain.enclosureTypeId,
+        ...currentDetails(submain),
         ...option,
         rebuild: true,
       }))
@@ -198,6 +209,46 @@ export function PanelPage() {
       }
     }
   }
+
+  // One load at a time (a double tap would fetch twice), and not over a device
+  // sheet that is already open.
+  const openTerminals = () => openingTerminals(async () => {
+    if (selectedIdRef.current) return
+    try {
+      const response = await api.get<TerminalsResponse>(`/submains/${submainId}/terminals`)
+      if (selectedIdRef.current) return
+      setTerminals(response.circuits)
+    } catch (e) {
+      announce(`Terminals not loaded: ${(e as ApiError).message}`, 'error')
+    }
+  })
+
+  /**
+   * One request: the order and counts are saved and the panel rebuilt together,
+   * so a refused rebuild (no room for the extra terminals) saves nothing.
+   * Rethrows a refusal so the sheet keeps the edit.
+   */
+  async function saveTerminals(circuits: { circuitId: string; terminalCount: number }[]) {
+    if (!design) throw new Error('The panel has not loaded yet')
+    try {
+      await api.put(`/submains/${submainId}/terminals`, { layoutVersion: design.layoutVersion, circuits })
+      setTerminals(null)
+      await load()
+      announce('Terminal order saved, panel rebuilt', 'ok')
+    } catch (e) {
+      const error = e as ApiError
+      if (error.conflict) {
+        announce('This panel changed elsewhere — reloading')
+        setTerminals(null)
+        await load()
+        return
+      }
+      announce(`Terminal order not saved: ${error.message}`, 'error')
+      throw e
+    }
+  }
+
+  const closeTerminals = useCallback(() => setTerminals(null), [])
 
   /**
    * The whole drawing across the scroller, for an overview before zooming back
@@ -236,11 +287,13 @@ export function PanelPage() {
       back={{ to: submain ? `/projects/${submain.projectId}` : '/', label: 'House' }}
       // The parts list is a place to go, not something done to the panel, so it
       // sits with the title like Catalogue on the houses screen — and the bar
-      // below keeps to the PDF pair, one row even on a 320px phone.
+      // below keeps to the PDF pair, one row even on a 320px phone. Edit goes
+      // there too: it leaves this screen for the form that built the panel.
       nav={design && !empty && submainId ? (
-        <Link to={`/submains/${submainId}/bom`} className="inline-flex min-h-11 min-w-0 items-center rounded-lg px-3 text-right font-medium text-ink-2 active:bg-press">
-          Bill of materials
-        </Link>
+        <>
+          <Link to={`/submains/${submainId}/bom`} className={navLink}>Bill of materials</Link>
+          <Link to={`/submains/${submainId}/edit`} className={navLink}>Edit</Link>
+        </>
       ) : undefined}
       actions={design && !empty && submainId
         ? <IssueButton kind="submain" ownerId={submainId} layoutVersion={design.layoutVersion} syncKey={loads} />
@@ -287,7 +340,7 @@ export function PanelPage() {
             <p className="text-sm text-ink-2">
               {tooSmallToTap
                 ? 'At this size the devices are too small to tap. Zoom in, or tap 1×, to name or move one.'
-                : 'Tap a device to name its circuits. Drag it to move it — on a touchscreen, hold it first.'}
+                : 'Tap a device to name its circuits, or the terminals to change their order. Drag a device to move it — on a touchscreen, hold it first.'}
             </p>
           </div>
 
@@ -334,6 +387,7 @@ export function PanelPage() {
                       onSelect={setSelectedId}
                       dragging={dragging}
                       zoom={zoom}
+                      onOpenTerminals={() => void openTerminals()}
                     />
                   </div>
                 </div>
@@ -419,6 +473,10 @@ export function PanelPage() {
           onFreeChannel={index => freeChannel(selected.id!, index)}
           onClose={closeSheet}
         />
+      )}
+
+      {terminals && (
+        <TerminalSheet circuits={terminals} onSave={saveTerminals} onClose={closeTerminals} />
       )}
     </AppShell>
   )

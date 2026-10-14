@@ -115,7 +115,8 @@ public static class DesignEndpoints
 
                         return new ChannelResponse(
                             c.ChannelIndex, c.CircuitId, circuit?.Name, circuit?.Room, c.IsSpare);
-                    }).ToList())).ToList();
+                    }).ToList(),
+                    d.CircuitId)).ToList();
 
                 var rowsUsed = placed.Count == 0 ? 0 : placed.Max(d => d.RowIndex) + 1;
                 var rows = enclosure?.Rows ?? 0;

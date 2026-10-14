@@ -90,6 +90,7 @@ public sealed class PanelDocument(
             {
                 table.ColumnsDefinition(columns =>
                 {
+                    columns.RelativeColumn(2);   // terminal
                     columns.RelativeColumn(3);   // circuit
                     columns.RelativeColumn(2);   // room
                     columns.RelativeColumn(2);   // type
@@ -100,7 +101,7 @@ public sealed class PanelDocument(
 
                 table.Header(header =>
                 {
-                    foreach (var heading in new[] { "Circuit", "Room", "Type", "Device", "Ch", "Position" })
+                    foreach (var heading in new[] { "Terminal", "Circuit", "Room", "Type", "Device", "Ch", "Position" })
                     {
                         header.Cell().Element(HeaderCell).Text(heading).SemiBold();
                     }
@@ -108,6 +109,7 @@ public sealed class PanelDocument(
 
                 foreach (var row in Rows())
                 {
+                    table.Cell().Element(BodyCell).Text(row.Terminal);
                     table.Cell().Element(BodyCell).Text(row.Circuit);
                     table.Cell().Element(BodyCell).Text(row.Room);
                     table.Cell().Element(BodyCell).Text(row.Type);
@@ -196,11 +198,20 @@ public sealed class PanelDocument(
         }
     }
 
-    private sealed record ScheduleRow(string Circuit, string Room, string Type, string Device, string Channel, string Position);
+    private sealed record ScheduleRow(string Terminal, string Circuit, string Room, string Type, string Device, string Channel, string Position);
 
     private IEnumerable<ScheduleRow> Rows()
     {
         var byId = snapshot.Circuits.ToDictionary(c => c.Id);
+
+        // A circuit's terminal labels as one cell: "C3", or "C3.1–C3.6" when bridged.
+        var terminals = snapshot.Layout.Devices
+            .Where(d => d.Category == DeviceCategory.Terminal240 && d.CircuitId is not null)
+            .OrderBy(d => d.RowIndex).ThenBy(d => d.StartSlot)
+            .GroupBy(d => d.CircuitId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Count() == 1 ? g.First().Label : $"{g.First().Label}–{g.Last().Label}");
 
         foreach (var device in snapshot.Layout.Devices
                      .Where(d => d.Category != DeviceCategory.Terminal240)
@@ -211,6 +222,7 @@ public sealed class PanelDocument(
                 var circuit = channel.CircuitId is { } id && byId.TryGetValue(id, out var c) ? c : null;
 
                 yield return new ScheduleRow(
+                    circuit is not null && terminals.TryGetValue(circuit.Id, out var terminal) ? terminal : "",
                     circuit?.Name ?? "— spare —",
                     circuit?.Room ?? "",
                     circuit is null ? "" : Wording.CircuitType(circuit.Type),

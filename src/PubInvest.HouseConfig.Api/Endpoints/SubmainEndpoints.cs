@@ -85,6 +85,23 @@ public static class SubmainEndpoints
             })
             .WithTags("Submains");
 
+        // Sequence order, the order the build form groups them in. Terminal
+        // order is the terminal sheet's business (GET /terminals).
+        app.MapGet("/submains/{id:guid}/circuits", async (Guid id, HouseConfigDbContext db, CancellationToken ct) =>
+            {
+                if (!await db.Submains.AnyAsync(s => s.Id == id, ct)) return Results.NotFound();
+
+                var circuits = await db.Circuits
+                    .Where(c => c.SubmainId == id)
+                    .OrderBy(c => c.Sequence)
+                    .Select(c => new CircuitResponse(
+                        c.Id, c.Type, c.Name, c.Room, c.Sequence, c.WattsPerMetre, c.LengthMetres))
+                    .ToListAsync(ct);
+
+                return Results.Ok(circuits);
+            })
+            .WithTags("Submains");
+
         app.MapPatch("/submains/{id:guid}", async (
                 Guid id,
                 UpdateSubmainRequest request,
@@ -145,7 +162,7 @@ public static class SubmainEndpoints
     /// validation problem for what the user can fix, the refused design with its
     /// diagnostics as a 422 — or null when the panel was built. The caller's
     /// transaction is still open, so returning the refusal rolls the edit back.
-    private static IResult? Refusal((DesignResponse? Response, string? Error, bool HasErrors) generated)
+    internal static IResult? Refusal((DesignResponse? Response, string? Error, bool HasErrors) generated)
     {
         var (response, error, hasErrors) = generated;
         if (error is not null)

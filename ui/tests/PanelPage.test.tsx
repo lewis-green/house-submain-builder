@@ -280,6 +280,27 @@ describe('PanelPage', () => {
     })
   })
 
+  it('keeps the details the panel screen does not show when an install option rebuilds it', async () => {
+    // PATCH replaces these with whatever it is sent: leaving them out would blank
+    // them, and a missing ruleset would quietly become the default one.
+    const detailed = {
+      ...submain, reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1',
+      ruleSetId: 'r7', notes: 'Under the stairs',
+    }
+    const underlying = stub(() => json(design()))
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
+      url === '/api/submains/s1' ? json(detailed) : underlying(url, init))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByLabelText(/fit a main isolator/i))
+
+    await waitFor(() => expect(patchBody(fetchMock as unknown as ReturnType<typeof stub>, '/api/submains/s1')).toMatchObject({
+      reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1', ruleSetId: 'r7', notes: 'Under the stairs',
+      hasIsolator: false, rebuild: true,
+    }))
+  })
+
   it('says when a circuit has been saved, and keeps saying it for a screen reader', async () => {
     const fetchMock = stub(() => json(design()))
     vi.stubGlobal('fetch', fetchMock)
@@ -336,6 +357,17 @@ describe('PanelPage', () => {
     expect(document.title).toMatch(/ground floor/i)
   })
 
+  it('offers Edit beside the parts list, back into the form that built the panel', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+
+    const edit = screen.getByRole('link', { name: /^edit$/i })
+    expect(edit).toHaveAttribute('href', '/submains/s1/edit')
+    expect(screen.getByRole('navigation').contains(edit)).toBe(true)
+  })
+
   it('keeps the row labels outside the drawing, where they stay on screen, and offers an overview strip', async () => {
     vi.stubGlobal('fetch', stub(() => json(design())))
 
@@ -374,5 +406,103 @@ describe('PanelPage', () => {
     renderPage()
 
     expect(await screen.findByText(/no panel yet/i)).toBeInTheDocument()
+  })
+
+  describe('terminal order', () => {
+    const withTerminal = (): DesignResponse => {
+      const d = design()
+      d.layout.devices.push({
+        id: 't1', deviceTypeId: 'term', category: 'Terminal240', rowIndex: 0, startSlot: 0,
+        moduleWidth: 1, label: 'C1', terminalRole: 'All', circuitId: 'c1', channels: [],
+      } as DesignResponse['layout']['devices'][number])
+      return d
+    }
+    const terminalsBody = {
+      layoutVersion: 4,
+      circuits: [
+        { circuitId: 'c1', name: 'Kitchen ceiling', room: 'Kitchen', type: 'DimmedLighting', terminalCount: 1 },
+        { circuitId: 'c2', name: 'Hall', room: null, type: 'DimmedLighting', terminalCount: 1 },
+      ],
+    }
+    const terminalStub = () => stub(
+      () => json(withTerminal()),
+      url => (url === '/api/submains/s1/terminals' ? json(terminalsBody) : undefined))
+
+    it('opens the terminal order from the terminals', async () => {
+      vi.stubGlobal('fetch', terminalStub())
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+
+      expect(await screen.findByRole('dialog', { name: 'Terminal order' })).toBeInTheDocument()
+    })
+
+    const openAndSave = async () => {
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Move Hall up' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+    }
+
+    it('keeps the sheet open and says why when the rebuild is refused', async () => {
+      const base = terminalStub()
+      vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) =>
+        url === '/api/submains/s1/terminals' && init?.method === 'PUT'
+          ? json({ diagnostics: [{ severity: 'Error', code: 'NO_ROOM', message: 'No room for 4 more terminals' }] }, 422)
+          : base(url, init)))
+
+      renderPage()
+      await openAndSave()
+
+      expect(await screen.findByRole('dialog', { name: 'Terminal order' })).toBeInTheDocument()
+      expect(await screen.findByRole('alert')).toHaveTextContent(/no room for 4 more terminals/i)
+    })
+
+    it('closes the sheet and reloads the layout on a stale version', async () => {
+      const base = terminalStub()
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
+        url === '/api/submains/s1/terminals' && init?.method === 'PUT'
+          ? json({ title: 'Conflict', conflict: true }, 409)
+          : base(url, init))
+      vi.stubGlobal('fetch', fetchMock)
+
+      renderPage()
+      await screen.findByRole('button', { name: /Terminals C1/ })
+      const layoutLoads = () => fetchMock.mock.calls.filter(c => c[0] === '/api/submains/s1/layout').length
+      const before = layoutLoads()
+      await openAndSave()
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(layoutLoads()).toBeGreaterThan(before))
+    })
+
+    it('says so and opens no sheet when the terminals cannot be loaded', async () => {
+      vi.stubGlobal('fetch', stub(
+        () => json(withTerminal()),
+        url => (url === '/api/submains/s1/terminals' ? json({ title: 'Boom' }, 500) : undefined)))
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+
+      expect(await screen.findByText(/Terminals not loaded/)).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('saves the order with the layout version it was based on', async () => {
+      const fetchMock = terminalStub()
+      vi.stubGlobal('fetch', fetchMock)
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Move Hall up' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const put = fetchMock.mock.calls.find(c => c[1]?.method === 'PUT' && c[0] === '/api/submains/s1/terminals')
+      expect(put).toBeDefined()
+      expect(JSON.parse(String(put![1]!.body))).toEqual({
+        layoutVersion: 4,
+        circuits: [{ circuitId: 'c2', terminalCount: 1 }, { circuitId: 'c1', terminalCount: 1 }],
+      })
+    })
   })
 })

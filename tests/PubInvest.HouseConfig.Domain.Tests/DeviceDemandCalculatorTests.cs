@@ -91,4 +91,20 @@ public class DeviceDemandCalculatorTests
         Assert.Equal(DiagnosticCodes.NoPreferredDevice, diagnostic.Code);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     }
+
+    [Fact]
+    public void Moving_a_circuit_along_the_terminal_rail_does_not_rewire_its_channel()
+    {
+        var circuits = Enumerable.Range(1, 4)
+            .Select(n => new Circuit(Guid.NewGuid(), CircuitType.DimmedLighting, $"L{n}", null, n, null, null))
+            .ToList();
+        var reversed = circuits.Select((c, i) => c with { TerminalPosition = 4 - i }).ToList();
+
+        var before = DeviceDemandCalculator.Calculate(circuits, CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+        var after = DeviceDemandCalculator.Calculate(reversed, CatalogueFixture.Rules(), CatalogueFixture.Catalogue());
+
+        Assert.Equal(
+            before.Devices.SelectMany(d => d.Channels).Select(c => c.CircuitId),
+            after.Devices.SelectMany(d => d.Channels).Select(c => c.CircuitId));
+    }
 }

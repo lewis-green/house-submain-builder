@@ -251,6 +251,11 @@ public static class CatalogueAdminEndpoints
         yield return payload.Terminals.DeviceTypeId;
         yield return payload.Terminals.BridgeBarDeviceTypeId;
         yield return payload.Terminals.EndStopDeviceTypeId;
+        // Older rulesets have neither; one with line bar ways must name the bar.
+        if (payload.Terminals.LineBridgeBarWays > 0 || payload.Terminals.LineBridgeBarDeviceTypeId != Guid.Empty)
+        {
+            yield return payload.Terminals.LineBridgeBarDeviceTypeId;
+        }
     }
 
     private static Dictionary<string, string[]> ValidateDeviceType(SaveDeviceTypeRequest request)

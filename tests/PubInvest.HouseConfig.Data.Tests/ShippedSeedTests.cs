@@ -158,8 +158,18 @@ public class ShippedSeedTests(PostgresFixture fixture)
         var seed = Load();
         var p = seed.RuleSets.Single(r => r.IsDefault).Payload;
 
-        Assert.Equal(1, p.Terminals.BlocksPerCircuit);
         Assert.Contains(seed.DeviceTypes, d => d.Id == p.Terminals.DeviceTypeId);
+    }
+
+    [Fact]
+    public void The_default_ruleset_bridges_line_tiers_with_a_catalogued_bar()
+    {
+        var seed = Load();
+        var terminals = seed.RuleSets.Single(r => r.IsDefault).Payload.Terminals;
+
+        Assert.True(terminals.LineBridgeBarWays > 0);
+        var bar = Assert.Single(seed.DeviceTypes, d => d.Id == terminals.LineBridgeBarDeviceTypeId);
+        Assert.Equal("Accessory", bar.Category);
     }
 
     [Fact]

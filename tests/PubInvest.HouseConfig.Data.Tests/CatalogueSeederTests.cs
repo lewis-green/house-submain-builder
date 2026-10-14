@@ -70,7 +70,6 @@ public class CatalogueSeederTests(PostgresFixture fixture)
                         isolator, dimmer, tapeDimmer, relay, relay, relay, dcPos, dcNeg, [psu]),
                     Terminals: new TerminalRules(
                         DeviceTypeId: terminal,
-                        BlocksPerCircuit: 1,
                         BridgeBarDeviceTypeId: bar,
                         BridgeBarWays: 10,
                         EndStopDeviceTypeId: endStop,
@@ -136,6 +135,57 @@ public class CatalogueSeederTests(PostgresFixture fixture)
         Assert.Equal("House default v2", row.Name);
         Assert.Equal(first.RuleSets[0].Version + 1, row.Version);
         Assert.Equal(0.5m, DomainMapper.ToDomain(row).PsuDeratingFactor);
+    }
+
+    [Fact]
+    public async Task A_ruleset_upgrade_keeps_the_admins_choice_of_default()
+    {
+        // The fixture's database is shared, so check these two rows rather than
+        // counting every default in the table.
+        await using var db = fixture.CreateContext();
+        var first = Document("dddd0003");
+        await CatalogueSeeder.SeedAsync(db, first, CancellationToken.None);
+
+        var shippedId = first.RuleSets[0].Id;
+        var adminId = Guid.NewGuid();
+        var shipped = await db.RuleSets.SingleAsync(r => r.Id == shippedId);
+        shipped.IsDefault = false;
+        db.RuleSets.Add(new Entities.RuleSetRow
+        {
+            Id = adminId, Name = "Admin rules", Version = 1, IsDefault = true,
+            PayloadJson = shipped.PayloadJson
+        });
+        await db.SaveChangesAsync(CancellationToken.None);
+
+        var next = first with
+        {
+            RuleSets = [first.RuleSets[0] with { Version = first.RuleSets[0].Version + 1 }],
+        };
+        await CatalogueSeeder.SeedAsync(db, next, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var rows = await db.RuleSets.Where(r => r.Id == shippedId || r.Id == adminId).ToListAsync();
+        Assert.False(rows.Single(r => r.Id == shippedId).IsDefault);
+        Assert.True(rows.Single(r => r.Id == adminId).IsDefault);
+    }
+
+    [Fact]
+    public async Task A_ruleset_that_was_the_default_stays_the_default_after_an_upgrade()
+    {
+        await using var db = fixture.CreateContext();
+        var first = Document("dddd0004");
+        await CatalogueSeeder.SeedAsync(db, first, CancellationToken.None);
+
+        var next = first with
+        {
+            RuleSets = [first.RuleSets[0] with { Version = first.RuleSets[0].Version + 1 }],
+        };
+        await CatalogueSeeder.SeedAsync(db, next, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var row = await db.RuleSets.SingleAsync(r => r.Id == first.RuleSets[0].Id);
+        Assert.Equal(2, row.Version);
+        Assert.True(row.IsDefault);
     }
 
     [Fact]

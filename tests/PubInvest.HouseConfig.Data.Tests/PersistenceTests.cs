@@ -59,6 +59,95 @@ public class PersistenceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task A_circuits_terminal_place_and_a_terminals_circuit_round_trip()
+    {
+        var projectId = Guid.NewGuid();
+        var submainId = Guid.NewGuid();
+        var circuitId = Guid.NewGuid();
+
+        await using (var db = fixture.CreateContext())
+        {
+            db.Projects.Add(new Project
+            {
+                Id = projectId,
+                Name = "Terminal House",
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = "test",
+                Submains =
+                [
+                    new Submain
+                    {
+                        Id = submainId,
+                        Name = "Ground Floor",
+                        LayoutVersion = 1,
+                        Circuits =
+                        [
+                            new CircuitRow
+                            {
+                                Id = circuitId, Type = "Switched", Name = "Hall", Sequence = 1,
+                                TerminalPosition = 4, TerminalCount = 6
+                            }
+                        ],
+                        Devices =
+                        [
+                            new DeviceInstance
+                            {
+                                Id = Guid.NewGuid(), DeviceTypeId = Guid.NewGuid(),
+                                Category = "Terminal240", RowIndex = 0, StartSlot = 0, ModuleWidth = 1,
+                                Label = "C4.1", TerminalRole = "All", CircuitId = circuitId
+                            }
+                        ]
+                    }
+                ]
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await using var fresh = fixture.CreateContext();
+        var circuit = await fresh.Circuits.SingleAsync(c => c.Id == circuitId);
+        var terminal = await fresh.DeviceInstances.SingleAsync(d => d.SubmainId == submainId);
+
+        Assert.Equal(4, circuit.TerminalPosition);
+        Assert.Equal(6, circuit.TerminalCount);
+        Assert.Equal(circuitId, terminal.CircuitId);
+    }
+
+    [Fact]
+    public async Task A_circuit_stored_before_terminal_counts_lands_on_one_terminal()
+    {
+        var projectId = Guid.NewGuid();
+        var submainId = Guid.NewGuid();
+        var circuitId = Guid.NewGuid();
+
+        await using (var db = fixture.CreateContext())
+        {
+            db.Projects.Add(new Project
+            {
+                Id = projectId, Name = "Old House", CreatedAt = DateTimeOffset.UtcNow, CreatedBy = "test",
+                Submains = [new Submain { Id = submainId, Name = "Old", LayoutVersion = 1 }]
+            });
+            await db.SaveChangesAsync();
+
+            // Raw SQL leaves TerminalCount out, as a row written before the column existed would.
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""INSERT INTO "Circuits" ("Id", "SubmainId", "Type", "Name", "Sequence") VALUES ({circuitId}, {submainId}, 'Switched', 'Old', 1)""");
+        }
+
+        await using var fresh = fixture.CreateContext();
+        var circuit = await fresh.Circuits.SingleAsync(c => c.Id == circuitId);
+
+        Assert.Equal(1, circuit.TerminalCount);
+        Assert.Null(circuit.TerminalPosition);
+    }
+
+    [Fact]
+    public void A_new_circuit_row_lands_on_one_terminal()
+    {
+        Assert.Equal(1, new CircuitRow().TerminalCount);
+        Assert.Null(new CircuitRow().TerminalPosition);
+    }
+
+    [Fact]
     public async Task Two_devices_cannot_occupy_the_same_slot_in_one_submain()
     {
         var deviceTypeId = Guid.NewGuid();

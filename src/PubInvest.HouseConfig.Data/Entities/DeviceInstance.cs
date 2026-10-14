@@ -11,5 +11,7 @@ public class DeviceInstance
     public int ModuleWidth { get; set; }
     public string Label { get; set; } = "";
     public string TerminalRole { get; set; } = "None";
+    /// Terminals only: the circuit landing on this block.
+    public Guid? CircuitId { get; set; }
     public List<DeviceChannelRow> Channels { get; set; } = [];
 }

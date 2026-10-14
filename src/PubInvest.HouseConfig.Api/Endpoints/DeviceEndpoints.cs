@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
 using PubInvest.HouseConfig.Data;
+using PubInvest.HouseConfig.Domain.Catalogue;
 
 namespace PubInvest.HouseConfig.Api.Endpoints;
 
@@ -79,6 +80,16 @@ public static class DeviceEndpoints
             {
                 var device = await db.DeviceInstances.SingleOrDefaultAsync(d => d.Id == id, ct);
                 if (device is null) return Results.NotFound();
+
+                // The terminal order places terminals; dragging one would break the
+                // run a bridged circuit's bar and the schedule's range depend on.
+                if (device.Category == nameof(DeviceCategory.Terminal240))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["position"] = ["Terminals are placed by the terminal order. Change the order instead."]
+                    });
+                }
 
                 var submain = await db.Submains.SingleAsync(s => s.Id == device.SubmainId, ct);
                 if (submain.LayoutVersion != request.BasedOnLayoutVersion)

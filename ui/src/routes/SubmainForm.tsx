@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
+import { currentDetails } from '../api/submainDetails'
 import type {
-  DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, SubmainResponse,
+  CircuitResponse, DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -16,7 +17,8 @@ import { announce, dismissStatus } from '../components/status'
 import { useSingleFlight } from '../components/useSingleFlight'
 import { FixturePicker } from '../wizard/FixturePicker'
 import { PreviewSummary } from '../wizard/PreviewSummary'
-import { buildCircuits, type TapeInput } from '../wizard/buildCircuits'
+import { NEW_TAPE_RUN, buildCircuits, type TapeInput } from '../wizard/buildCircuits'
+import { circuitsForEdit, countsFromCircuits, namesRemoved, removedByEdit } from '../wizard/editCircuits'
 import { formatModules } from '../units'
 
 const PREVIEW_DEBOUNCE_MS = 400
@@ -33,17 +35,64 @@ const describeEnclosure = (e: EnclosureType) => {
   return `${size} · ${maker}`
 }
 
+/** The panel being edited, as it was stored when the form opened. */
+interface Built { submain: SubmainResponse; circuits: CircuitResponse[] }
+
+/**
+ * Whether the panel is still as the form found it: every detail a save would
+ * write back, and every circuit as the form would resend it. Renaming a circuit
+ * or giving it a room does not move the layout version, so that cannot be the test.
+ */
+function unchangedSince(opened: Built, now: Built) {
+  const saved = ({ submain, circuits }: Built) => JSON.stringify({
+    details: currentDetails(submain),
+    hasIsolator: submain.hasIsolator,
+    terminalsAtBottom: submain.terminalsAtBottom,
+    extraFixtures: submain.extraFixtures,
+    circuits: [...circuits].sort((a, b) => a.sequence - b.sequence).map(c =>
+      [c.id, c.type, c.name, c.room, c.sequence, c.wattsPerMetre, c.lengthMetres]),
+  })
+  return saved(opened) === saved(now)
+}
+
+/** What the form says where creating and editing differ. */
+const wording = {
+  create: { busy: 'Generating…', act: 'Generate panel', failed: 'Not generated', done: 'Panel generated', verb: 'generate' },
+  edit: { busy: 'Saving…', act: 'Save and rebuild', failed: 'Not saved', done: 'Panel rebuilt', verb: 'save' },
+}
+
+/** A new submain in a house: the build form, empty. */
+export function NewSubmainPage() {
+  const { projectId } = useParams()
+  return <SubmainForm projectId={projectId} />
+}
+
+/**
+ * A built panel back in the form that built it, from the panel screen's Edit.
+ * The same form rather than a second one, so a count means the same thing on
+ * the way in and the way back — and the edit is checked by the same preview.
+ */
+export function EditSubmainPage() {
+  const { submainId } = useParams()
+  return <SubmainForm submainId={submainId} />
+}
+
 /**
  * One scrolling page rather than paged steps: on a phone, moving back and forth
  * between steps costs more than scrolling does. It reads in the order an
  * engineer thinks — what the box is, how it is installed, what it feeds — with
  * the verdict and the Generate button pinned to the bottom.
+ *
+ * Given a submain it edits that one instead: the form opens filled from the
+ * panel as stored, and Save and rebuild replaces it in one transaction.
  */
-export function NewSubmainPage() {
-  const { projectId } = useParams()
+function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?: string }) {
   const navigate = useNavigate()
+  const editing = submainId !== undefined
+  const words = editing ? wording.edit : wording.create
 
   const [enclosures, setEnclosures] = useState<EnclosureType[] | null>(null)
+  const [built, setBuilt] = useState<Built | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [name, setName] = useState('')
@@ -65,6 +114,9 @@ export function NewSubmainPage() {
   // and only while the inputs are the ones it was refused for.
   const [generateError, setGenerateError] = useState<{ message: string; inputs: unknown } | null>(null)
   const [generating, setGenerating] = useState(false)
+  // Editing: the panel was changed elsewhere after the form opened, so saving
+  // would put back what that change took away. Reloading starts the form again.
+  const [stale, setStale] = useState(false)
   const once = useSingleFlight()
 
   // A callback, not an inline effect, so the error state can offer Try again.
@@ -72,30 +124,53 @@ export function NewSubmainPage() {
     Promise.all([
       api.get<EnclosureType[]>('/catalogue/enclosures'),
       api.get<DeviceTypeResponse[]>('/catalogue/device-types'),
+      submainId ? api.get<SubmainResponse>(`/submains/${submainId}`) : null,
+      submainId ? api.get<CircuitResponse[]>(`/submains/${submainId}/circuits`) : null,
     ])
-      .then(([list, devices]) => {
+      .then(([list, devices, submain, stored]) => {
         setEnclosures(list)
         setCatalogue(devices)
         // The biggest box first: a panel that fits is the common case, and a
         // smaller enclosure is a choice someone makes on purpose.
         const largest = [...list].sort((a, b) => b.totalSlots - a.totalSlots)[0]
-        if (largest) setEnclosureId(largest.id)
+        if (submain && stored) {
+          const counts = countsFromCircuits(stored)
+          setBuilt({ submain, circuits: stored })
+          setName(submain.name)
+          setEnclosureId(submain.enclosureTypeId ?? largest?.id ?? '')
+          setHasIsolator(submain.hasIsolator)
+          setTerminalsAtBottom(submain.terminalsAtBottom)
+          setFixtures(submain.extraFixtures)
+          setDimmed(counts.dimmed)
+          setSwitched(counts.switched)
+          setBlinds(counts.blinds)
+          setTape(counts.tape)
+        } else if (largest) setEnclosureId(largest.id)
       })
-      .catch((e: ApiError) => setLoadError(e.message)), [])
+      .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
   useEffect(() => { void load() }, [load])
 
   // One object for both preview and generate, rebuilt only when an input
   // changes, so the preview effect fires on real edits and not on every render.
+  // Editing, the kept circuits go with their ids, so the preview and the save
+  // both see the panel's own circuits rather than a fresh set with the same names.
   const request = useMemo(() => ({
     enclosureTypeId: enclosureId,
     hasIsolator,
     terminalsAtBottom,
-    circuits: buildCircuits({ dimmed, switched, blinds, tape }),
+    circuits: built
+      ? circuitsForEdit(built.circuits, { dimmed, switched, blinds, tape })
+      : buildCircuits({ dimmed, switched, blinds, tape }),
     extraFixtures: fixtures,
-  }), [enclosureId, hasIsolator, terminalsAtBottom, dimmed, switched, blinds, tape, fixtures])
+  }), [built, enclosureId, hasIsolator, terminalsAtBottom, dimmed, switched, blinds, tape, fixtures])
 
   const circuits = request.circuits
+  // Said before the save rather than discovered after it: a lower count drops
+  // the last circuits of that type, names and rooms and all.
+  const removed = useMemo(
+    () => built ? removedByEdit(built.circuits, { dimmed, switched, blinds, tape }) : [],
+    [built, dimmed, switched, blinds, tape])
   const nothingToDesign = circuits.length === 0 && fixtures.length === 0
 
   // Which request the shown preview answers. Generate is only offered while
@@ -108,7 +183,10 @@ export function NewSubmainPage() {
     const mine = request
     setPreviewing(true)
     try {
-      const result = await api.post<DesignResponse>(`/projects/${projectId}/design/preview`, mine)
+      // Editing previews against the stored submain, which keeps what was
+      // dragged and the terminal order; creating previews against nothing.
+      const result = await api.post<DesignResponse>(
+        editing ? `/submains/${submainId}/design/preview` : `/projects/${projectId}/design/preview`, mine)
       // A slow reply to an earlier edit must not overwrite a newer verdict.
       if (latestRequest.current !== mine) return
       setDesign(result)
@@ -122,7 +200,7 @@ export function NewSubmainPage() {
     } finally {
       if (latestRequest.current === mine) setPreviewing(false)
     }
-  }, [projectId, request])
+  }, [editing, projectId, submainId, request])
 
   // Preview is stateless on the server: nothing is created in the house until
   // Generate, so backing out of here leaves no empty submain behind.
@@ -147,13 +225,36 @@ export function NewSubmainPage() {
     // The last attempt's reason must not sit beside this one's.
     dismissStatus()
     try {
-      const created = await api.post<SubmainResponse>(`/projects/${projectId}/submains`, {
-        name: name.trim() || 'New submain',
-        ...request,
-        generate: true,
-      })
-      announce('Panel generated', 'ok')
-      navigate(`/submains/${created.id}/panel`)
+      let saved: SubmainResponse
+      if (built) {
+        // The save resends the circuits as they were when the form opened, so a
+        // rename or a room set on the panel screen meanwhile would be quietly
+        // undone. Asking again just before the save narrows that window to the
+        // moment between this check and the PATCH; it does not close it.
+        const [submainNow, circuitsNow] = await Promise.all([
+          api.get<SubmainResponse>(`/submains/${built.submain.id}`),
+          api.get<CircuitResponse[]>(`/submains/${built.submain.id}/circuits`),
+        ])
+        if (!unchangedSince(built, { submain: submainNow, circuits: circuitsNow })) {
+          setStale(true)
+          return
+        }
+        // The details this form does not show go back as they came, not as blanks.
+        saved = await api.patch<SubmainResponse>(`/submains/${built.submain.id}`, {
+          ...currentDetails(built.submain),
+          name: name.trim(),
+          ...request,
+          rebuild: true,
+        })
+      } else {
+        saved = await api.post<SubmainResponse>(`/projects/${projectId}/submains`, {
+          name: name.trim() || 'New submain',
+          ...request,
+          generate: true,
+        })
+      }
+      announce(words.done, 'ok')
+      navigate(`/submains/${saved.id}/panel`)
     } catch (e) {
       const error = e as ApiError
       setFieldErrors(error.fieldErrors)
@@ -164,7 +265,7 @@ export function NewSubmainPage() {
       // only when the server gave no field to pin the refusal to.
       const elsewhere = error.errorsOutside(['name'])
       if (elsewhere.length > 0) setGenerateError({ message: elsewhere.join(' '), inputs: request })
-      else if (!error.fieldErrors.name) announce(`Not generated: ${error.message}`, 'error')
+      else if (!error.fieldErrors.name) announce(`${words.failed}: ${error.message}`, 'error')
       // A 422 carries the diagnostics that explain why: keep the engineer here
       // with the inputs they can change, rather than throwing them to an error page.
       if (error.status === 422) await preview()
@@ -176,42 +277,75 @@ export function NewSubmainPage() {
   const blocked = shownDesign?.diagnostics.some(d => d.severity === 'Error') ?? false
   // The one reason Generate is not available right now, said under the button.
   const whyNot = circuits.length === 0
-    ? 'Add at least one circuit to generate a panel.'
+    ? `Add at least one circuit to ${words.verb} a panel.`
     : previewError
       ? 'The design could not be checked. Try the preview again above.'
       : !fresh
         ? 'Checking the design…'
         : blocked
-          ? 'Fix the error in the preview to generate.'
+          ? `Fix the error in the preview to ${words.verb}.`
           : null
+
+  const ready = enclosures !== null && (!editing || built !== null)
 
   return (
     <AppShell
-      title="New submain"
-      back={{ to: `/projects/${projectId}`, label: 'House' }}
+      // The name as stored, not as typed: the title says which panel this is.
+      title={editing ? `Edit ${built?.submain.name ?? 'panel'}` : 'New submain'}
+      back={editing ? { to: `/submains/${submainId}/panel`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
       actions={(
         <div className="w-full">
-          {generateError?.inputs === request && (
-            <div className="mb-3"><ErrorNote compact message={`Not generated: ${generateError.message}`} /></div>
+          {/* Always in the page, so the change is spoken as it happens — politely,
+              and not as a second status region talking over the app's own. The
+              button names it as its description while there is something to say. */}
+          <div aria-live="polite">
+            {removed.length > 0 && (
+              <p id="removal-warning" className="mb-3 rounded-lg border border-l-4 border-warn bg-warn-soft px-3 py-2 text-sm text-warn">
+                <span className="font-bold">Saving removes:</span> {namesRemoved(removed)}
+              </p>
+            )}
+          </div>
+          {stale && (
+            <div className="mb-3">
+              <ErrorNote
+                compact
+                message="This panel changed since you opened it. Reload to see the changes."
+                retryLabel="Reload"
+                onRetry={() => { setStale(false); setBuilt(null); void load() }}
+              />
+            </div>
           )}
-          <Button type="submit" form="new-submain" disabled={generating || whyNot !== null} className="w-full">
-            {generating ? 'Generating…' : 'Generate panel'}
+          {generateError?.inputs === request && (
+            <div className="mb-3"><ErrorNote compact message={`${words.failed}: ${generateError.message}`} /></div>
+          )}
+          <Button
+            type="submit"
+            form="submain-form"
+            disabled={generating || !ready || whyNot !== null}
+            aria-describedby={removed.length > 0 ? 'removal-warning' : undefined}
+            className="w-full"
+          >
+            {generating ? words.busy : words.act}
           </Button>
           {whyNot && <p className="mt-2 text-center text-sm text-ink-2">{whyNot}</p>}
         </div>
       )}
     >
       {loadError && <ErrorNote message={loadError} onRetry={() => { setLoadError(null); void load() }} />}
-      {!enclosures && !loadError && <Skeleton label="Loading catalogue" rows={4} rowClass="h-14" />}
+      {!ready && !loadError && (
+        <Skeleton label={editing ? 'Loading panel' : 'Loading catalogue'} rows={4} rowClass="h-14" />
+      )}
 
-      {enclosures && (
+      {ready && (
         <form
-          id="new-submain"
+          id="submain-form"
           className="space-y-6"
           onSubmit={e => { e.preventDefault(); void generate() }}
         >
           <p className="text-ink-2">
-            A submain is one panel: the enclosure on a wall and everything in it.
+            {editing
+              ? 'Change what this panel feeds and it is laid out again. Circuits you keep keep their names, rooms and terminal order.'
+              : 'A submain is one panel: the enclosure on a wall and everything in it.'}
           </p>
 
           <Field
@@ -268,6 +402,16 @@ export function NewSubmainPage() {
             {tape.map((t, i) => (
               <div key={i} className="grid grid-cols-2 gap-3 rounded-lg border border-rule bg-sheet p-3">
                 <Field
+                  label="Tape name"
+                  value={t.name ?? ''}
+                  onChange={name => setTape(tape.map((x, j) => j === i ? { ...x, name } : x))}
+                  placeholder="Kitchen plinth"
+                  hint={`Left blank, it is called ${t.colour ? 'Colour tape' : 'Tape'} ${i + 1}.`}
+                  autoCapitalize="sentences"
+                  enterKeyHint="next"
+                  className="col-span-2"
+                />
+                <Field
                   label="Watts per metre"
                   value={String(t.wattsPerMetre)}
                   onChange={v => setTape(tape.map((x, j) => j === i ? { ...x, wattsPerMetre: Number(v) || 0 } : x))}
@@ -302,7 +446,7 @@ export function NewSubmainPage() {
             ))}
             <Button
               variant="secondary"
-              onClick={() => setTape([...tape, { wattsPerMetre: 14.4, lengthMetres: 5, colour: false }])}
+              onClick={() => setTape([...tape, { ...NEW_TAPE_RUN }])}
             >
               Add tape circuit
             </Button>

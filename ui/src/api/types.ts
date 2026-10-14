@@ -62,6 +62,8 @@ export interface PlacedDeviceResponse {
   label: string
   terminalRole: TerminalRole
   channels: ChannelResponse[]
+  /** Terminals only: the circuit landing on this block. Absent from older responses. */
+  circuitId?: string | null
 }
 
 export interface LayoutResponse {
@@ -140,6 +142,17 @@ export interface CircuitInput {
   sequence: number
   wattsPerMetre?: number | null
   lengthMetres?: number | null
+}
+
+/** A stored circuit, as GET /submains/{id}/circuits reads it back to edit the panel. */
+export interface CircuitResponse {
+  id: string
+  type: CircuitType
+  name: string
+  room: string | null
+  sequence: number
+  wattsPerMetre: number | null
+  lengthMetres: number | null
 }
 
 export interface BomLineView {
@@ -257,3 +270,20 @@ export interface FedRack {
   id: string
   name: string
 }
+
+/** One circuit as the terminal sheet shows it, in terminal order. */
+export interface TerminalCircuit {
+  circuitId: string
+  name: string
+  room: string | null
+  type: CircuitType
+  terminalCount: number
+}
+
+export interface TerminalsResponse {
+  layoutVersion: number
+  circuits: TerminalCircuit[]
+}
+
+/** The most terminals one circuit may land on. Mirrors TerminalBandBuilder.MaxTerminalsPerCircuit. */
+export const MAX_TERMINALS_PER_CIRCUIT = 12

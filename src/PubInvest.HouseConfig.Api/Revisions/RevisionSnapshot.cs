@@ -30,4 +30,10 @@ public sealed record RevisionSnapshot(
     bool HasIsolator = true,
     bool TerminalsAtBottom = false);
 
-public sealed record CircuitSnapshot(Guid Id, string Type, string Name, string? Room, int Sequence);
+/// Revisions issued before terminal places existed read as unplaced circuits
+/// on one terminal each, which is what they were. TerminalCount is therefore
+/// not nullable: a null would reserialise differently from a fresh snapshot and
+/// wrongly mark the old revision out of date.
+public sealed record CircuitSnapshot(
+    Guid Id, string Type, string Name, string? Room, int Sequence,
+    int? TerminalPosition = null, int TerminalCount = 1);

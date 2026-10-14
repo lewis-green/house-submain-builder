@@ -62,6 +62,7 @@ app.MapSubmainEndpoints();
 app.MapCatalogueEndpoints();
 app.MapDesignEndpoints();
 app.MapCircuitEndpoints();
+app.MapTerminalEndpoints();
 app.MapDeviceEndpoints();
 app.MapRevisionEndpoints();
 app.MapExportEndpoints();

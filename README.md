@@ -91,7 +91,16 @@ don't commit it filled.
    server, and the screen says when the PDF on offer is behind the panel.
 7. **Bill of materials** lists the parts to order, with anything not mounted in
    the panel (the LED driver) marked as external.
-8. **Add rack** on the house page. Pick a cabinet and, if it has one, the
+8. **Edit** on the panel screen opens the panel back in the form that built it,
+   filled in as it stands: change the name, the enclosure, the counts or the
+   tape runs, and **Save and rebuild** saves and lays it out again in one
+   transaction. Circuits you keep keep their names, rooms and terminal order,
+   though, as with any rebuild, a channel freed by hand is reassigned. A lower
+   count removes the last circuits of that type, and the form names them beside
+   the button before you save. If the panel was changed elsewhere since the form
+   opened, it will not save over that; Reload starts it again from the panel as
+   it now is.
+9. **Add rack** on the house page. Pick a cabinet and, if it has one, the
    submain that feeds it. On the rack screen, **Add to rack** puts a switch or
    a patch panel in the top free U; drag an item to move it (on a touchscreen,
    hold it first). Tap an item to label its ports — Return moves to the next
@@ -102,7 +111,8 @@ don't commit it filled.
 
 Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
 the two-pole isolator, the 24V joint blocks, the external driver wattages, the
-jumper bar's ways and the end stops per bank. Confirm them before ordering from
+jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
+terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
 a generated bill of materials. The rack cabinets, the 24-port patch panel and
 the USW-Pro-Max-16-PoE's rack-mount kit carry ASSUMED part numbers, and the
 three switches' port splits and PoE budgets come from retailer listings rather
@@ -124,10 +134,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 350 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 247 Vitest tests in jsdom
+dotnet test          # 414 tests (155 Domain, 31 Data, 228 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 313 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
+cd ui && npm run test:e2e   # 41 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -137,11 +148,11 @@ images, and pushes them to GHCR from `main`.
 
 `ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
-horizontal overflow at four widths and again with 200% text, the wizard, Home
-Screen metadata, the rack screen's port labelling, drag and PDF, and a few
-checks with a mouse (36 tests). It brings up its own stack and takes it down
-again, so it needs nothing running first and never touches a development
-database:
+horizontal overflow at four widths and again with 200% text, the wizard and
+editing a built panel, Home Screen metadata, the rack screen's port labelling,
+drag and PDF, and a few checks with a mouse (41 tests). It brings up its own
+stack and takes it down again, so it needs nothing running first and never
+touches a development database:
 
 ```bash
 cd ui
@@ -164,7 +175,7 @@ src/PubInvest.HouseConfig.Data/     EF Core, Postgres, catalogue seeding
 src/PubInvest.HouseConfig.Api/      minimal API, revisions, PDF and BOM export
 ui/                                 React 19 + Vite + TypeScript + Tailwind
 seed/catalogue.v1.json              devices, enclosures and the default ruleset
-docs/superpowers/                   the design spec and the five implementation plans
+docs/superpowers/                   the design specs and the six implementation plans
 ```
 
 Three ideas are worth knowing before reading the code:
@@ -174,6 +185,23 @@ one module, so a third is the smallest real unit; counting in thirds keeps every
 width a whole number and the packer free of rounding. A dimmer is 3, a relay 9, a
 terminal 1. `DinUnits.PerModule` is the constant; anything a person reads is
 converted back to modules first.
+
+**Terminals have an order, and a circuit can land on several.** Tap the run of
+terminals on the panel screen to open the terminal order: reorder the circuits
+along the rail (C1 is always the first terminal, and the numbers follow
+position) and set how many terminals each circuit lands on, up to 12, for
+several cables to one channel. A circuit on several terminals is labelled
+C3.1, C3.2 and so on, and its line tiers are bridged with a cut-to-length line
+jumper bar, counted per bridged circuit as ceil(n/10) with offcuts not shared;
+its part number (`ASSUMED-LINE-JUMPER-BAR-10`) is assumed until confirmed, and
+the panel warns if a circuit is bridged but the ruleset has no usable line bar.
+Terminals follow the
+terminal order, so they can't be dragged. Terminal order is independent of the
+circuit sequence: moving terminals never changes which Shelly channel a circuit
+is on. Saving is one request, `PUT /submains/{id}/terminals`, that saves the
+order and rebuilds the panel in the same transaction (409 if the panel changed
+elsewhere, 400 for a bad list, 422 if the terminals won't fit — nothing is
+saved); `GET /submains/{id}/terminals` reads the current order and counts.
 
 **The server decides every layout.** The UI never computes one — it draws what
 `/design/preview` or `/design/generate` returned. That is what keeps the drawing,

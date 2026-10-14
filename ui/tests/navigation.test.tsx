@@ -33,7 +33,7 @@ const design: DesignResponse = {
 /** Routes the real app defines. A Back link must land on one of these. */
 const routed = (url: string) =>
   ['/', '/catalogue', '/projects/p1', '/projects/p1/bom', '/projects/p1/submains/new',
-   '/submains/s1/panel', '/submains/s1/bom'].includes(url)
+   '/submains/s1/panel', '/submains/s1/bom', '/submains/s1/edit'].includes(url)
 
 function stubApi() {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -82,6 +82,19 @@ describe('Back navigation', () => {
 
     expect(target).toBe('/submains/s1/panel')
     expect(routed(target)).toBe(true)
+  })
+
+  it('takes you from a panel into its edit and back to the panel', async () => {
+    stubApi()
+
+    render(<MemoryRouter initialEntries={['/submains/s1/panel']}><App /></MemoryRouter>)
+
+    const edit = await screen.findByRole('link', { name: /^edit$/i })
+    expect(routed(edit.getAttribute('href')!)).toBe(true)
+    await userEvent.click(edit)
+
+    const back = await screen.findByRole('link', { name: /back to panel/i })
+    expect(back.getAttribute('href')).toBe('/submains/s1/panel')
   })
 
   it('takes you from a house bill of materials back to the house', async () => {

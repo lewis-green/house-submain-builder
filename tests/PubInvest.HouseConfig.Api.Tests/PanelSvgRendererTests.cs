@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Security;
+using System.Text.RegularExpressions;
 using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Api.Rendering;
 using PubInvest.HouseConfig.Domain.Catalogue;
@@ -76,12 +77,68 @@ public class PanelSvgRendererTests
     }
 
     [Fact]
-    public void A_run_of_terminals_becomes_one_labelled_block()
+    public void A_run_of_terminals_is_one_block_with_a_label_per_terminal()
     {
         var svg = PanelSvgRenderer.Render(Layout(), Names());
 
-        Assert.Contains(">C1–C4<", svg);
-        Assert.DoesNotContain(">C2<", svg);
+        Assert.Contains(">C1<", svg);
+        Assert.Contains(">C2<", svg);
+        Assert.DoesNotContain(">C1–C4<", svg);
+    }
+
+    [Fact]
+    public void Each_terminal_in_a_run_is_labelled_and_a_bridged_circuit_gets_a_bar()
+    {
+        var circuit = Guid.NewGuid();
+        var type = Guid.NewGuid();
+        var layout = new PanelLayout(1, 12,
+        [
+            new(type, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All, Guid.NewGuid()),
+            new(type, DeviceCategory.Terminal240, 0, 1, 1, "C2.1", [], TerminalRole.All, circuit),
+            new(type, DeviceCategory.Terminal240, 0, 2, 1, "C2.2", [], TerminalRole.All, circuit),
+        ]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.Contains(">C1<", svg);
+        Assert.Contains(">C2.1<", svg);
+        Assert.Contains(">C2.2<", svg);
+        Assert.Contains("data-bridge=\"C2.1–C2.2\"", svg);
+        Assert.Single(Regex.Matches(svg, "data-bridge="));
+    }
+
+    [Fact]
+    public void A_bar_never_spans_another_circuits_terminal()
+    {
+        var (a, b, c, type) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var layout = new PanelLayout(1, 12,
+        [
+            new(type, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All, a),
+            new(type, DeviceCategory.Terminal240, 0, 1, 1, "C2.1", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 2, 1, "C3", [], TerminalRole.All, c),
+            new(type, DeviceCategory.Terminal240, 0, 3, 1, "C2.2", [], TerminalRole.All, b),
+        ]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.DoesNotContain("data-bridge=", svg);
+    }
+
+    [Fact]
+    public void A_bridge_of_three_blocks_gets_one_bar()
+    {
+        var (b, type) = (Guid.NewGuid(), Guid.NewGuid());
+        var layout = new PanelLayout(1, 12,
+        [
+            new(type, DeviceCategory.Terminal240, 0, 0, 1, "C2.1", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 1, 1, "C2.2", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 2, 1, "C2.3", [], TerminalRole.All, b),
+        ]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.Single(Regex.Matches(svg, "data-bridge="));
+        Assert.Contains("data-bridge=\"C2.1–C2.3\"", svg);
     }
 
     [Fact]
@@ -157,7 +214,7 @@ public class PanelSvgRendererTests
 
         Assert.Contains(">Dimmer 1<", svg);
         Assert.Contains(">Relay 1<", svg);
-        Assert.Contains(">C1\u2013C4<", svg);
+        Assert.Contains(">C4<", svg);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PanelSvg } from '../src/panel/PanelSvg'
@@ -30,13 +30,104 @@ describe('PanelSvg', () => {
     expect(screen.getByRole('button', { name: /dimmer 1.*kitchen ceiling/i })).toBeInTheDocument()
   })
 
-  it('groups a run of terminals into one labelled block', () => {
-    render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} />)
+  it('draws a run of terminals as one block with each terminal labelled', () => {
+    const { container } = render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} />)
 
-    // A picture, not a button: terminals have nothing to name or move, so a
-    // tap on them would only open an empty sheet.
+    // Without a handler the run is still a picture: nothing to open.
     expect(screen.getByRole('img', { name: /L1.*L3/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /L1/ })).not.toBeInTheDocument()
+    const labels = [...container.querySelectorAll('text')].map(t => t.textContent)
+    expect(labels).toEqual(expect.arrayContaining(['L1', 'L2', 'L3']))
+  })
+
+  it('opens the terminal order from the run when it can', async () => {
+    const onOpenTerminals = vi.fn()
+    render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} onOpenTerminals={onOpenTerminals} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /terminals L1–L3/i }))
+
+    expect(onOpenTerminals).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Terminals L1–L3, change order' })).toBeInTheDocument()
+  })
+
+  it('opens the terminal order from the keyboard, once per press, without scrolling', async () => {
+    const onOpenTerminals = vi.fn()
+    render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} onOpenTerminals={onOpenTerminals} />)
+    screen.getByRole('button', { name: /terminals L1–L3/i }).focus()
+
+    await userEvent.keyboard('{Enter}')
+    expect(onOpenTerminals).toHaveBeenCalledTimes(1)
+    await userEvent.keyboard(' ')
+    expect(onOpenTerminals).toHaveBeenCalledTimes(2)
+
+    const space = createEvent.keyDown(screen.getByRole('button', { name: /terminals L1–L3/i }), { key: ' ' })
+    fireEvent(screen.getByRole('button', { name: /terminals L1–L3/i }), space)
+    expect(space.defaultPrevented).toBe(true)
+    fireEvent.keyDown(screen.getByRole('button', { name: /terminals L1–L3/i }), { key: 'Enter', repeat: true })
+    expect(onOpenTerminals).toHaveBeenCalledTimes(3)
+  })
+
+  it('selects a device with Space, without scrolling', () => {
+    const onSelect = vi.fn()
+    render(<PanelSvg layout={layout} selectedId={null} onSelect={onSelect} />)
+    const button = screen.getByRole('button', { name: /dimmer 1/i })
+    const space = createEvent.keyDown(button, { key: ' ' })
+    fireEvent(button, space)
+
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(space.defaultPrevented).toBe(true)
+    fireEvent.keyDown(button, { key: 'Enter', repeat: true })
+    expect(onSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the first label of a run inside the inset block', () => {
+    const { container } = render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} />)
+
+    const rect = container.querySelector('svg > g[role="img"] > rect')!
+    const first = container.querySelector('svg > g[role="img"] text')!
+    const left = Number(rect.getAttribute('x'))
+    // Slot 0 is 18px wide; the inset trims its outer edge, so the label sits
+    // in the middle of what is left, not at 9.
+    expect(Number(first.getAttribute('x'))).toBeCloseTo((left + 18) / 2)
+  })
+
+  it('centres a lone terminal label in the visible block, not the full slot', () => {
+    const lone: LayoutResponse = { rows: 1, slotsPerRow: 54, devices: [terminal(1, 0)] }
+    const { container } = render(<PanelSvg layout={lone} selectedId={null} onSelect={() => {}} />)
+
+    const rect = container.querySelector('svg > g[role="img"] > rect')!
+    const text = container.querySelector('svg > g[role="img"] text')!
+    const centre = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2
+    expect(Number(text.getAttribute('x'))).toBeCloseTo(centre)
+    expect(container.querySelector('svg > g[role="img"] > g')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('marks a circuit bridged across several terminals with a bar', () => {
+    const bridged: LayoutResponse = {
+      rows: 1, slotsPerRow: 54,
+      devices: [
+        { ...terminal(1, 0), label: 'C1', circuitId: 'a' },
+        { ...terminal(2, 1), label: 'C2.1', circuitId: 'b' },
+        { ...terminal(3, 2), label: 'C2.2', circuitId: 'b' },
+      ],
+    }
+    const { container } = render(<PanelSvg layout={bridged} selectedId={null} onSelect={() => {}} />)
+
+    expect(container.querySelector('[data-bridge="C2.1–C2.2"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-bridge]')).toHaveLength(1)
+  })
+
+  it('never draws a bridge bar across another circuit\'s terminal', () => {
+    const interleaved: LayoutResponse = {
+      rows: 1, slotsPerRow: 54,
+      devices: [
+        { ...terminal(1, 0), label: 'C2.1', circuitId: 'b' },
+        { ...terminal(2, 1), label: 'C3', circuitId: 'c' },
+        { ...terminal(3, 2), label: 'C2.2', circuitId: 'b' },
+      ],
+    }
+    const { container } = render(<PanelSvg layout={interleaved} selectedId={null} onSelect={() => {}} />)
+
+    expect(container.querySelectorAll('[data-bridge]')).toHaveLength(0)
   })
 
   it('says in words, not only colour, when a dragged device has no room', () => {

@@ -56,6 +56,30 @@ describe('buildCircuits', () => {
     expect(circuits[0].lengthMetres).toBe(6)
   })
 
+  it('names a tape run what the engineer called it', () => {
+    const circuits = buildCircuits({
+      dimmed: 0, switched: 0, blinds: 0,
+      tape: [
+        { name: '  Kitchen plinth ', wattsPerMetre: 14.4, lengthMetres: 5, colour: false },
+        { name: 'Snug cove', wattsPerMetre: 14.4, lengthMetres: 3, colour: true },
+      ],
+    })
+
+    expect(circuits.map(c => c.name)).toEqual(['Kitchen plinth', 'Snug cove'])
+  })
+
+  it('falls back to a numbered name when a tape run is left unnamed', () => {
+    const circuits = buildCircuits({
+      dimmed: 0, switched: 0, blinds: 0,
+      tape: [
+        { name: '   ', wattsPerMetre: 14.4, lengthMetres: 5, colour: false },
+        { wattsPerMetre: 14.4, lengthMetres: 3, colour: true },
+      ],
+    })
+
+    expect(circuits.map(c => c.name)).toEqual(['Tape 1', 'Colour tape 2'])
+  })
+
   it('returns nothing for an empty submain', () => {
     expect(buildCircuits({ dimmed: 0, switched: 0, blinds: 0, tape: [] })).toEqual([])
   })

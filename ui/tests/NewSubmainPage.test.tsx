@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NewSubmainPage } from '../src/routes/NewSubmainPage'
+import { NewSubmainPage } from '../src/routes/SubmainForm'
 import type { DesignResponse } from '../src/api/types'
 
 const json = (body: unknown, status = 200) =>
@@ -78,6 +78,24 @@ describe('NewSubmainPage', () => {
     const generate = await screen.findByRole('button', { name: /generate panel/i })
     expect(generate).toBeDisabled()
     expect(screen.getByText(/add at least one circuit/i)).toBeInTheDocument()
+  })
+
+  it('sends a tape run under the name it was given', async () => {
+    const fetchMock = stubApi()
+
+    renderPage()
+    await userEvent.type(await screen.findByLabelText(/submain name/i), 'Ground floor')
+    await userEvent.click(screen.getByRole('button', { name: /add tape circuit/i }))
+    await userEvent.type(screen.getByLabelText(/^tape name/i), 'Kitchen plinth')
+    await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
+
+    await userEvent.click(screen.getByRole('button', { name: /generate panel/i }))
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    const create = fetchMock.mock.calls.find(c => c[0] === '/api/projects/p1/submains' && c[1]?.method === 'POST')
+    expect(JSON.parse(String(create![1]!.body)).circuits).toEqual([
+      expect.objectContaining({ type: 'LedTape', name: 'Kitchen plinth' }),
+    ])
   })
 
   it('creates the submain and generates its panel in one call, only on Generate', async () => {

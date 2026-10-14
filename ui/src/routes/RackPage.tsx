@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SubmainResponse,
+  LocationResponse, RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse,
+  SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -18,6 +19,7 @@ import { RackDrawing } from '../racks/RackDrawing'
 import { RackSettings } from '../racks/RackSettings'
 import { drawingSize } from '../racks/rackGeometry'
 import { useRackDrag } from '../racks/useRackDrag'
+import { asLocations, locationName } from '../locations'
 
 const EMPTY_LAYOUT: RackLayoutResponse = { rackId: '', heightU: 0, freeU: 0, layoutVersion: 0, items: [] }
 
@@ -33,6 +35,7 @@ export function RackPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [cabinets, setCabinets] = useState<RackTypeResponse[]>([])
   const [submains, setSubmains] = useState<SubmainResponse[]>([])
+  const [locations, setLocations] = useState<LocationResponse[]>([])
   const [catalogue, setCatalogue] = useState<RackDeviceTypeResponse[] | null>(null)
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -57,6 +60,7 @@ export function RackPage() {
         // costs the settings form its choices, not the rack.
         api.get<RackTypeResponse[]>('/catalogue/rack-types').then(setCabinets).catch(() => setCabinets([]))
         api.get<SubmainResponse[]>(`/projects/${r.projectId}/submains`).then(setSubmains).catch(() => setSubmains([]))
+        api.get(`/projects/${r.projectId}/locations`).then(l => setLocations(asLocations(l))).catch(() => setLocations([]))
       })
       .catch((e: ApiError) => setLoadError(e.message)), [rackId])
 
@@ -176,11 +180,12 @@ export function RackPage() {
   const subtitle = rack
     ? `${rack.cabinet} · ${rack.fedFromSubmainName ? `fed from ${rack.fedFromSubmainName}` : 'not fed from an automation panel'}`
     : undefined
+  const place = rack && locationName(locations, rack.locationId)
 
   return (
     <AppShell
       title={rack?.name ?? 'Rack'}
-      subtitle={subtitle}
+      subtitle={place ? `${place} · ${subtitle}` : subtitle}
       back={{ to: rack ? `/projects/${rack.projectId}` : '/', label: 'House' }}
       nav={rack ? (
         <Link to={`/racks/${rack.id}/bom`} className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-ink-2 active:bg-press">
@@ -238,6 +243,7 @@ export function RackPage() {
               rack={rack}
               cabinets={cabinets}
               submains={submains}
+              locations={locations}
               onSaved={saved => { setRack(saved); setSyncKey(n => n + 1); void load() }}
               onConflict={() => void load()}
             />

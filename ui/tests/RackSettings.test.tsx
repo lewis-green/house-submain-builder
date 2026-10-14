@@ -25,8 +25,44 @@ function show(patch: () => Response) {
   return { onSaved, onConflict }
 }
 
+const locations = [
+  { id: 'l1', name: 'Plant room', notes: null, sequence: 0 },
+  { id: 'l2', name: 'Garage', notes: null, sequence: 1 },
+]
+
+/** RackSettings in a rack placed in the plant room, answering every PATCH with what was sent. */
+function showPlaced() {
+  const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => json({ ...rack, ...JSON.parse(String(init!.body)) }))
+  vi.stubGlobal('fetch', fetchMock)
+  const onSaved = vi.fn()
+  render(<RackSettings rack={{ ...rack, locationId: 'l1' }} cabinets={cabinets} submains={[]} locations={locations} onSaved={onSaved} onConflict={vi.fn()} />)
+  const sent = () => JSON.parse(String(fetchMock.mock.calls[0][1]!.body))
+  return { onSaved, sent }
+}
+
 describe('RackSettings', () => {
   beforeEach(() => vi.restoreAllMocks())
+
+  it('opens on the rack\'s location and moves it to another', async () => {
+    const { onSaved, sent } = showPlaced()
+
+    expect(screen.getByLabelText('Location')).toHaveValue('l1')
+    await userEvent.selectOptions(screen.getByLabelText('Location'), 'l2')
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(sent().locationId).toBe('l2')
+  })
+
+  it('keeps the rack where it is when another setting is saved', async () => {
+    const { onSaved, sent } = showPlaced()
+
+    await userEvent.selectOptions(screen.getByLabelText('Cabinet'), 'c22')
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(sent()).toMatchObject({ rackTypeId: 'c22', locationId: 'l1' })
+  })
 
   it('saves the changed settings and hands the saved rack back', async () => {
     const { onSaved, onConflict } = show(() => json({ ...rack, rackTypeId: 'c22', cabinet: 'Generic 22U cabinet', heightU: 22 }))

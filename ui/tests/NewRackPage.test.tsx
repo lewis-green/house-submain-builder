@@ -47,7 +47,25 @@ describe('NewRackPage', () => {
     expect(await screen.findByText('Rack page')).toBeInTheDocument()
     const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'POST')!
     expect(url).toBe('/api/projects/p1/racks')
-    expect(JSON.parse(String(init!.body))).toEqual({ name: 'Comms cupboard', rackTypeId: 'c12', fedFromSubmainId: 's1' })
+    expect(JSON.parse(String(init!.body))).toEqual({ name: 'Comms cupboard', rackTypeId: 'c12', fedFromSubmainId: 's1', locationId: null })
+  })
+
+  it('places the new rack in the location chosen', async () => {
+    const fetchMock = stub(() => json({ id: 'r1', name: 'Comms cupboard' }, 201))
+    const underlying = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url === '/api/projects/p1/locations'
+      ? json([{ id: 'l1', name: 'Plant room', notes: null, sequence: 0 }])
+      : underlying(url, init))
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Rack name'), 'Comms cupboard')
+    expect(screen.getByLabelText('Location')).toHaveValue('')
+    await userEvent.selectOptions(screen.getByLabelText('Location'), 'l1')
+    await userEvent.click(screen.getByRole('button', { name: 'Add rack' }))
+
+    await screen.findByText('Rack page')
+    const [, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'POST')!
+    expect(JSON.parse(String(init!.body)).locationId).toBe('l1')
   })
 
   it('can be fed from no automation panel', async () => {

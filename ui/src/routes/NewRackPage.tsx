@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
-import type { RackResponse, RackTypeResponse, SubmainResponse } from '../api/types'
+import type { LocationResponse, RackResponse, RackTypeResponse, SubmainResponse } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { ErrorNote } from '../components/ErrorNote'
@@ -10,6 +10,7 @@ import { SelectField } from '../components/SelectField'
 import { Skeleton } from '../components/Skeleton'
 import { announce, dismissStatus } from '../components/status'
 import { useSingleFlight } from '../components/useSingleFlight'
+import { asLocations, locationOptions } from '../locations'
 
 /**
  * Three answers and the rack exists: what it is called, which cabinet, and
@@ -27,6 +28,8 @@ export function NewRackPage() {
   const [name, setName] = useState('')
   const [rackTypeId, setRackTypeId] = useState('')
   const [fedFrom, setFedFrom] = useState('')
+  const [locations, setLocations] = useState<LocationResponse[]>([])
+  const [locationId, setLocationId] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [saving, setSaving] = useState(false)
 
@@ -34,10 +37,12 @@ export function NewRackPage() {
     Promise.all([
       api.get<RackTypeResponse[]>('/catalogue/rack-types'),
       api.get<SubmainResponse[]>(`/projects/${projectId}/submains`),
+      api.get(`/projects/${projectId}/locations`),
     ])
-      .then(([c, s]) => {
+      .then(([c, s, l]) => {
         setCabinets(c)
         setSubmains(s)
+        setLocations(asLocations(l))
         setLoadError(null)
         // A 12U wall cabinet is the common case in a house; anything else is one tap away.
         setRackTypeId(id => id || (c.find(x => x.heightU === 12) ?? c[0])?.id || '')
@@ -53,7 +58,7 @@ export function NewRackPage() {
     dismissStatus()
     try {
       const rack = await api.post<RackResponse>(`/projects/${projectId}/racks`, {
-        name: name.trim(), rackTypeId, fedFromSubmainId: fedFrom || null,
+        name: name.trim(), rackTypeId, fedFromSubmainId: fedFrom || null, locationId: locationId || null,
       })
       announce(`${rack.name} added. Add what goes in it.`, 'ok')
       navigate(`/racks/${rack.id}`)
@@ -104,6 +109,14 @@ export function NewRackPage() {
             onChange={setFedFrom}
             errors={fieldErrors.fedFromSubmainId}
             options={[{ value: '', label: 'Not fed from an automation panel' }, ...submains.map(s => ({ value: s.id, label: s.name }))]}
+          />
+          <SelectField
+            label="Location"
+            hint="Where in the house this rack is. Add locations on the house page."
+            value={locationId}
+            onChange={setLocationId}
+            errors={fieldErrors.locationId}
+            options={locationOptions(locations, null)}
           />
         </form>
       )}

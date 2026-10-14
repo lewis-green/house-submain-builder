@@ -62,6 +62,16 @@ describe('RackPage', () => {
     expect(screen.getByRole('link', { name: 'Parts list' })).toHaveAttribute('href', '/racks/r1/bom')
   })
 
+  it('says where in the house the rack is, ahead of its cabinet', async () => {
+    stub({
+      'GET /api/racks/r1': () => json({ ...rack, locationId: 'l1' }),
+      'GET /api/projects/p1/locations': () => json([{ id: 'l1', name: 'Plant room', notes: null, sequence: 0 }]),
+    })
+    show()
+
+    expect(await screen.findByText('Plant room · Generic 12U wall cabinet · fed from Ground floor')).toBeInTheDocument()
+  })
+
   it('opens an item\'s sheet on a tap', async () => {
     stub()
     show()

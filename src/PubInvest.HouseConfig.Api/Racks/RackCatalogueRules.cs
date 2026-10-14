@@ -33,6 +33,16 @@ public static class RackCatalogueRules
         Required(problems, "model", request.Model);
         Required(problems, "partNumber", request.PartNumber);
 
+        // The JSON binder leaves an omitted list null rather than refusing the
+        // body, and port groups are edited only by scripts, which is exactly
+        // where a partial body comes from. Say what is missing before anything
+        // below, or the endpoint after it, dereferences it.
+        if (request.PortGroups is null)
+        {
+            problems["portGroups"] = ["Send the item's port groups: an empty list for an accessory."];
+            return problems;
+        }
+
         if (!Enum.TryParse<RackDeviceKind>(request.Kind, out var kind))
         {
             problems["kind"] = ["Kind is Switch, PatchPanel or Accessory."];

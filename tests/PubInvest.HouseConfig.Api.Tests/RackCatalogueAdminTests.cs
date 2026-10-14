@@ -69,6 +69,21 @@ public class RackCatalogueAdminTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task A_body_without_port_groups_is_a_field_error_not_a_crash()
+    {
+        var (client, switchId, _) = await OwnRows();
+
+        var response = await client.PatchAsJsonAsync($"/catalogue/rack-device-types/{switchId}", new
+        {
+            manufacturer = "Ubiquiti", model = "Admin switch", partNumber = "ADM-NOPORTS", kind = "Switch", heightU = 1,
+            poeBudgetW = 60, requiredAccessoryId = (Guid?)null, active = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("portGroups", (await response.Content.ReadFromJsonAsync<ProblemDto>())!.Errors.Keys);
+    }
+
+    [Fact]
     public async Task A_placed_items_height_and_ports_cannot_change_but_its_part_number_can()
     {
         var (client, switchId, cabinetId) = await OwnRows();

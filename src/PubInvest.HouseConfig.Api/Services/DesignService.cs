@@ -60,7 +60,7 @@ public sealed class DesignService(HouseConfigDbContext db)
         var enclosureId = overrides?.EnclosureTypeId ?? submain?.EnclosureTypeId;
         if (enclosureId is null)
         {
-            return (null, null, "This submain has no enclosure. Choose one before generating a design.");
+            return (null, null, "This automation panel has no enclosure. Choose one before generating a design.");
         }
 
         var enclosureRow = await db.Enclosures.SingleOrDefaultAsync(e => e.Id == enclosureId, ct);

@@ -50,7 +50,7 @@ describe('NewRackPage', () => {
     expect(JSON.parse(String(init!.body))).toEqual({ name: 'Comms cupboard', rackTypeId: 'c12', fedFromSubmainId: 's1' })
   })
 
-  it('can be fed from no submain', async () => {
+  it('can be fed from no automation panel', async () => {
     const fetchMock = stub(() => json({ id: 'r1', name: 'Loft' }, 201))
     show()
 

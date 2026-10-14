@@ -46,10 +46,10 @@ function stubApi(previewResponse: () => Response = () => json(design)) {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/projects/p1/submains/new']}>
+    <MemoryRouter initialEntries={['/projects/p1/panels/new']}>
       <Routes>
-        <Route path="/projects/:projectId/submains/new" element={<NewSubmainPage />} />
-        <Route path="/submains/:submainId/panel" element={<h1>Panel screen</h1>} />
+        <Route path="/projects/:projectId/panels/new" element={<NewSubmainPage />} />
+        <Route path="/panels/:submainId" element={<h1>Panel screen</h1>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -84,7 +84,7 @@ describe('NewSubmainPage', () => {
     const fetchMock = stubApi()
 
     renderPage()
-    await userEvent.type(await screen.findByLabelText(/submain name/i), 'Ground floor')
+    await userEvent.type(await screen.findByLabelText(/automation panel name/i), 'Ground floor')
     await userEvent.click(screen.getByRole('button', { name: /add tape circuit/i }))
     await userEvent.type(screen.getByLabelText(/^tape name/i), 'Kitchen plinth')
     await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
@@ -102,7 +102,7 @@ describe('NewSubmainPage', () => {
     const fetchMock = stubApi()
 
     renderPage()
-    await userEvent.type(await screen.findByLabelText(/submain name/i), 'Ground floor')
+    await userEvent.type(await screen.findByLabelText(/automation panel name/i), 'Ground floor')
     await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
     await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
 
@@ -130,13 +130,13 @@ describe('NewSubmainPage', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderPage()
-    await userEvent.type(await screen.findByLabelText(/submain name/i), 'Ground floor')
+    await userEvent.type(await screen.findByLabelText(/automation panel name/i), 'Ground floor')
     await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
     await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
     await userEvent.click(screen.getByRole('button', { name: /generate panel/i }))
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/not generated: generator down/i))
-    expect(screen.getByLabelText(/submain name/i)).toHaveValue('Ground floor')
+    expect(screen.getByLabelText(/automation panel name/i)).toHaveValue('Ground floor')
     expect(screen.getByLabelText('Dimmed lighting')).toHaveValue('1')
 
     failing = false
@@ -220,7 +220,7 @@ describe('NewSubmainPage', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderPage()
-    await userEvent.type(await screen.findByLabelText(/submain name/i), 'Ground floor')
+    await userEvent.type(await screen.findByLabelText(/automation panel name/i), 'Ground floor')
     await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
     await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
     await userEvent.click(screen.getByRole('button', { name: /generate panel/i }))
@@ -260,12 +260,12 @@ describe('NewSubmainPage', () => {
 
     renderPage()
     expect(await screen.findByRole('alert')).toHaveTextContent(/catalogue down/i)
-    expect(screen.queryByLabelText(/submain name/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/automation panel name/i)).not.toBeInTheDocument()
 
     failing = false
     await userEvent.click(screen.getByRole('button', { name: /try again/i }))
 
-    expect(await screen.findByLabelText(/submain name/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/automation panel name/i)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -297,7 +297,7 @@ describe('NewSubmainPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: /more dimmed lighting/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/not responding \(502\)/i)
-    expect(screen.getByLabelText(/submain name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/automation panel name/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /generate panel/i })).toBeDisabled()
   })
 
@@ -329,7 +329,7 @@ describe('NewSubmainPage', () => {
     stubApi()
 
     renderPage()
-    await screen.findByLabelText(/submain name/i)
+    await screen.findByLabelText(/automation panel name/i)
 
     const headings = screen.getAllByText(/^(The install|Circuits|LED tape|Other devices|What this panel needs)/)
       .map(el => el.textContent?.split(' ·')[0].trim())

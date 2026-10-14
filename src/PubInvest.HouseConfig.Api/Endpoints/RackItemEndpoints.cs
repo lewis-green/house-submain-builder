@@ -40,7 +40,7 @@ public static class RackItemEndpoints
                 var type = DomainMapper.ToDomain(typeRow);
                 if (type.Kind == RackDeviceKind.Accessory)
                 {
-                    return Refuse($"{type.Description} is an accessory. It goes on the bill of materials with the item that needs it, not in the rack.");
+                    return Refuse($"{type.Description} is an accessory. It goes on the parts list with the item that needs it, not in the rack.");
                 }
 
                 if (!type.Active) return Refuse($"{type.Description} is no longer offered in the catalogue.");

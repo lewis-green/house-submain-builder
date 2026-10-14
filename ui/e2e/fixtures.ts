@@ -20,7 +20,7 @@ export async function seedSubmain(request: APIRequestContext, circuits: unknown[
   })).json()
 
   const submain = await (await request.post(`${API}/projects/${project.id}/submains`, {
-    data: { name: 'E2E submain', enclosureTypeId: enclosure.id, circuits },
+    data: { name: 'E2E automation panel', enclosureTypeId: enclosure.id, circuits },
   })).json()
 
   const design = await (await request.post(`${API}/submains/${submain.id}/design/generate`, {

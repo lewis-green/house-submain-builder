@@ -29,12 +29,12 @@ const show = () => render(
 describe('ProjectPage', () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it('lists submains and network racks side by side, each with its own Add button', async () => {
+  it('lists automation panels and network racks side by side, each with its own Add button', async () => {
     stub([rack])
     show()
 
-    const submains = await screen.findByRole('region', { name: 'Submains' })
-    expect(within(submains).getByRole('link', { name: 'Add submain' })).toHaveAttribute('href', '/projects/p1/submains/new')
+    const submains = await screen.findByRole('region', { name: 'Automation panels' })
+    expect(within(submains).getByRole('link', { name: 'Add automation panel' })).toHaveAttribute('href', '/projects/p1/panels/new')
 
     const racks = screen.getByRole('region', { name: 'Network racks' })
     expect(within(racks).getByRole('link', { name: 'Add rack' })).toHaveAttribute('href', '/projects/p1/racks/new')

@@ -7,7 +7,7 @@ const layoutOf = async (request: APIRequestContext, rackId: string) =>
     items: { id: string; label: string; topU: number; ports: { number: number; label: string | null; poe: boolean }[] }[]
   }
 
-test('a rack is added from the house page, like a submain, and its first switch from the rack screen', async ({ page, request }) => {
+test('a rack is added from the house page, like an automation panel, and its first switch from the rack screen', async ({ page, request }) => {
   const project = await (await request.post(`${API}/projects`, { data: { name: `E2E house ${Date.now()}` } })).json()
 
   await page.goto(`/projects/${project.id}`)

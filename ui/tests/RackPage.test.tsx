@@ -59,7 +59,7 @@ describe('RackPage', () => {
     expect(within(drawing).getByText('U12')).toBeInTheDocument()
     expect(within(drawing).getByText('U1')).toBeInTheDocument()
     expect(within(drawing).getByRole('button', { name: /^Switch 1, Ubiquiti USW-Pro-Max-48-PoE, U12/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Bill of materials' })).toHaveAttribute('href', '/racks/r1/bom')
+    expect(screen.getByRole('link', { name: 'Parts list' })).toHaveAttribute('href', '/racks/r1/bom')
   })
 
   it('opens an item\'s sheet on a tap', async () => {

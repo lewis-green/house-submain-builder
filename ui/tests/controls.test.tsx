@@ -141,7 +141,7 @@ describe('AppShell', () => {
   it('names the document after the screen', () => {
     show()
 
-    expect(document.title).toBe('Ground floor · House Panel Designer')
+    expect(document.title).toBe('Ground floor · Automation Panel Designer')
   })
 
   it('has the landmarks VoiceOver navigates by, and a Back link named for where it goes', () => {

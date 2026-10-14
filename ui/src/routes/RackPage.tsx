@@ -174,7 +174,7 @@ export function RackPage() {
 
   const selected = layout?.items.find(i => i.id === selectedId) ?? null
   const subtitle = rack
-    ? `${rack.cabinet} · ${rack.fedFromSubmainName ? `fed from ${rack.fedFromSubmainName}` : 'not fed from a submain'}`
+    ? `${rack.cabinet} · ${rack.fedFromSubmainName ? `fed from ${rack.fedFromSubmainName}` : 'not fed from an automation panel'}`
     : undefined
 
   return (
@@ -184,7 +184,7 @@ export function RackPage() {
       back={{ to: rack ? `/projects/${rack.projectId}` : '/', label: 'House' }}
       nav={rack ? (
         <Link to={`/racks/${rack.id}/bom`} className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-ink-2 active:bg-press">
-          Bill of materials
+          Parts list
         </Link>
       ) : undefined}
       actions={layout && rack ? (

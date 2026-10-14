@@ -38,16 +38,25 @@ async function dragDeviceExpectingNoSave(page: Page, label: string, byModules: n
 test('a panel generated from the wizard is drawn to scale', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
 
   await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Relay 1/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Terminals C1/ })).toBeVisible()
 })
 
+test('an old submains address still opens the panel, at its new address', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+
+  await page.goto(`/submains/${submainId}/panel`)
+
+  await expect(page).toHaveURL(new RegExp(`/panels/${submainId}$`))
+  await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
+})
+
 test('the terminal order can be changed and a circuit given several cables', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
 
   await page.getByRole('button', { name: /Terminals C1/ }).click()
   const sheet = page.getByRole('dialog', { name: 'Terminal order' })
@@ -67,7 +76,7 @@ test('the terminal order can be changed and a circuit given several cables', asy
 
 test('the terminal run shows a focus ring when reached by keyboard', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   const run = page.getByRole('button', { name: /Terminals C1/ })
   // Reached as a keyboard user would: Tab until it has focus, bounded.
   for (let i = 0; i < 30 && !(await run.evaluate(el => el === document.activeElement)); i++) {
@@ -83,7 +92,7 @@ test('the terminal run shows a focus ring when reached by keyboard', async ({ pa
 test('every device is a thumb-sized target at default zoom', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
 
   const boxes = await page.locator('[data-device-id]').evaluateAll(els =>
@@ -99,7 +108,7 @@ test('every device is a thumb-sized target at default zoom', async ({ page, requ
 test('tapping a device opens its channels in a sheet that locks the page behind it', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByRole('button', { name: /^Dimmer 1/ }).tap()
 
   const dialog = page.getByRole('dialog')
@@ -136,7 +145,7 @@ test('tapping a device opens its channels in a sheet that locks the page behind 
 test('a save landing while the next field is typed in leaves focus, and so the keyboard, where it is', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByRole('button', { name: /^Dimmer 1/ }).tap()
   const room = page.getByRole('combobox', { name: 'Room' }).first()
   const name = page.getByRole('textbox', { name: 'Circuit name' }).first()
@@ -159,7 +168,7 @@ test('a save landing while the next field is typed in leaves focus, and so the k
 test('a status message stacks above the action bar rather than covering its button', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByRole('button', { name: /^Dimmer 1/ }).tap()
   await page.getByRole('textbox', { name: 'Circuit name' }).first().fill('Island pendants')
   await page.keyboard.press('Enter')
@@ -182,7 +191,7 @@ test('a status message stacks above the action bar rather than covering its butt
 test('the drawing says how much of it is on screen, keeps its row labels in view and pans from the strip', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await expect(page.getByText(/showing modules 1–\d+ of 24/i)).toBeVisible()
 
   const scroller = page.locator('.overflow-auto').first()
@@ -217,7 +226,7 @@ test('the drawing says how much of it is on screen, keeps its row labels in view
 test('a sheet closes on a backdrop tap and on Escape', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByRole('button', { name: /^Dimmer 1/ }).tap()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.touchscreen.tap(200, 80)
@@ -232,7 +241,7 @@ test('a sheet closes on a backdrop tap and on Escape', async ({ page, request })
 test('a device can be dragged with a finger to a free slot and stays there after a reload', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   const before = await page.getByRole('button', { name: /^Dimmer 1/ }).boundingBox()
 
   await dragDevice(page, 'Dimmer 1', 5)
@@ -250,7 +259,7 @@ test('a device can be dragged with a finger to a free slot and stays there after
 test('a drag onto an occupied slot leaves the device where it was', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   const before = await page.getByRole('button', { name: /^Dimmer 2/ }).boundingBox()
 
   // One module left puts Dimmer 2 on top of Dimmer 1, so nothing should be sent.
@@ -265,7 +274,7 @@ test('a drag onto an occupied slot leaves the device where it was', async ({ pag
 test('a dragged position survives re-generation', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await dragDevice(page, 'Dimmer 1', 5)
   const moved = await page.getByRole('button', { name: /^Dimmer 1/ }).boundingBox()
 
@@ -291,7 +300,7 @@ test('a dragged position survives re-generation', async ({ page, request }) => {
 test('zooming in grows the scrollable area so nothing is out of reach', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
 
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom in' }).tap()
@@ -315,7 +324,7 @@ test('a rebuild the server cannot do leaves the install option as it was, with t
     ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ title: 'Generator down' }) })
     : r.continue())
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByText('Install options').tap()
   const toggle = page.getByLabel(/cables enter at the bottom/i)
   await expect(toggle).not.toBeChecked()
@@ -336,7 +345,7 @@ test('when the issued PDFs cannot be listed the bar says so and offers a retry, 
     ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ title: 'Revisions down' }) })
     : r.continue())
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await expect(page.getByRole('alert')).toContainText(/could not check the issued pdfs/i)
   await expect(page.getByRole('button', { name: /issue pdf revision/i })).toBeHidden()
 
@@ -349,7 +358,7 @@ test('when the issued PDFs cannot be listed the bar says so and offers a retry, 
 test('issuing a PDF offers a plain link, which Safari cannot block', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
 
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await page.getByRole('button', { name: /issue pdf/i }).tap()
 
   const link = page.getByRole('link', { name: /open pdf/i })
@@ -372,9 +381,9 @@ test('issuing a PDF offers a plain link, which Safari cannot block', async ({ pa
   await page.keyboard.press('Escape')
   await expect(page.getByText(/changed since that pdf was issued/i)).toBeVisible()
 
-  // And the bill of materials now exists for it, reached from the title block.
-  await page.getByRole('navigation').getByRole('link', { name: /bill of materials/i }).tap()
-  await expect(page.getByRole('heading', { name: /bill of materials/i })).toBeVisible()
+  // And the parts list now exists for it, reached from the title block.
+  await page.getByRole('navigation').getByRole('link', { name: /parts list/i }).tap()
+  await expect(page.getByRole('heading', { name: /parts list/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /download csv/i })).toBeVisible()
 })
 
@@ -390,7 +399,7 @@ test.describe('with a mouse or trackpad', () => {
   test('the × closes a sheet', async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
 
-    await page.goto(`/submains/${submainId}/panel`)
+    await page.goto(`/panels/${submainId}`)
     await page.getByRole('button', { name: /^Dimmer 1/ }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
@@ -401,7 +410,7 @@ test.describe('with a mouse or trackpad', () => {
   test('a device can be dragged straight away, without holding it first, and stays there after a reload', async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
 
-    await page.goto(`/submains/${submainId}/panel`)
+    await page.goto(`/panels/${submainId}`)
     const device = page.getByRole('button', { name: /^Dimmer 1/ })
     const before = (await device.boundingBox())!
     const saved = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().includes('/position'))
@@ -423,12 +432,12 @@ test.describe('with a mouse or trackpad', () => {
 
 test('a built panel can be edited: one more dimmed circuit, saved and rebuilt, keeps the names it had', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
-  await page.goto(`/submains/${submainId}/panel`)
+  await page.goto(`/panels/${submainId}`)
   await expect(page.getByRole('button', { name: /Kitchen ceiling/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Lighting 4/ })).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Edit' }).tap()
-  await expect(page.getByRole('heading', { level: 1, name: 'Edit E2E submain' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit E2E automation panel' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Dimmed lighting' })).toHaveValue('3')
 
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
@@ -436,7 +445,7 @@ test('a built panel can be edited: one more dimmed circuit, saved and rebuilt, k
   await expect(save).toBeEnabled()
   await save.tap()
 
-  await expect(page).toHaveURL(new RegExp(`/submains/${submainId}/panel$`))
+  await expect(page).toHaveURL(new RegExp(`/panels/${submainId}$`))
   // The panel's loading skeleton is a status too: pick the announcement by what it says.
   await expect(page.getByRole('status').filter({ hasText: /panel rebuilt/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /Lighting 4/ })).toBeVisible()

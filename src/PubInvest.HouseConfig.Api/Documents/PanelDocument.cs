@@ -125,7 +125,7 @@ public sealed class PanelDocument(
     private void BomTable(IContainer container) =>
         container.Column(column =>
         {
-            column.Item().PaddingBottom(3, Unit.Millimetre).Text("Bill of materials").SemiBold().FontSize(12);
+            column.Item().PaddingBottom(3, Unit.Millimetre).Text("Parts list").SemiBold().FontSize(12);
 
             column.Item().Table(table =>
             {

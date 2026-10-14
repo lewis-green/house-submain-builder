@@ -139,12 +139,12 @@ describe('IssueButton', () => {
   })
 
   it('tells the engineer when issuing is refused instead of doing nothing', async () => {
-    vi.stubGlobal('fetch', stub([], () => json({ title: 'This submain has no panel yet.' }, 400)))
+    vi.stubGlobal('fetch', stub([], () => json({ title: 'This automation panel has no layout yet.' }, 400)))
 
     show()
     await userEvent.click(screen.getByRole('button', { name: /issue pdf/i }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/no panel yet/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/no layout yet/i)
     expect(screen.queryByRole('link', { name: /open pdf/i })).not.toBeInTheDocument()
   })
 

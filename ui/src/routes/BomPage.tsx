@@ -12,7 +12,7 @@ import { Skeleton } from '../components/Skeleton'
 export function BomPage() {
   const { projectId, submainId, rackId } = useParams()
   const scope = rackId ? `/racks/${rackId}` : submainId ? `/submains/${submainId}` : `/projects/${projectId}`
-  const backTo = rackId ? `/racks/${rackId}` : submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
+  const backTo = rackId ? `/racks/${rackId}` : submainId ? `/panels/${submainId}` : `/projects/${projectId}`
   const owner = rackId ? 'rack' : submainId ? 'panel' : null
 
   const [bom, setBom] = useState<BomView | null>(null)
@@ -29,20 +29,20 @@ export function BomPage() {
 
   return (
     <AppShell
-      title="Bill of materials"
-      subtitle={owner === 'rack' ? 'For this rack' : owner === 'panel' ? 'For this submain' : 'For the whole house, from each issued PDF'}
+      title="Parts list"
+      subtitle={owner === 'rack' ? 'For this rack' : owner === 'panel' ? 'For this automation panel' : 'For the whole house, from each issued PDF'}
       back={{ to: backTo, label: owner === 'rack' ? 'Rack' : owner === 'panel' ? 'Panel' : 'House' }}
       actions={bom && bom.lines.length > 0 ? (
         <a href={`/api${scope}/bom.csv`} className={buttonClass('primary')}>Download CSV</a>
       ) : undefined}
     >
       {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
-      {!bom && !notIssued && !error && <Skeleton label="Loading bill of materials" rows={4} rowClass="h-16" />}
+      {!bom && !notIssued && !error && <Skeleton label="Loading parts list" rows={4} rowClass="h-16" />}
 
       {notIssued && (
         <EmptyState
           title="Nothing has been issued yet"
-          hint="A bill of materials comes from an issued PDF revision, so it lists what was actually drawn."
+          hint="A parts list comes from an issued PDF revision, so it lists what was actually drawn."
           action={<ButtonLink to={backTo} variant="primary">{owner ? `Go to the ${owner}` : 'Back to the house'}</ButtonLink>}
         />
       )}

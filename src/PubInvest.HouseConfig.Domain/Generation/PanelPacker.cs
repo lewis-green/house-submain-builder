@@ -58,7 +58,7 @@ public static class PanelPacker
                 $"This design needs {rowsUsed} rows of {DinUnits.ToModules(enclosure.SlotsPerRow):0.#} modules; " +
                 $"{enclosure.Description} has {enclosure.Rows}.",
                 suggestion is null
-                    ? "No catalogue enclosure is large enough; split the submain."
+                    ? "No catalogue enclosure is large enough; split the automation panel."
                     : $"Use {suggestion.Description} " +
                       $"({suggestion.Rows} rows of {DinUnits.ToModules(suggestion.SlotsPerRow):0.#} modules)."));
         }

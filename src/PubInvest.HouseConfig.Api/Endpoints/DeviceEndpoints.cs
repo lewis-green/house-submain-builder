@@ -42,7 +42,7 @@ public static class DeviceEndpoints
                     {
                         return Results.ValidationProblem(new Dictionary<string, string[]>
                         {
-                            ["circuitId"] = ["That circuit is not on this submain."]
+                            ["circuitId"] = ["That circuit is not on this automation panel."]
                         });
                     }
 
@@ -109,7 +109,7 @@ public static class DeviceEndpoints
                 {
                     return Results.ValidationProblem(new Dictionary<string, string[]>
                     {
-                        ["design"] = ["This submain has no enclosure."]
+                        ["design"] = ["This automation panel has no enclosure."]
                     });
                 }
 

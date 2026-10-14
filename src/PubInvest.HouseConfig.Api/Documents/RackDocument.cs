@@ -61,7 +61,7 @@ public sealed class RackDocument(
                 text.DefaultTextStyle(t => t.FontColor(Colors.Grey.Darken1));
                 text.Span($"{snapshot.Cabinet.Description}  ·  {snapshot.Cabinet.HeightU}U");
                 text.Span(snapshot.FedFromSubmainName is null
-                    ? "  ·  Not fed from a submain"
+                    ? "  ·  Not fed from an automation panel"
                     : $"  ·  Fed from {snapshot.FedFromSubmainName}");
                 text.Span($"  ·  Revision {number}");
             });

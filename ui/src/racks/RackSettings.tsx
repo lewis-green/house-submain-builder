@@ -73,11 +73,11 @@ export function RackSettings({ rack, cabinets, submains, onSaved, onConflict }: 
         />
         <SelectField
           label="Fed from"
-          hint="The submain this rack's supply comes from. It changes nothing on that panel."
+          hint="The automation panel this rack's supply comes from. It changes nothing on that panel."
           value={fedFrom}
           onChange={setFedFrom}
           errors={fieldErrors.fedFromSubmainId}
-          options={[{ value: '', label: 'Not fed from a submain' }, ...submains.map(s => ({ value: s.id, label: s.name }))]}
+          options={[{ value: '', label: 'Not fed from an automation panel' }, ...submains.map(s => ({ value: s.id, label: s.name }))]}
         />
         <Button type="submit" disabled={saving || !changed}>{saving ? 'Saving…' : 'Save settings'}</Button>
       </form>

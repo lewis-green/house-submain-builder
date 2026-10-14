@@ -45,7 +45,7 @@ public static class ExtraFixtureBuilder
                     DiagnosticSeverity.Error,
                     DiagnosticCodes.NoPreferredDevice,
                     $"No active catalogue device for an extra fixture (id {fixture.DeviceTypeId}).",
-                    "Remove it from the submain, or re-activate the catalogue entry."));
+                    "Remove it from the automation panel, or re-activate the catalogue entry."));
                 continue;
             }
 

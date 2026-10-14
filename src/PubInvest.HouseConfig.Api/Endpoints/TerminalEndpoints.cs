@@ -80,7 +80,7 @@ public static class TerminalEndpoints
             || circuits.Select(c => c.CircuitId).Distinct().Count() != circuits.Count
             || circuits.Any(c => !known.Contains(c.CircuitId)))
         {
-            return "List every circuit on this submain exactly once.";
+            return "List every circuit on this automation panel exactly once.";
         }
 
         if (circuits.Any(c => c.TerminalCount is < 1 or > TerminalBandBuilder.MaxTerminalsPerCircuit))

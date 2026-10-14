@@ -34,30 +34,30 @@ export function ProjectPage() {
       title={project?.name ?? 'House'}
       subtitle={project?.address ?? undefined}
       back={{ to: '/', label: 'Houses' }}
-      actions={loaded ? <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Bill of materials</ButtonLink> : undefined}
+      actions={loaded ? <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Parts list</ButtonLink> : undefined}
     >
       {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
       {!loaded && !error && <Skeleton label="Loading house" rows={3} rowClass="h-20" />}
 
       {loaded && (
         <>
-          <section aria-labelledby="submains-heading">
+          <section aria-labelledby="panels-heading">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 id="submains-heading" className="text-lg font-bold">Submains</h2>
-              <ButtonLink to={`/projects/${projectId}/submains/new`} variant="primary">Add submain</ButtonLink>
+              <h2 id="panels-heading" className="text-lg font-bold">Automation panels</h2>
+              <ButtonLink to={`/projects/${projectId}/panels/new`} variant="primary">Add automation panel</ButtonLink>
             </div>
             {submains.length === 0 ? (
               <EmptyState
-                title="No submains yet"
-                hint="A submain is one panel. Add the first one and its panel is designed from the circuits it feeds."
+                title="No automation panels yet"
+                hint="Add the first automation panel and its layout is designed from the circuits it feeds."
               />
             ) : (
               <ul className="divide-y divide-rule border-y border-rule">
                 {/* py-1 on each row keeps 8px between one tappable row and the next. */}
                 {submains.map(s => (
                   <li key={s.id} className="py-1">
-                    <Link to={`/submains/${s.id}/panel`} className="flex min-h-14 items-center gap-3 rounded-lg py-2 active:bg-press">
-                      {/* wrap-anywhere: a submain named by a long reference must break rather than spill off the page. */}
+                    <Link to={`/panels/${s.id}`} className="flex min-h-14 items-center gap-3 rounded-lg py-2 active:bg-press">
+                      {/* wrap-anywhere: an automation panel named by a long reference must break rather than spill off the page. */}
                       <span className="min-w-0 flex-1 wrap-anywhere">
                         <span className="block text-lg font-semibold">{s.name}</span>
                         <span className="block text-ink-2">

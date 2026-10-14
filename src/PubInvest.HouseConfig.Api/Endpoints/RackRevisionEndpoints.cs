@@ -75,7 +75,7 @@ public static class RackRevisionEndpoints
                 var csv = BomCsv.Write(snapshot.Bom, $"{snapshot.ProjectName} — {snapshot.RackName}");
                 return Results.File(
                     System.Text.Encoding.UTF8.GetBytes(csv), "text/csv",
-                    $"{ExportEndpoints.Slug(snapshot.RackName)}-bom.csv");
+                    $"{ExportEndpoints.Slug(snapshot.RackName)}-parts-list.csv");
             })
             .WithTags("Rack revisions");
 

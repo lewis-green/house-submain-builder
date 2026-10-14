@@ -13,7 +13,7 @@ import { useSingleFlight } from '../components/useSingleFlight'
 
 /**
  * Three answers and the rack exists: what it is called, which cabinet, and
- * which submain feeds it. What goes in it is added on the rack's own screen,
+ * which automation panel feeds it. What goes in it is added on the rack's own screen,
  * where it can be seen going in.
  */
 export function NewRackPage() {
@@ -99,11 +99,11 @@ export function NewRackPage() {
           />
           <SelectField
             label="Fed from"
-            hint="The submain this rack's supply comes from. It changes nothing on that panel."
+            hint="The automation panel this rack's supply comes from. It changes nothing on that panel."
             value={fedFrom}
             onChange={setFedFrom}
             errors={fieldErrors.fedFromSubmainId}
-            options={[{ value: '', label: 'Not fed from a submain' }, ...submains.map(s => ({ value: s.id, label: s.name }))]}
+            options={[{ value: '', label: 'Not fed from an automation panel' }, ...submains.map(s => ({ value: s.id, label: s.name }))]}
           />
         </form>
       )}

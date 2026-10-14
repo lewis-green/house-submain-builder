@@ -248,13 +248,13 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
         })
       } else {
         saved = await api.post<SubmainResponse>(`/projects/${projectId}/submains`, {
-          name: name.trim() || 'New submain',
+          name: name.trim() || 'New automation panel',
           ...request,
           generate: true,
         })
       }
       announce(words.done, 'ok')
-      navigate(`/submains/${saved.id}/panel`)
+      navigate(`/panels/${saved.id}`)
     } catch (e) {
       const error = e as ApiError
       setFieldErrors(error.fieldErrors)
@@ -291,8 +291,8 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
   return (
     <AppShell
       // The name as stored, not as typed: the title says which panel this is.
-      title={editing ? `Edit ${built?.submain.name ?? 'panel'}` : 'New submain'}
-      back={editing ? { to: `/submains/${submainId}/panel`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
+      title={editing ? `Edit ${built?.submain.name ?? 'panel'}` : 'New automation panel'}
+      back={editing ? { to: `/panels/${submainId}`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
       actions={(
         <div className="w-full">
           {/* Always in the page, so the change is spoken as it happens — politely,
@@ -345,11 +345,11 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
           <p className="text-ink-2">
             {editing
               ? 'Change what this panel feeds and it is laid out again. Circuits you keep keep their names, rooms and terminal order.'
-              : 'A submain is one panel: the enclosure on a wall and everything in it.'}
+              : 'An automation panel is the enclosure on a wall and everything in it.'}
           </p>
 
           <Field
-            label="Submain name"
+            label="Automation panel name"
             value={name}
             onChange={setName}
             errors={fieldErrors.name}
@@ -383,7 +383,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
             />
             <Toggle
               label="Fit a main isolator"
-              hint="Turn this off for a submain already isolated upstream."
+              hint="Turn this off for an automation panel already isolated upstream."
               checked={hasIsolator}
               onChange={setHasIsolator}
             />

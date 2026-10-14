@@ -16,12 +16,12 @@ for (const width of [320, 375, 393, 430]) {
     const screens = [
       '/',
       `/projects/${submain.projectId}`,
-      `/projects/${submain.projectId}/submains/new`,
-      `/submains/${submainId}/panel`,
-      `/submains/${submainId}/bom`,
+      `/projects/${submain.projectId}/panels/new`,
+      `/panels/${submainId}`,
+      `/panels/${submainId}/bom`,
       `/projects/${submain.projectId}/racks/new`,
       `/racks/${rackId}`,
-      `/submains/${submainId}/edit`,
+      `/panels/${submainId}/edit`,
       '/catalogue',
       '/nope',
     ]
@@ -59,12 +59,12 @@ for (const width of [320, 375, 393, 430]) {
     const screens = [
       '/',
       `/projects/${submain.projectId}`,
-      `/projects/${submain.projectId}/submains/new`,
-      `/submains/${submainId}/panel`,
-      `/submains/${submainId}/bom`,
+      `/projects/${submain.projectId}/panels/new`,
+      `/panels/${submainId}`,
+      `/panels/${submainId}/bom`,
       `/projects/${submain.projectId}/racks/new`,
       `/racks/${rackId}`,
-      `/submains/${submainId}/edit`,
+      `/panels/${submainId}/edit`,
       '/catalogue',
       '/nope',
     ]
@@ -77,7 +77,7 @@ for (const width of [320, 375, 393, 430]) {
         await page.waitForTimeout(600)
       }
       // The panel's install options and the rack's settings are folded away; unfold them, as a reader would.
-      if (url.endsWith('/panel') || url.startsWith('/racks/')) {
+      if (url === `/panels/${submainId}` || url.startsWith('/racks/')) {
         await page.locator('details').evaluate(el => { (el as HTMLDetailsElement).open = true })
       }
       await doubleText()
@@ -85,7 +85,7 @@ for (const width of [320, 375, 393, 430]) {
       expect(await overflow(), `${url} at ${width}px, 200% text`).toBeLessThanOrEqual(0)
     }
 
-    await page.goto(`/submains/${submainId}/panel`, { waitUntil: 'networkidle' })
+    await page.goto(`/panels/${submainId}`, { waitUntil: 'networkidle' })
     await doubleText()
     await page.getByRole('button', { name: /^Dimmer 1/ }).tap()
     const dialog = page.getByRole('dialog')
@@ -106,7 +106,7 @@ test('the wizard previews without leaving a submain in the house', async ({ page
     data: { name: `E2E ghost ${Date.now()}` },
   })).json()
 
-  await page.goto(`/projects/${project.id}/submains/new`)
+  await page.goto(`/projects/${project.id}/panels/new`)
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
   await expect(page.getByText(/1 dimmer/i)).toBeVisible()
 
@@ -129,15 +129,15 @@ test('a failed Generate leaves no submain in the house, and a retry makes exactl
     ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ title: 'Generator down' }) })
     : r.continue())
 
-  await page.goto(`/projects/${project.id}/submains/new`)
-  await page.getByLabel(/submain name/i).fill('Kept inputs')
+  await page.goto(`/projects/${project.id}/panels/new`)
+  await page.getByLabel(/automation panel name/i).fill('Kept inputs')
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
   const generate = page.getByRole('button', { name: /generate panel/i })
   await expect(generate).toBeEnabled()
   await generate.tap()
 
   await expect(page.getByRole('status')).toContainText(/not generated: generator down/i)
-  await expect(page.getByLabel(/submain name/i)).toHaveValue('Kept inputs')
+  await expect(page.getByLabel(/automation panel name/i)).toHaveValue('Kept inputs')
   expect(await submainsOf()).toEqual([])
 
   // The server is back: the same tap creates one submain, with its panel, and goes to it.
@@ -175,7 +175,7 @@ test('a failed preview says so, keeps the counts and holds Generate back until i
   // What the proxy answers when the API is down: an HTML page, not JSON.
   await page.route('**/api/projects/*/design/preview', r =>
     r.fulfill({ status: 502, contentType: 'text/html', body: '<html>Bad Gateway</html>' }))
-  await page.goto(`/projects/${project.id}/submains/new`)
+  await page.goto(`/projects/${project.id}/panels/new`)
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
 
   await expect(page.getByRole('alert')).toContainText(/not responding \(502\)/i)
@@ -212,7 +212,7 @@ test('an HTML error page from the proxy leaves the app standing, with the typed 
 
 test('every screen has a title of its own and the Home Screen metadata', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle(/Houses · House Panel Designer/)
+  await expect(page).toHaveTitle(/Houses · Automation Panel Designer/)
 
   const meta = await page.evaluate(() => ({
     viewport: document.querySelector('meta[name=viewport]')?.getAttribute('content'),
@@ -231,13 +231,13 @@ test('every screen has a title of its own and the Home Screen metadata', async (
   }
 
   await page.goto('/catalogue')
-  await expect(page).toHaveTitle(/Catalogue · House Panel Designer/)
+  await expect(page).toHaveTitle(/Catalogue · Automation Panel Designer/)
 })
 
 test('no horizontal overflow at 320px with the terminal order sheet open', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
   await page.setViewportSize({ width: 320, height: 740 })
-  await page.goto(`/submains/${submainId}/panel`, { waitUntil: 'networkidle' })
+  await page.goto(`/panels/${submainId}`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: /Terminals C1/ }).click()
   await expect(page.getByRole('dialog', { name: 'Terminal order' })).toBeVisible()
 
@@ -252,14 +252,14 @@ test('no horizontal overflow at 320px with the terminal order sheet open', async
   expect(overflow.sheet).toBeLessThanOrEqual(0)
 })
 
-test('at 320px the panel keeps Back, Bill of materials and Edit on one row above the title', async ({ page, request }) => {
+test('at 320px the panel keeps Back, Parts list and Edit on one row above the title', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
   await page.setViewportSize({ width: 320, height: 740 })
-  await page.goto(`/submains/${submainId}/panel`, { waitUntil: 'networkidle' })
+  await page.goto(`/panels/${submainId}`, { waitUntil: 'networkidle' })
 
   const tops = await Promise.all([
     page.getByRole('link', { name: /back to house/i }),
-    page.getByRole('link', { name: 'Bill of materials' }),
+    page.getByRole('link', { name: 'Parts list' }),
     page.getByRole('link', { name: 'Edit' }),
   ].map(async link => (await link.boundingBox())!))
 

@@ -92,7 +92,7 @@ public static class RackViews
         if (request.FedFromSubmainId is { } feed
             && !await db.Submains.AnyAsync(s => s.Id == feed && s.ProjectId == projectId, ct))
         {
-            problems["fedFromSubmainId"] = ["Choose a submain in this house, or none."];
+            problems["fedFromSubmainId"] = ["Choose an automation panel in this house, or none."];
         }
 
         return problems;

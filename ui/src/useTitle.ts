@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-export const APP_NAME = 'House Panel Designer'
+export const APP_NAME = 'Automation Panel Designer'
 
 /** The tab, the history list and the Home Screen bookmark all read this. */
 export function useTitle(title: string) {

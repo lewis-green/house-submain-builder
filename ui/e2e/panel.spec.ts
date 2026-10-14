@@ -381,9 +381,9 @@ test('issuing a PDF offers a plain link, which Safari cannot block', async ({ pa
   await page.keyboard.press('Escape')
   await expect(page.getByText(/changed since that pdf was issued/i)).toBeVisible()
 
-  // And the bill of materials now exists for it, reached from the title block.
-  await page.getByRole('navigation').getByRole('link', { name: /bill of materials/i }).tap()
-  await expect(page.getByRole('heading', { name: /bill of materials/i })).toBeVisible()
+  // And the parts list now exists for it, reached from the title block.
+  await page.getByRole('navigation').getByRole('link', { name: /parts list/i }).tap()
+  await expect(page.getByRole('heading', { name: /parts list/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /download csv/i })).toBeVisible()
 })
 

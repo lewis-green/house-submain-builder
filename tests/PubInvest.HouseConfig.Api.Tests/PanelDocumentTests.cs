@@ -239,7 +239,7 @@ public class PanelDocumentTests
     {
         var text = PdfText(Document().GeneratePdf());
 
-        Assert.Contains("Bill of materials", text);
+        Assert.Contains("Parts list", text);
         Assert.Contains("PH-DIM", text);
         Assert.DoesNotContain("Total", text);
         Assert.DoesNotContain("£", text);

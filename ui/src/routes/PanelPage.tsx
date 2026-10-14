@@ -283,7 +283,7 @@ export function PanelPage() {
       // there too: it leaves this screen for the form that built the panel.
       nav={design && !empty && submainId ? (
         <>
-          <Link to={`/panels/${submainId}/bom`} className={navLink}>Bill of materials</Link>
+          <Link to={`/panels/${submainId}/bom`} className={navLink}>Parts list</Link>
           <Link to={`/panels/${submainId}/edit`} className={navLink}>Edit</Link>
         </>
       ) : undefined}

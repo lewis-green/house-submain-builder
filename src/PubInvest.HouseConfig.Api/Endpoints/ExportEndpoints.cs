@@ -76,7 +76,7 @@ public static class ExportEndpoints
 
                 return Results.File(
                     System.Text.Encoding.UTF8.GetBytes(csv), "text/csv",
-                    $"{Slug(snapshot.SubmainName)}-bom.csv");
+                    $"{Slug(snapshot.SubmainName)}-parts-list.csv");
             })
             .WithTags("Export");
 
@@ -105,7 +105,7 @@ public static class ExportEndpoints
                 var csv = BomCsv.Write(bom!, project.Name);
 
                 return Results.File(
-                    System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"{Slug(project.Name)}-bom.csv");
+                    System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"{Slug(project.Name)}-parts-list.csv");
             })
             .WithTags("Export");
 

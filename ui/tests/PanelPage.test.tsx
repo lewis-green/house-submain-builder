@@ -350,8 +350,8 @@ describe('PanelPage', () => {
     const options = screen.getByText(/install options/i)
     expect(drawing.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('button', { name: /issue pdf/i })).toBeInTheDocument()
-    // Bill of materials is a place to go, so it lives with the title and leaves the bar to the PDF pair.
-    const bom = screen.getByRole('link', { name: /bill of materials/i })
+    // Parts list is a place to go, so it lives with the title and leaves the bar to the PDF pair.
+    const bom = screen.getByRole('link', { name: /parts list/i })
     expect(screen.getByRole('navigation').contains(bom)).toBe(true)
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(document.title).toMatch(/ground floor/i)

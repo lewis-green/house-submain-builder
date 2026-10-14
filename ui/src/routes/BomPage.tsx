@@ -28,7 +28,7 @@ export function BomPage() {
 
   return (
     <AppShell
-      title="Bill of materials"
+      title="Parts list"
       subtitle={submainId ? 'For this automation panel' : 'For the whole house, from each issued PDF'}
       back={{ to: backTo, label: submainId ? 'Panel' : 'House' }}
       actions={bom && bom.lines.length > 0 ? (
@@ -36,12 +36,12 @@ export function BomPage() {
       ) : undefined}
     >
       {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
-      {!bom && !notIssued && !error && <Skeleton label="Loading bill of materials" rows={4} rowClass="h-16" />}
+      {!bom && !notIssued && !error && <Skeleton label="Loading parts list" rows={4} rowClass="h-16" />}
 
       {notIssued && (
         <EmptyState
           title="Nothing has been issued yet"
-          hint="A bill of materials comes from an issued PDF revision, so it lists what was actually drawn."
+          hint="A parts list comes from an issued PDF revision, so it lists what was actually drawn."
           action={<ButtonLink to={backTo} variant="primary">{submainId ? 'Go to the panel' : 'Back to the house'}</ButtonLink>}
         />
       )}

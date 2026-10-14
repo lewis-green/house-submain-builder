@@ -34,7 +34,7 @@ export function ProjectPage() {
       actions={loaded ? (
         <>
           <ButtonLink to={`/projects/${projectId}/panels/new`} variant="primary">Add automation panel</ButtonLink>
-          <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Bill of materials</ButtonLink>
+          <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Parts list</ButtonLink>
         </>
       ) : undefined}
     >

@@ -72,7 +72,7 @@ describe('Back navigation', () => {
     expect(await screen.findByRole('heading', { name: 'Ground Floor' })).toBeInTheDocument()
   })
 
-  it('takes you from a submain bill of materials back to its panel', async () => {
+  it('takes you from a submain parts list back to its panel', async () => {
     stubApi()
 
     render(<MemoryRouter initialEntries={['/panels/s1/bom']}><App /></MemoryRouter>)
@@ -97,7 +97,7 @@ describe('Back navigation', () => {
     expect(back.getAttribute('href')).toBe('/panels/s1')
   })
 
-  it('takes you from a house bill of materials back to the house', async () => {
+  it('takes you from a house parts list back to the house', async () => {
     stubApi()
 
     render(<MemoryRouter initialEntries={['/projects/p1/bom']}><App /></MemoryRouter>)

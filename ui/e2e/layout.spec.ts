@@ -243,14 +243,14 @@ test('no horizontal overflow at 320px with the terminal order sheet open', async
   expect(overflow.sheet).toBeLessThanOrEqual(0)
 })
 
-test('at 320px the panel keeps Back, Bill of materials and Edit on one row above the title', async ({ page, request }) => {
+test('at 320px the panel keeps Back, Parts list and Edit on one row above the title', async ({ page, request }) => {
   const { submainId } = await seedSubmain(request, threeDimmed)
   await page.setViewportSize({ width: 320, height: 740 })
   await page.goto(`/panels/${submainId}`, { waitUntil: 'networkidle' })
 
   const tops = await Promise.all([
     page.getByRole('link', { name: /back to house/i }),
-    page.getByRole('link', { name: 'Bill of materials' }),
+    page.getByRole('link', { name: 'Parts list' }),
     page.getByRole('link', { name: 'Edit' }),
   ].map(async link => (await link.boundingBox())!))
 

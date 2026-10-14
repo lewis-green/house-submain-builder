@@ -145,7 +145,7 @@ public static class SubmainEndpoints
     /// validation problem for what the user can fix, the refused design with its
     /// diagnostics as a 422 — or null when the panel was built. The caller's
     /// transaction is still open, so returning the refusal rolls the edit back.
-    private static IResult? Refusal((DesignResponse? Response, string? Error, bool HasErrors) generated)
+    internal static IResult? Refusal((DesignResponse? Response, string? Error, bool HasErrors) generated)
     {
         var (response, error, hasErrors) = generated;
         if (error is not null)

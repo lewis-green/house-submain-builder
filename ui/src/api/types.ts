@@ -167,3 +167,39 @@ export interface RevisionView {
   /** Server-decided: does this revision still match the submain as it is now? */
   current: boolean
 }
+
+export type RackDeviceKind = 'Switch' | 'PatchPanel' | 'Accessory'
+
+/** A run of consecutively numbered ports that share a name, and whether PoE can be ticked on them. */
+export interface PortGroup {
+  name: string
+  from: number
+  to: number
+  poeTick: boolean
+}
+
+/** A rack cabinet. Heights are in rack units; U1 is the bottom. */
+export interface RackTypeResponse {
+  id: string
+  manufacturer: string
+  model: string
+  partNumber: string
+  heightU: number
+  mounting: 'Wall' | 'Floor'
+  description: string
+}
+
+export interface RackDeviceTypeResponse {
+  id: string
+  manufacturer: string
+  model: string
+  partNumber: string
+  kind: RackDeviceKind
+  heightU: number
+  portGroups: PortGroup[]
+  poeBudgetW: number | null
+  requiredAccessoryId: string | null
+  active: boolean
+  description: string
+  portCount: number
+}

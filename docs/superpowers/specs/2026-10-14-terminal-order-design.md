@@ -41,7 +41,7 @@ bridged together (say 6 cables landing for one dimmer channel).
   `Sequence` order. With no positions at all this is today's order.
 - `CircuitRow.TerminalCount` (`int`, default 1, valid range 1–12), in the
   same migration. Existing rows get 1. Domain `Circuit` and `CircuitInput` /
-  `CircuitSnapshot` gain it too. In snapshots it is nullable, read as 1.
+  `CircuitSnapshot` gain it too. In snapshots it is an `int` defaulting to 1, so a revision issued before it existed reads as one terminal per circuit and stays current.
 - `TerminalRules.BlocksPerCircuit` is removed from the ruleset payload.
   Deserialization ignores the old field, so stored rulesets still load.
 - `TerminalBandBuilder` orders by effective terminal order and gives each
@@ -53,7 +53,7 @@ bridged together (say 6 cables landing for one dimmer channel).
   `PlacedDeviceResponse` gain a nullable `CircuitId`, set only on terminals.
   Terminals keep no channels.
 - `CircuitSnapshot` in revisions gains `TerminalPosition` and
-  `TerminalCount`. Both are nullable, so old snapshots still deserialize.
+  `TerminalCount`. `TerminalPosition` is nullable and `TerminalCount` defaults to 1, so old snapshots still deserialize and compare equal.
 
 ### Line-tier bridging
 
@@ -121,11 +121,32 @@ in the new terminal order.
 ## 4. PDF
 
 - `PanelDocument` schedule gets a leading **Terminal** column. It comes from
-  the terminal device whose channel carries that circuit (joined on
-  `CircuitId`), and is blank for spare channels. A bridged circuit shows its
+  the terminal devices whose `CircuitId` is the circuit on that Shelly
+  channel, and is blank for spare channels. A bridged circuit shows its
   range, `C3.1–C3.6`.
 - `PanelSvgRenderer` draws the same dividers between terminals in a run, and
   the per-terminal rotated label, plus the bar over each bridged group.
+
+## 4b. Agreed during build
+
+- **Terminals can't be dragged.** `PATCH /devices/{id}/position` refuses a
+  terminal (400). Generation drops any stored override on a terminal with a
+  warning that points at the terminal order. This keeps a bridged circuit's
+  blocks together, and makes physical order equal generation order, which the
+  schedule's first–last range relies on.
+- **A missing line bar is warned, never dropped silently.** If a circuit
+  bridges but the ruleset has no line bar ways, or names a part not in the
+  catalogue, generation adds one warning and no line bar line. Ruleset save
+  refuses line bar ways with no line bar part.
+- **The seeder keeps an admin's default ruleset.** A shipped ruleset upgrade
+  replaces its payload, name and version but no longer touches `IsDefault`.
+- **Deploying ruleset v4 marks existing revisions on the shipped ruleset out
+  of date.** A revision embeds its ruleset, and the upgrade adds the line bar
+  fields, so the comparison fails although nothing printed changes. Every
+  earlier ruleset bump behaved the same. Accepted. Re-issue after deploy where
+  a current revision matters.
+- **Panels built before deploy have no terminal `CircuitId` until rebuilt**,
+  so their PDF Terminal column is blank until then.
 
 ## 5. Tests
 
@@ -156,3 +177,6 @@ in the new terminal order.
 - Reordering anything other than terminals.
 - Reusing jumper bar offcuts across circuits.
 - Bridging terminals across circuits (that would be a wiring fault).
+- Keeping a bridged circuit's blocks on one row. The packer places terminals
+  one block at a time, so a long run can wrap. The drawing shows two bars and
+  the BOM still covers both pieces. Follow-up.

@@ -11,7 +11,9 @@ public sealed record TerminalBand(
     IReadOnlyList<AccessoryLine> Accessories,
     IReadOnlyList<Diagnostic> Diagnostics);
 
-/// One 3-tier terminal block per circuit.
+/// One 3-tier terminal block per circuit, or several bridged on the line tier
+/// when a circuit asks for them (Circuit.TerminalCount). Laid in terminal order
+/// (InTerminalOrder), not Sequence.
 ///
 /// The WAGO 2003-7646 carries line, neutral and earth on a single slice, so a
 /// circuit needs one block rather than one in each of three banks. The neutral
@@ -21,6 +23,18 @@ public sealed record TerminalBand(
 /// The incoming feed lands on the isolator, so no block is spent on it.
 public static class TerminalBandBuilder
 {
+    /// The most blocks one circuit may land on.
+    public const int MaxTerminalsPerCircuit = 12;
+
+    /// Placed circuits first, in position order, then the rest in Sequence
+    /// order. With no positions at all this is plain Sequence order.
+    public static IReadOnlyList<Circuit> InTerminalOrder(IEnumerable<Circuit> circuits) =>
+        circuits
+            .OrderBy(c => c.TerminalPosition is null)
+            .ThenBy(c => c.TerminalPosition)
+            .ThenBy(c => c.Sequence)
+            .ToList();
+
     public static TerminalBand Build(
         IReadOnlyList<Circuit> circuits,
         RuleSetPayload rules,
@@ -42,31 +56,42 @@ public static class TerminalBandBuilder
 
         if (circuits.Count == 0) return new TerminalBand([], [], []);
 
-        var perCircuit = 1;
-        var ordered = circuits.OrderBy(c => c.Sequence).ToList();
+        var ordered = InTerminalOrder(circuits);
         var devices = new List<RequiredDevice>();
+        var lineBars = 0;
 
         for (var i = 0; i < ordered.Count; i++)
         {
-            for (var n = 0; n < perCircuit; n++)
+            var circuit = ordered[i];
+            var count = Math.Clamp(circuit.TerminalCount, 1, MaxTerminalsPerCircuit);
+
+            for (var n = 0; n < count; n++)
             {
                 devices.Add(new RequiredDevice(
                     deviceType.Id,
                     deviceType.Category,
                     deviceType.ModuleWidth,
-                    // Labelled for the circuit it serves, so the drawing and the
-                    // schedule name the same thing.
-                    perCircuit == 1 ? $"C{i + 1}" : $"C{i + 1}.{n + 1}",
+                    // Numbered by place on the rail, so C1 is always the first
+                    // terminal. A bridged circuit's blocks share its number.
+                    count == 1 ? $"C{i + 1}" : $"C{i + 1}.{n + 1}",
                     [],
-                    TerminalRole.All));
+                    TerminalRole.All,
+                    circuit.Id));
+            }
+
+            // Cut to length per circuit. An offcut is not counted as a bar.
+            if (count > 1 && terminals.LineBridgeBarWays > 0)
+            {
+                lineBars += (int)Math.Ceiling(count / (double)terminals.LineBridgeBarWays);
             }
         }
 
-        return new TerminalBand(devices, BuildAccessories(terminals, devices.Count), []);
+        return new TerminalBand(devices, BuildAccessories(terminals, devices.Count, lineBars), []);
     }
 
-    /// One bank, so one set of bars and stops — for the neutral tier only.
-    private static IReadOnlyList<AccessoryLine> BuildAccessories(TerminalRules terminals, int blocks)
+    /// One bank, so one neutral bar run and one set of stops; line bars only
+    /// for the circuits that bridge.
+    private static IReadOnlyList<AccessoryLine> BuildAccessories(TerminalRules terminals, int blocks, int lineBars)
     {
         if (blocks == 0) return [];
 
@@ -77,6 +102,7 @@ public static class TerminalBandBuilder
             : (int)Math.Ceiling(blocks / (double)terminals.BridgeBarWays);
 
         if (bars > 0) accessories.Add(new AccessoryLine(terminals.BridgeBarDeviceTypeId, bars));
+        if (lineBars > 0) accessories.Add(new AccessoryLine(terminals.LineBridgeBarDeviceTypeId, lineBars));
         if (terminals.EndStopsPerBank > 0)
         {
             accessories.Add(new AccessoryLine(terminals.EndStopDeviceTypeId, terminals.EndStopsPerBank));

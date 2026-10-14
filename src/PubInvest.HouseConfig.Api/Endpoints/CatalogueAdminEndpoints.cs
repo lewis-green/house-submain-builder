@@ -170,6 +170,11 @@ public static class CatalogueAdminEndpoints
         yield return payload.Terminals.DeviceTypeId;
         yield return payload.Terminals.BridgeBarDeviceTypeId;
         yield return payload.Terminals.EndStopDeviceTypeId;
+        // Older rulesets have no line bar; an empty id refers to nothing.
+        if (payload.Terminals.LineBridgeBarDeviceTypeId != Guid.Empty)
+        {
+            yield return payload.Terminals.LineBridgeBarDeviceTypeId;
+        }
     }
 
     private static Dictionary<string, string[]> ValidateDeviceType(SaveDeviceTypeRequest request)

@@ -22,6 +22,7 @@ public static class CatalogueFixture
     public static readonly Guid DcMinusId  = new("11111111-0000-0000-0000-00000000000b");
     public static readonly Guid BridgeId   = new("11111111-0000-0000-0000-000000000008");
     public static readonly Guid EndStopId  = new("11111111-0000-0000-0000-000000000009");
+    public static readonly Guid LineBridgeId = new("11111111-0000-0000-0000-000000000010");
     public static readonly Guid SmallBoxId = new("22222222-0000-0000-0000-000000000001");
     public static readonly Guid LargeBoxId = new("22222222-0000-0000-0000-000000000002");
 
@@ -41,7 +42,8 @@ public static class CatalogueFixture
         new DeviceType(DcMinusId,  "WAGO",      "12-way -24V",        "TEST-DC-",    DeviceCategory.Dc24VNegative, 4, 12, null, null, true),
         new DeviceType(TerminalId, "WAGO",      "TOPJOB S 2.5",       "TEST-TB",     DeviceCategory.Terminal240, 1, 0, null, null, true),
         new DeviceType(BridgeId,   "WAGO",      "Jumper bar 10-way",  "TEST-BAR",    DeviceCategory.Accessory,   0, 0, null, null, true),
-        new DeviceType(EndStopId,  "WAGO",      "End stop",           "TEST-STOP",   DeviceCategory.Accessory,   0, 0, null, null, true)
+        new DeviceType(EndStopId,  "WAGO",      "End stop",           "TEST-STOP",   DeviceCategory.Accessory,   0, 0, null, null, true),
+        new DeviceType(LineBridgeId, "WAGO",    "Line jumper bar 10-way", "TEST-LBAR", DeviceCategory.Accessory, 0, 0, null, null, true)
     ]);
 
     public static EnclosureType SmallEnclosure() =>
@@ -128,5 +130,7 @@ public static class CatalogueFixture
             BridgeBarDeviceTypeId: BridgeId,
             BridgeBarWays: 10,
             EndStopDeviceTypeId: EndStopId,
-            EndStopsPerBank: 2));
+            EndStopsPerBank: 2,
+            LineBridgeBarDeviceTypeId: LineBridgeId,
+            LineBridgeBarWays: 10));
 }

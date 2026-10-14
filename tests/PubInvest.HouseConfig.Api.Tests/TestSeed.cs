@@ -19,6 +19,7 @@ public static class TestSeed
     public static readonly Guid DcNegId    = new("aaaa0000-0000-4000-8000-00000000000b");
     public static readonly Guid BridgeId   = new("aaaa0000-0000-4000-8000-000000000008");
     public static readonly Guid EndStopId  = new("aaaa0000-0000-4000-8000-000000000009");
+    public static readonly Guid LineBridgeId = new("aaaa0000-0000-4000-8000-000000000010");
     public static readonly Guid CoverId    = new("aaaa0000-0000-4000-8000-00000000000c");
     public static readonly Guid RgbwId     = new("aaaa0000-0000-4000-8000-00000000000d");
     public static readonly Guid MeterId    = new("aaaa0000-0000-4000-8000-00000000000e");
@@ -55,6 +56,7 @@ public static class TestSeed
             new SeedDeviceType(TerminalId, "Test",   "Terminal",        "T-TB",     "Terminal240", 1, 0, null, null, true),
             new SeedDeviceType(BridgeId,   "Test",   "Jumper bar",      "T-BAR",    "Accessory",   0, 0, null, null, true),
             new SeedDeviceType(EndStopId,  "Test",   "End stop",        "T-STOP",   "Accessory",   0, 0, null, null, true),
+            new SeedDeviceType(LineBridgeId, "Test", "Line jumper bar", "T-LBAR", "Accessory", 0, 0, null, null, true),
             new SeedDeviceType(CoverId,    "Shelly", "Test Dual Cover", "T-COVER",  "Cover",       4, 2, null, null, true),
             new SeedDeviceType(RgbwId,     "Shelly", "Test RGBWW",      "T-RGBWW",  "LedController", 4, 5, null, null, true),
             new SeedDeviceType(MeterId,    "Shelly", "Test 3EM",        "T-3EM",    "EnergyMeter", 6, 3, null, null, true),
@@ -129,6 +131,8 @@ public static class TestSeed
                     BridgeBarDeviceTypeId: BridgeId,
                     BridgeBarWays: 10,
                     EndStopDeviceTypeId: EndStopId,
-                    EndStopsPerBank: 2)))
+                    EndStopsPerBank: 2,
+                    LineBridgeBarDeviceTypeId: LineBridgeId,
+                    LineBridgeBarWays: 10)))
         ]);
 }

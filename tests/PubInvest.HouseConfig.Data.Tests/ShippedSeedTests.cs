@@ -162,6 +162,17 @@ public class ShippedSeedTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public void The_default_ruleset_bridges_line_tiers_with_a_catalogued_bar()
+    {
+        var seed = Load();
+        var terminals = seed.RuleSets.Single(r => r.IsDefault).Payload.Terminals;
+
+        Assert.True(terminals.LineBridgeBarWays > 0);
+        var bar = Assert.Single(seed.DeviceTypes, d => d.Id == terminals.LineBridgeBarDeviceTypeId);
+        Assert.Equal("Accessory", bar.Category);
+    }
+
+    [Fact]
     public async Task The_shipped_seed_loads_into_the_database()
     {
         await using var db = fixture.CreateContext();

@@ -38,6 +38,23 @@ const describeEnclosure = (e: EnclosureType) => {
 /** The panel being edited, as it was stored when the form opened. */
 interface Built { submain: SubmainResponse; circuits: CircuitResponse[] }
 
+/**
+ * Whether the panel is still as the form found it: every detail a save would
+ * write back, and every circuit as the form would resend it. Renaming a circuit
+ * or giving it a room does not move the layout version, so that cannot be the test.
+ */
+function unchangedSince(opened: Built, now: Built) {
+  const saved = ({ submain, circuits }: Built) => JSON.stringify({
+    details: currentDetails(submain),
+    hasIsolator: submain.hasIsolator,
+    terminalsAtBottom: submain.terminalsAtBottom,
+    extraFixtures: submain.extraFixtures,
+    circuits: [...circuits].sort((a, b) => a.sequence - b.sequence).map(c =>
+      [c.id, c.type, c.name, c.room, c.sequence, c.wattsPerMetre, c.lengthMetres]),
+  })
+  return saved(opened) === saved(now)
+}
+
 /** What the form says where creating and editing differ. */
 const wording = {
   create: { busy: 'Generating…', act: 'Generate panel', failed: 'Not generated', done: 'Panel generated', verb: 'generate' },
@@ -97,6 +114,9 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
   // and only while the inputs are the ones it was refused for.
   const [generateError, setGenerateError] = useState<{ message: string; inputs: unknown } | null>(null)
   const [generating, setGenerating] = useState(false)
+  // Editing: the panel was changed elsewhere after the form opened, so saving
+  // would put back what that change took away. Reloading starts the form again.
+  const [stale, setStale] = useState(false)
   const once = useSingleFlight()
 
   // A callback, not an inline effect, so the error state can offer Try again.
@@ -207,6 +227,18 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
     try {
       let saved: SubmainResponse
       if (built) {
+        // The save resends the circuits as they were when the form opened, so a
+        // rename or a room set on the panel screen meanwhile would be quietly
+        // undone. Asking again just before the save narrows that window to the
+        // moment between this check and the PATCH; it does not close it.
+        const [submainNow, circuitsNow] = await Promise.all([
+          api.get<SubmainResponse>(`/submains/${built.submain.id}`),
+          api.get<CircuitResponse[]>(`/submains/${built.submain.id}/circuits`),
+        ])
+        if (!unchangedSince(built, { submain: submainNow, circuits: circuitsNow })) {
+          setStale(true)
+          return
+        }
         // The details this form does not show go back as they came, not as blanks.
         saved = await api.patch<SubmainResponse>(`/submains/${built.submain.id}`, {
           ...currentDetails(built.submain),
@@ -273,6 +305,16 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
               </p>
             )}
           </div>
+          {stale && (
+            <div className="mb-3">
+              <ErrorNote
+                compact
+                message="This panel changed since you opened it. Reload to see the changes."
+                retryLabel="Reload"
+                onRetry={() => { setStale(false); setBuilt(null); void load() }}
+              />
+            </div>
+          )}
           {generateError?.inputs === request && (
             <div className="mb-3"><ErrorNote compact message={`${words.failed}: ${generateError.message}`} /></div>
           )}

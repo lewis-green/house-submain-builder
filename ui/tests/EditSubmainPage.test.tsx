@@ -231,6 +231,49 @@ describe('EditSubmainPage', () => {
     expect(screen.queryByRole('heading', { name: /panel screen/i })).not.toBeInTheDocument()
   })
 
+  it('will not save over a rename made elsewhere since the form opened, and Reload shows it', async () => {
+    const fetchMock = stubApi()
+    const answer = fetchMock.getMockImplementation()!
+    let renamed = false
+    fetchMock.mockImplementation(async (url, init) => url === '/api/submains/s1/circuits' && renamed
+      ? json(circuits.map(c => c.id === 't1' ? { ...c, name: 'Island plinth', room: 'Kitchen island' } : c))
+      : answer(url, init))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: /more dimmed lighting/i }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    renamed = true
+    await userEvent.click(saveButton())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This panel changed since you opened it. Reload to see the changes.')
+    expect(bodiesOf(fetchMock, '/api/submains/s1', 'PATCH')).toHaveLength(0)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reload' }))
+
+    expect(await screen.findByDisplayValue('Island plinth')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Reloaded, the form starts again from the panel as it now is.
+    expect(screen.getByLabelText('Dimmed lighting')).toHaveValue('2')
+  })
+
+  it('will not save over submain details changed elsewhere either', async () => {
+    const fetchMock = stubApi()
+    const answer = fetchMock.getMockImplementation()!
+    let edited = false
+    fetchMock.mockImplementation(async (url, init) => url === '/api/submains/s1' && init?.method === 'GET' && edited
+      ? json({ ...submain, notes: 'Moved to the garage' })
+      : answer(url, init))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: /more dimmed lighting/i }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    edited = true
+    await userEvent.click(saveButton())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/changed since you opened it/i)
+    expect(bodiesOf(fetchMock, '/api/submains/s1', 'PATCH')).toHaveLength(0)
+  })
+
   it('offers Try again when the panel fails to load', async () => {
     let failing = true
     stubApi()

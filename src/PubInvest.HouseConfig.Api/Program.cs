@@ -64,6 +64,7 @@ app.MapCircuitEndpoints();
 app.MapDeviceEndpoints();
 app.MapRevisionEndpoints();
 app.MapExportEndpoints();
+app.MapRackEndpoints();
 app.MapCatalogueAdminEndpoints(authEnabled);
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))

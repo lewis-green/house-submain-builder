@@ -18,6 +18,9 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<RuleSetRow> RuleSets => Set<RuleSetRow>();
     public DbSet<RackTypeRow> RackTypes => Set<RackTypeRow>();
     public DbSet<RackDeviceTypeRow> RackDeviceTypes => Set<RackDeviceTypeRow>();
+    public DbSet<Rack> Racks => Set<Rack>();
+    public DbSet<RackItem> RackItems => Set<RackItem>();
+    public DbSet<RackPort> RackPorts => Set<RackPort>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -54,6 +57,32 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
 
         b.Entity<DeviceTypeRow>().HasIndex(d => d.PartNumber).IsUnique();
         b.Entity<RackDeviceTypeRow>().HasIndex(d => d.PartNumber).IsUnique();
+
+        b.Entity<Project>().HasMany<Rack>().WithOne()
+            .HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);
+
+        // The feed is a link, not ownership: if the submain ever goes, the rack
+        // stays and simply has no feed recorded.
+        b.Entity<Rack>().HasOne<Submain>().WithMany()
+            .HasForeignKey(r => r.FedFromSubmainId).OnDelete(DeleteBehavior.SetNull);
+
+        b.Entity<Rack>().HasOne<RackTypeRow>().WithMany()
+            .HasForeignKey(r => r.RackTypeId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<Rack>().Property(r => r.LayoutVersion).IsConcurrencyToken();
+
+        b.Entity<Rack>().HasMany(r => r.Items).WithOne()
+            .HasForeignKey(i => i.RackId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<RackItem>().HasIndex(i => new { i.RackId, i.TopU }).IsUnique();
+
+        b.Entity<RackItem>().HasOne<RackDeviceTypeRow>().WithMany()
+            .HasForeignKey(i => i.RackDeviceTypeId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<RackItem>().HasMany(i => i.Ports).WithOne()
+            .HasForeignKey(p => p.RackItemId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<RackPort>().HasKey(p => new { p.RackItemId, p.Number });
         b.Entity<RuleSetRow>().HasIndex(r => new { r.Name, r.Version }).IsUnique();
         b.Entity<PanelRevision>().HasIndex(r => new { r.SubmainId, r.LayoutVersion });
 

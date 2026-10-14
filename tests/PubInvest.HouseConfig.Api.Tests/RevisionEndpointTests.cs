@@ -303,6 +303,30 @@ public class RevisionEndpointTests(HouseConfigApiFactory factory)
         Assert.True((await Listed(client, submainId, revision.Id)).Current);
     }
 
+    /// Likewise for revisions issued before circuits recorded a terminal place
+    /// and count: they read as one terminal each, which is what they were.
+    [Fact]
+    public async Task A_revision_issued_before_terminal_places_were_recorded_is_still_current()
+    {
+        var client = factory.CreateClient();
+        var (submainId, _) = await Generated(client, ThreeDimmed);
+        var revision = await Issue(client, submainId);
+
+        await using (var db = factory.NewDbContext())
+        {
+            var stored = await db.PanelRevisions.SingleAsync(r => r.Id == revision.Id);
+            Assert.Contains("\"terminalCount\":1", stored.SnapshotJson);
+            stored.SnapshotJson = stored.SnapshotJson
+                .Replace(",\"terminalPosition\":null", "")
+                .Replace(",\"terminalCount\":1", "");
+            Assert.DoesNotContain("terminalCount", stored.SnapshotJson);
+            Assert.DoesNotContain("terminalPosition", stored.SnapshotJson);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True((await Listed(client, submainId, revision.Id)).Current);
+    }
+
     [Fact]
     public async Task The_server_numbers_revisions_in_the_order_they_were_issued()
     {

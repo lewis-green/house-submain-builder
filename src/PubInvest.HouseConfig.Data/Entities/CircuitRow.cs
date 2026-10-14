@@ -10,4 +10,6 @@ public class CircuitRow
     public int Sequence { get; set; }
     public decimal? WattsPerMetre { get; set; }
     public decimal? LengthMetres { get; set; }
+    public int? TerminalPosition { get; set; }
+    public int TerminalCount { get; set; } = 1;
 }

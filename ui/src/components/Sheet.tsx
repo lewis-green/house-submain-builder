@@ -66,7 +66,6 @@ function useKeyboardSafeBox() {
 
 export function Sheet({ title, subtitle, onClose, children }: Props) {
   const panel = useRef<HTMLDivElement>(null)
-  const restoreTo = useRef<Element | null>(null)
   const dragStartY = useRef<number | null>(null)
   const keyboardBox = useKeyboardSafeBox()
 
@@ -91,15 +90,14 @@ export function Sheet({ title, subtitle, onClose, children }: Props) {
   useBodyScrollLock()
 
   // Focus moves into the dialog once, when it opens, and goes back to whatever
-  // opened it when it closes. Nothing in between may touch it.
+  // opened it when it closes. While open, nothing but the Tab wrap and the
+  // escape trap below may move it. One effect, so on close the trap is taken
+  // down *before* focus goes back to the opener: the order does not depend on
+  // which cleanup React happens to run first.
   useEffect(() => {
-    restoreTo.current = document.activeElement
+    const opener = document.activeElement
     panel.current?.focus()
 
-    return () => { (restoreTo.current as HTMLElement | null)?.focus?.() }
-  }, [])
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         close()
@@ -124,9 +122,28 @@ export function Sheet({ title, subtitle, onClose, children }: Props) {
         }
       }
     }
-    document.addEventListener('keydown', onKey)
 
-    return () => document.removeEventListener('keydown', onKey)
+    // The wrap above only fires from the last control it knows of. Safari does
+    // not Tab to buttons by default, so from the last field focus slips past
+    // that control and out to the page behind; bring it back the moment it
+    // lands. Focus inside any dialog is left alone: with two sheets open, each
+    // pulling focus back from the other would loop for ever, so only a target
+    // outside every dialog is pulled in, and by this one — the sheet whose
+    // listener was registered last.
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target
+      if (!(target instanceof Element) || !panel.current) return
+      if (target.closest('[role="dialog"]')) return
+      panel.current.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('focusin', onFocusIn)
+
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('focusin', onFocusIn)
+      ;(opener as HTMLElement | null)?.focus?.()
+    }
   }, [])
 
   const body = useRef<HTMLDivElement>(null)

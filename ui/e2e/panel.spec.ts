@@ -42,7 +42,42 @@ test('a panel generated from the wizard is drawn to scale', async ({ page, reque
 
   await expect(page.getByRole('button', { name: /^Dimmer 1/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Relay 1/ })).toBeVisible()
-  await expect(page.getByRole('img', { name: /C1/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Terminals C1/ })).toBeVisible()
+})
+
+test('the terminal order can be changed and a circuit given several cables', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+  await page.goto(`/submains/${submainId}/panel`)
+
+  await page.getByRole('button', { name: /Terminals C1/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Terminal order' })
+  await expect(sheet).toBeVisible()
+
+  await sheet.getByRole('button', { name: 'Move Hall up' }).click()
+  await sheet.getByRole('button', { name: /more cables for hall/i }).click()
+  await sheet.getByRole('button', { name: 'Save order' }).click()
+  await expect(sheet).toBeHidden()
+
+  await page.reload()
+  await page.getByRole('button', { name: /Terminals C1/ }).click()
+  const items = page.getByRole('dialog', { name: 'Terminal order' }).getByRole('listitem')
+  await expect(items.nth(1)).toContainText('Hall')
+  await expect(items.nth(1)).toContainText('C2.1–C2.2')
+})
+
+test('the terminal run shows a focus ring when reached by keyboard', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+  await page.goto(`/submains/${submainId}/panel`)
+  const run = page.getByRole('button', { name: /Terminals C1/ })
+  // Reached as a keyboard user would: Tab until it has focus, bounded.
+  for (let i = 0; i < 30 && !(await run.evaluate(el => el === document.activeElement)); i++) {
+    await page.keyboard.press('Tab')
+  }
+  await expect(run).toBeFocused()
+  // WebKit has been patchy drawing outlines on SVG children. A computed outline
+  // style other than none is evidence the ring is drawn, not proof of pixels.
+  const outline = await run.evaluate(el => getComputedStyle(el).outlineStyle)
+  expect(outline).not.toBe('none')
 })
 
 test('every device is a thumb-sized target at default zoom', async ({ page, request }) => {

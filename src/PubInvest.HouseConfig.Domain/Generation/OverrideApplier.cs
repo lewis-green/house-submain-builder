@@ -1,3 +1,4 @@
+using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Diagnostics;
 using PubInvest.HouseConfig.Domain.Layout;
 
@@ -25,6 +26,16 @@ public static class OverrideApplier
         {
             diagnostics.Add(Dropped(missing, "it is not in this design any more"));
             pending.Remove(missing);
+        }
+
+        // Terminals are placed by the terminal order, so an override left over
+        // from when they could be dragged is ignored.
+        foreach (var terminal in pending
+                     .Where(o => devices.Any(d => d.Label == o.Label && d.Category == DeviceCategory.Terminal240))
+                     .ToList())
+        {
+            diagnostics.Add(Dropped(terminal, "terminals follow the terminal order", "Change the terminal order instead."));
+            pending.Remove(terminal);
         }
 
         // Repeat until a pass moves nothing. One override can be blocked only by a
@@ -87,9 +98,12 @@ public static class OverrideApplier
         return "another device is already there";
     }
 
-    private static Diagnostic Dropped(PositionOverride request, string why) => new(
+    private static Diagnostic Dropped(
+        PositionOverride request,
+        string why,
+        string suggestion = "Drag it again if the new position is not what you want.") => new(
         DiagnosticSeverity.Warning,
         DiagnosticCodes.PositionOverrideDropped,
         $"'{request.Label}' could not be kept where you put it because {why}; it has been placed automatically.",
-        "Drag it again if the new position is not what you want.");
+        suggestion);
 }

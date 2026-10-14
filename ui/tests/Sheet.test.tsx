@@ -171,4 +171,37 @@ describe('Sheet', () => {
 
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it('puts focus back inside when it lands on the page behind', () => {
+    show()
+    screen.getByRole('button', { name: 'Behind' }).focus()
+
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+  })
+
+  it('returns focus to the control that opened it on close', () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const { unmount } = render(<Sheet title="One" onClose={() => {}}><input aria-label="First" /></Sheet>)
+    expect(document.activeElement).not.toBe(opener)
+
+    unmount()
+
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+
+  it('lets two open sheets coexist without fighting over focus', () => {
+    render(
+      <>
+        <Sheet title="Lower" onClose={() => {}}><input aria-label="Lower field" /></Sheet>
+        <Sheet title="Upper" onClose={() => {}}><input aria-label="Upper field" /></Sheet>
+      </>,
+    )
+    const upper = screen.getByLabelText('Upper field')
+    upper.focus()
+
+    expect(document.activeElement).toBe(upper)
+  })
 })

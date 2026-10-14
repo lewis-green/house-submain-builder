@@ -2,17 +2,24 @@ using PubInvest.HouseConfig.Domain.Catalogue;
 
 namespace PubInvest.HouseConfig.Domain.Rules;
 
-/// One 3-tier block per circuit: L, N and E on a single slice.
+/// One 3-tier block per terminal: L, N and E on a single slice. A circuit has
+/// one block unless it asks for more (Circuit.TerminalCount).
 ///
-/// Only the neutral tier is bridged with a bar. Earth commons through the DIN
-/// rail, so it needs none; line is per-circuit and loops out to the Shelly.
+/// The neutral tier is bridged across the whole bank with a bar. Earth commons
+/// through the DIN rail, so it needs none. Line is per-circuit and loops out to
+/// the Shelly. Only a circuit with several blocks bridges its line tier, across
+/// its own blocks, with a cut-to-length line bar.
+///
+/// The line bar fields are defaulted so a ruleset stored before they existed
+/// still reads. With no line bar ways, no line bars are counted.
 public sealed record TerminalRules(
     Guid DeviceTypeId,
-    int BlocksPerCircuit,
     Guid BridgeBarDeviceTypeId,
     int BridgeBarWays,
     Guid EndStopDeviceTypeId,
-    int EndStopsPerBank);
+    int EndStopsPerBank,
+    Guid LineBridgeBarDeviceTypeId = default,
+    int LineBridgeBarWays = 0);
 
 public sealed record PreferredDevices(
     Guid Isolator,

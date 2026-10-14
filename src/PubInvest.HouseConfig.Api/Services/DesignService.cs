@@ -79,10 +79,20 @@ public sealed class DesignService(HouseConfigDbContext db)
             return (null, null, "No ruleset is available. Seed or select one before generating a design.");
         }
 
+        // A request-supplied list (wizard or edit) knows nothing of terminal
+        // places, so a circuit it names keeps the place and count already stored.
+        var stored = (submain?.Circuits ?? []).ToDictionary(c => c.Id);
+
         var circuits = overrides?.Circuits is { Count: > 0 }
-            ? overrides.Circuits.Select(c => new Circuit(
-                c.Id ?? Guid.NewGuid(), Enum.Parse<CircuitType>(c.Type), c.Name, c.Room, c.Sequence,
-                c.WattsPerMetre, c.LengthMetres)).ToList()
+            ? overrides.Circuits.Select(c =>
+            {
+                var id = c.Id ?? Guid.NewGuid();
+                var known = stored.GetValueOrDefault(id);
+                return new Circuit(
+                    id, Enum.Parse<CircuitType>(c.Type), c.Name, c.Room, c.Sequence,
+                    c.WattsPerMetre, c.LengthMetres,
+                    known?.TerminalPosition, known?.TerminalCount ?? 1);
+            }).ToList()
             : (submain?.Circuits ?? []).Select(DomainMapper.ToDomain).ToList();
 
         var catalogue = new DeviceCatalogue(
@@ -188,6 +198,7 @@ public sealed class DesignService(HouseConfigDbContext db)
                 ModuleWidth = placed.ModuleWidth,
                 Label = placed.Label,
                 TerminalRole = placed.TerminalRole.ToString(),
+                CircuitId = placed.CircuitId,
                 Channels = placed.Channels.Select(c => new Data.Entities.DeviceChannelRow
                 {
                     Id = Guid.NewGuid(),
@@ -245,7 +256,8 @@ public sealed class DesignService(HouseConfigDbContext db)
 
                         return new ChannelResponse(
                             c.ChannelIndex, c.CircuitId, circuit?.Name, circuit?.Room, c.IsSpare);
-                    }).ToList());
+                    }).ToList(),
+                    d.CircuitId);
             })
             .ToList();
 

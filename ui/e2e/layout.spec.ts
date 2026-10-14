@@ -222,3 +222,21 @@ test('every screen has a title of its own and the Home Screen metadata', async (
   await page.goto('/catalogue')
   await expect(page).toHaveTitle(/Catalogue · House Panel Designer/)
 })
+
+test('no horizontal overflow at 320px with the terminal order sheet open', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+  await page.setViewportSize({ width: 320, height: 740 })
+  await page.goto(`/submains/${submainId}/panel`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: /Terminals C1/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Terminal order' })).toBeVisible()
+
+  const overflow = await page.evaluate(() => {
+    const dialog = document.querySelector('[role=dialog]')!
+    return {
+      page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      sheet: dialog.scrollWidth - dialog.clientWidth,
+    }
+  })
+  expect(overflow.page).toBeLessThanOrEqual(0)
+  expect(overflow.sheet).toBeLessThanOrEqual(0)
+})

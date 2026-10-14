@@ -26,7 +26,10 @@ public sealed record PlacedDevice(
     int ModuleWidth,
     string Label,
     IReadOnlyList<ChannelAssignment> Channels,
-    TerminalRole TerminalRole)
+    TerminalRole TerminalRole,
+    /// Terminals only: the circuit landing on this block. Not a channel, so it
+    /// never counts as a circuit being wired to a Shelly.
+    Guid? CircuitId = null)
 {
     public int EndSlotExclusive => StartSlot + ModuleWidth;
 }

@@ -181,7 +181,8 @@ public static class PanelPacker
         device.ModuleWidth,
         device.Label,
         device.Channels,
-        device.TerminalRole);
+        device.TerminalRole,
+        device.CircuitId);
 
     /// The left and right fronts of each row in a zone.
     private sealed class Rows(int firstRow, int slotsPerRow)

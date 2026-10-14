@@ -130,7 +130,8 @@ public sealed class RevisionService(HouseConfigDbContext db)
                 d.Channels.OrderBy(c => c.ChannelIndex)
                     .Select(c => new ChannelAssignment(c.ChannelIndex, c.CircuitId, c.IsSpare))
                     .ToList(),
-                Enum.Parse<TerminalRole>(d.TerminalRole))).ToList());
+                Enum.Parse<TerminalRole>(d.TerminalRole),
+                d.CircuitId)).ToList());
 
         // Accessories are not placed devices, so they have to be recomputed from
         // the same rules and circuits the panel was generated from.
@@ -159,7 +160,7 @@ public sealed class RevisionService(HouseConfigDbContext db)
             layout,
             submain.Circuits
                 .OrderBy(c => c.Sequence)
-                .Select(c => new CircuitSnapshot(c.Id, c.Type, c.Name, c.Room, c.Sequence))
+                .Select(c => new CircuitSnapshot(c.Id, c.Type, c.Name, c.Room, c.Sequence, c.TerminalPosition, c.TerminalCount))
                 .ToList(),
             rules,
             catalogue.Concat(accessoryTypes).DistinctBy(t => t.Id).OrderBy(t => t.PartNumber).ToList(),

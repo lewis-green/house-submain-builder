@@ -10,7 +10,7 @@ const json = (body: unknown, status = 200) =>
 
 const rack: RackResponse = {
   id: 'r1', projectId: 'p1', name: 'Comms cupboard', rackTypeId: 'c12', cabinet: 'Generic 12U wall cabinet', heightU: 12,
-  usedU: 1, fedFromSubmainId: null, fedFromSubmainName: null, notes: null, layoutVersion: 3,
+  usedU: 1, fedFromSubmainId: null, fedFromSubmainName: null, notes: null, layoutVersion: 3, locationId: null,
 }
 const cabinets: RackTypeResponse[] = [
   { id: 'c12', manufacturer: 'Generic', model: '12U wall cabinet', partNumber: 'C12', heightU: 12, mounting: 'Wall', description: 'Generic 12U wall cabinet' },

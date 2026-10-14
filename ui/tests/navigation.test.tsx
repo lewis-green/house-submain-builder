@@ -13,7 +13,7 @@ const submain: SubmainResponse = {
   feedCableSize: null, originBreakerAmps: null, phase: null,
   enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
   hasIsolator: true, terminalsAtBottom: false, extraFixtures: [],
-  layoutVersion: 2, circuitCount: 3, deviceCount: 5,
+  layoutVersion: 2, circuitCount: 3, deviceCount: 5, locationId: null,
 }
 
 const design: DesignResponse = {

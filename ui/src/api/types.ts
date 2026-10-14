@@ -25,6 +25,15 @@ export interface ProjectResponse {
   submainCount: number
 }
 
+/** A place in a house — a plant room, a garage — that panels and racks can be in. */
+export interface LocationResponse {
+  id: string
+  name: string
+  notes: string | null
+  /** The order the house lists them in: the order they were added. */
+  sequence: number
+}
+
 export interface SubmainResponse {
   id: string
   projectId: string
@@ -42,6 +51,8 @@ export interface SubmainResponse {
   extraFixtures: ExtraFixture[]
   circuitCount: number
   deviceCount: number
+  /** Null when the panel is not placed in any location. */
+  locationId: string | null
 }
 
 export interface ChannelResponse {
@@ -232,6 +243,8 @@ export interface RackResponse {
   fedFromSubmainName: string | null
   notes: string | null
   layoutVersion: number
+  /** Null when the rack is not placed in any location. */
+  locationId: string | null
 }
 
 export interface RackPortResponse {

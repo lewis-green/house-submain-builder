@@ -21,7 +21,7 @@ const submain = {
   feedCableSize: null, originBreakerAmps: null, phase: null,
   enclosureTypeId: 'e1', ruleSetId: 'r1', notes: null,
   hasIsolator: true, terminalsAtBottom: false, extraFixtures: [],
-  layoutVersion: 4, circuitCount: 1, deviceCount: 1,
+  layoutVersion: 4, circuitCount: 1, deviceCount: 1, locationId: null,
 }
 
 /**
@@ -285,7 +285,7 @@ describe('PanelPage', () => {
     // them, and a missing ruleset would quietly become the default one.
     const detailed = {
       ...submain, reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1',
-      ruleSetId: 'r7', notes: 'Under the stairs',
+      ruleSetId: 'r7', notes: 'Under the stairs', locationId: 'l1',
     }
     const underlying = stub(() => json(design()))
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
@@ -297,8 +297,34 @@ describe('PanelPage', () => {
 
     await waitFor(() => expect(patchBody(fetchMock as unknown as ReturnType<typeof stub>, '/api/submains/s1')).toMatchObject({
       reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1', ruleSetId: 'r7', notes: 'Under the stairs',
-      hasIsolator: false, rebuild: true,
+      locationId: 'l1', hasIsolator: false, rebuild: true,
     }))
+  })
+
+  it('says where in the house the panel is, ahead of its size', async () => {
+    const underlying = stub(() => json(design()))
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/submains/s1') return json({ ...submain, locationId: 'l2' })
+      if (url === '/api/projects/p1/locations') return json([
+        { id: 'l1', name: 'Garage', notes: null, sequence: 0 },
+        { id: 'l2', name: 'Plant room', notes: null, sequence: 1 },
+      ])
+      return underlying(url, init)
+    }))
+
+    renderPage()
+
+    expect(await screen.findByText('Plant room · 4 rows of 18 modules')).toBeInTheDocument()
+  })
+
+  it('says nothing of a location when the panel is not placed', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design()), url =>
+      url === '/api/projects/p1/locations' ? json([{ id: 'l1', name: 'Garage', notes: null, sequence: 0 }]) : undefined))
+
+    renderPage()
+
+    expect(await screen.findByText('4 rows of 18 modules')).toBeInTheDocument()
+    expect(screen.queryByText(/Garage/)).not.toBeInTheDocument()
   })
 
   it('says when a circuit has been saved, and keeps saying it for a screen reader', async () => {

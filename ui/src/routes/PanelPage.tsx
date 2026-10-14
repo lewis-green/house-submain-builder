@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import { currentDetails } from '../api/submainDetails'
 import type {
-  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, SubmainResponse, TerminalCircuit, TerminalsResponse,
+  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, LocationResponse, SubmainResponse, TerminalCircuit,
+  TerminalsResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button, ButtonLink } from '../components/Button'
@@ -23,6 +24,7 @@ import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geome
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
 import { SLOT_UNITS_PER_MODULE } from '../units'
+import { asLocations, locationName } from '../locations'
 import { FixturePicker } from '../wizard/FixturePicker'
 
 const ZOOM_STEP = 1.25
@@ -49,6 +51,7 @@ export function PanelPage() {
   const [terminals, setTerminals] = useState<TerminalCircuit[] | null>(null)
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
+  const [locations, setLocations] = useState<LocationResponse[]>([])
   const [reworking, setReworking] = useState(false)
   // null until the catalogue has arrived: the picker has nothing honest to offer before then.
   const [catalogue, setCatalogue] = useState<DeviceTypeResponse[] | null>(null)
@@ -79,6 +82,8 @@ export function PanelPage() {
         // Rooms already used in this house, offered before anyone types one.
         // A failure here costs a suggestion list, not the panel.
         api.get<string[]>(`/projects/${s.projectId}/rooms`).then(setRooms).catch(() => setRooms([]))
+        // Only to name the panel's location in the subtitle; a failure costs the name.
+        api.get(`/projects/${s.projectId}/locations`).then(l => setLocations(asLocations(l))).catch(() => setLocations([]))
       })
       .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
@@ -283,7 +288,10 @@ export function PanelPage() {
   return (
     <AppShell
       title={submain?.name ?? 'Panel'}
-      subtitle={design && !empty ? `${design.layout.rows} rows of ${modules} modules` : undefined}
+      subtitle={[
+        submain && locationName(locations, submain.locationId),
+        design && !empty ? `${design.layout.rows} rows of ${modules} modules` : null,
+      ].filter(Boolean).join(' · ') || undefined}
       back={{ to: submain ? `/projects/${submain.projectId}` : '/', label: 'House' }}
       // The parts list is a place to go, not something done to the panel, so it
       // sits with the title like Catalogue on the houses screen — and the bar

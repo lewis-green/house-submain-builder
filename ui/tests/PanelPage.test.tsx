@@ -336,6 +336,17 @@ describe('PanelPage', () => {
     expect(document.title).toMatch(/ground floor/i)
   })
 
+  it('offers Edit beside the parts list, back into the form that built the panel', async () => {
+    vi.stubGlobal('fetch', stub(() => json(design())))
+
+    renderPage()
+    await screen.findByRole('button', { name: /dimmer 1/i })
+
+    const edit = screen.getByRole('link', { name: /^edit$/i })
+    expect(edit).toHaveAttribute('href', '/submains/s1/edit')
+    expect(screen.getByRole('navigation').contains(edit)).toBe(true)
+  })
+
   it('keeps the row labels outside the drawing, where they stay on screen, and offers an overview strip', async () => {
     vi.stubGlobal('fetch', stub(() => json(design())))
 

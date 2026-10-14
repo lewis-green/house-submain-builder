@@ -91,13 +91,22 @@ don't commit it filled.
    server, and the screen says when the PDF on offer is behind the panel.
 7. **Bill of materials** lists the parts to order, with anything not mounted in
    the panel (the LED driver) marked as external.
+8. **Add rack** on the house page. Pick a cabinet and, if it has one, the
+   submain that feeds it. On the rack screen, **Add to rack** puts a switch or
+   a patch panel in the top free U; drag an item to move it (on a touchscreen,
+   hold it first). Tap an item to label its ports — Return moves to the next
+   port — and tick PoE where the cable needs it. **Issue PDF revision** gives
+   the rack drawing, a schedule of every port and the parts to order.
 
 ### The catalogue is not confirmed yet
 
 Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
 the two-pole isolator, the 24V joint blocks, the external driver wattages, the
 jumper bar's ways and the end stops per bank. Confirm them before ordering from
-a generated bill of materials.
+a generated bill of materials. The rack cabinets, the 24-port patch panel and
+the USW-Pro-Max-16-PoE's rack-mount kit carry ASSUMED part numbers, and the
+three switches' port splits and PoE budgets come from retailer listings rather
+than Ubiquiti's datasheets.
 
 The bill of materials carries **no prices**. It is a parts list — part number,
 description, quantity, and whether the part is mounted in the panel — and
@@ -115,8 +124,8 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 284 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 207 Vitest tests in jsdom
+dotnet test          # 350 tests. Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 247 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
 ```
@@ -129,8 +138,10 @@ images, and pushes them to GHCR from `main`.
 `ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard, Home
-Screen metadata, and a few checks with a mouse (30 tests). It brings up its own stack and takes it down again, so it needs
-nothing running first and never touches a development database:
+Screen metadata, the rack screen's port labelling, drag and PDF, and a few
+checks with a mouse (36 tests). It brings up its own stack and takes it down
+again, so it needs nothing running first and never touches a development
+database:
 
 ```bash
 cd ui
@@ -191,6 +202,13 @@ with `rebuild: true` — that saves the option and regenerates the panel in the
 same transaction, so a rebuild the generator refuses leaves the option as it
 was. (`POST /projects/{id}/submains` with `generate: true` is the wizard's
 equivalent.)
+
+**A rack sits beside the submains, not inside one.** The submain that feeds
+it is a link on the rack — blank, or changed, without the rack moving — and
+feeding a rack changes nothing on that panel. Racks are measured in rack
+units with U1 at the bottom; the server places each item in the top free U
+and checks every move, exactly as it decides every panel layout. Ports are
+numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or

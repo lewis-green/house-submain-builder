@@ -268,6 +268,16 @@ export function NewSubmainPage() {
             {tape.map((t, i) => (
               <div key={i} className="grid grid-cols-2 gap-3 rounded-lg border border-rule bg-sheet p-3">
                 <Field
+                  label="Tape name"
+                  value={t.name ?? ''}
+                  onChange={name => setTape(tape.map((x, j) => j === i ? { ...x, name } : x))}
+                  placeholder="Kitchen plinth"
+                  hint={`Left blank, it is called ${t.colour ? 'Colour tape' : 'Tape'} ${i + 1}.`}
+                  autoCapitalize="sentences"
+                  enterKeyHint="next"
+                  className="col-span-2"
+                />
+                <Field
                   label="Watts per metre"
                   value={String(t.wattsPerMetre)}
                   onChange={v => setTape(tape.map((x, j) => j === i ? { ...x, wattsPerMetre: Number(v) || 0 } : x))}

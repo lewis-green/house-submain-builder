@@ -96,7 +96,8 @@ don't commit it filled.
 
 Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
 the two-pole isolator, the 24V joint blocks, the external driver wattages, the
-jumper bar's ways and the end stops per bank. Confirm them before ordering from
+jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
+terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
 a generated bill of materials.
 
 The bill of materials carries **no prices**. It is a parts list — part number,
@@ -115,10 +116,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 284 tests. Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 207 Vitest tests in jsdom
+dotnet test          # 333 tests (127 Domain, 27 Data, 179 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 235 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
+cd ui && npm run test:e2e   # 33 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -163,6 +165,22 @@ one module, so a third is the smallest real unit; counting in thirds keeps every
 width a whole number and the packer free of rounding. A dimmer is 3, a relay 9, a
 terminal 1. `DinUnits.PerModule` is the constant; anything a person reads is
 converted back to modules first.
+
+**Terminals have an order, and a circuit can land on several.** Tap the run of
+terminals on the panel screen to open the terminal order: reorder the circuits
+along the rail (C1 is always the first terminal, and the numbers follow
+position) and set how many terminals each circuit lands on, up to 12, for
+several cables to one channel. A circuit on several terminals is labelled
+C3.1, C3.2 and so on, and its line tiers are bridged with a cut-to-length line
+jumper bar, counted per bridged circuit as ceil(n/10) with offcuts not shared;
+its part number (`ASSUMED-LINE-JUMPER-BAR-10`) is assumed until confirmed, and
+the panel warns if the ruleset has no usable line bar. Terminals follow the
+terminal order, so they can't be dragged. Terminal order is independent of the
+circuit sequence: moving terminals never changes which Shelly channel a circuit
+is on. Saving is one request, `PUT /submains/{id}/terminals`, that saves the
+order and rebuilds the panel in the same transaction (409 if the panel changed
+elsewhere, 400 for a bad list, 422 if the terminals won't fit — nothing is
+saved); `GET /submains/{id}/terminals` reads the current order and counts.
 
 **The server decides every layout.** The UI never computes one — it draws what
 `/design/preview` or `/design/generate` returned. That is what keeps the drawing,

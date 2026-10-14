@@ -124,9 +124,21 @@ export function Sheet({ title, subtitle, onClose, children }: Props) {
         }
       }
     }
+    // The wrap above only fires from the last control it knows of. Safari does
+    // not Tab to buttons by default, so from the last field focus slips past
+    // that control and out to the page behind; bring it back the moment it lands.
+    const onFocusIn = (e: FocusEvent) => {
+      if (panel.current && e.target instanceof Node && !panel.current.contains(e.target)) {
+        panel.current.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+      }
+    }
     document.addEventListener('keydown', onKey)
+    document.addEventListener('focusin', onFocusIn)
 
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('focusin', onFocusIn)
+    }
   }, [])
 
   const body = useRef<HTMLDivElement>(null)

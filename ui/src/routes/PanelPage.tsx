@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse,
+  DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse, TerminalCircuit, TerminalsResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button, ButtonLink } from '../components/Button'
@@ -17,6 +17,7 @@ import { DeviceSheet } from '../panel/DeviceSheet'
 import { IssueButton } from '../panel/IssueButton'
 import { PanelOverview } from '../panel/PanelOverview'
 import { PanelSvg } from '../panel/PanelSvg'
+import { TerminalSheet } from '../panel/TerminalSheet'
 import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geometry'
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
@@ -40,6 +41,8 @@ export function PanelPage() {
   const [submain, setSubmain] = useState<SubmainResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // The circuits in terminal order while the sheet is open; null when it is shut.
+  const [terminals, setTerminals] = useState<TerminalCircuit[] | null>(null)
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
   const [reworking, setReworking] = useState(false)
@@ -191,6 +194,42 @@ export function PanelPage() {
     }
   }
 
+  async function openTerminals() {
+    try {
+      const response = await api.get<TerminalsResponse>(`/submains/${submainId}/terminals`)
+      setTerminals(response.circuits)
+    } catch (e) {
+      announce(`Terminals not loaded: ${(e as ApiError).message}`, 'error')
+    }
+  }
+
+  /**
+   * One request: the order and counts are saved and the panel rebuilt together,
+   * so a refused rebuild (no room for the extra terminals) saves nothing.
+   * Rethrows a refusal so the sheet keeps the edit.
+   */
+  async function saveTerminals(circuits: { circuitId: string; terminalCount: number }[]) {
+    if (!design) return
+    try {
+      await api.put(`/submains/${submainId}/terminals`, { layoutVersion: design.layoutVersion, circuits })
+      setTerminals(null)
+      await load()
+      announce('Terminal order saved, panel rebuilt', 'ok')
+    } catch (e) {
+      const error = e as ApiError
+      if (error.conflict) {
+        announce('This panel changed elsewhere — reloading')
+        setTerminals(null)
+        await load()
+        return
+      }
+      announce(`Terminal order not saved: ${error.message}`, 'error')
+      throw e
+    }
+  }
+
+  const closeTerminals = useCallback(() => setTerminals(null), [])
+
   /**
    * The whole drawing across the scroller, for an overview before zooming back
    * in. Not held to ZOOM_MIN: a 24-module panel on a 393px phone needs 0.23×,
@@ -265,7 +304,7 @@ export function PanelPage() {
             <p className="text-sm text-ink-2">
               {tooSmallToTap
                 ? 'At this size the devices are too small to tap. Zoom in, or tap 1×, to name or move one.'
-                : 'Tap a device to name its circuits. Drag it to move it — on a touchscreen, hold it first.'}
+                : 'Tap a device to name its circuits, or the terminals to change their order. Drag a device to move it — on a touchscreen, hold it first.'}
             </p>
           </div>
 
@@ -312,6 +351,7 @@ export function PanelPage() {
                       onSelect={setSelectedId}
                       dragging={dragging}
                       zoom={zoom}
+                      onOpenTerminals={() => void openTerminals()}
                     />
                   </div>
                 </div>
@@ -397,6 +437,10 @@ export function PanelPage() {
           onFreeChannel={index => freeChannel(selected.id!, index)}
           onClose={closeSheet}
         />
+      )}
+
+      {terminals && (
+        <TerminalSheet circuits={terminals} onSave={saveTerminals} onClose={closeTerminals} />
       )}
     </AppShell>
   )

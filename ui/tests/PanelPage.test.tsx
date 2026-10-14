@@ -375,4 +375,52 @@ describe('PanelPage', () => {
 
     expect(await screen.findByText(/no panel yet/i)).toBeInTheDocument()
   })
+
+  describe('terminal order', () => {
+    const withTerminal = (): DesignResponse => {
+      const d = design()
+      d.layout.devices.push({
+        id: 't1', deviceTypeId: 'term', category: 'Terminal240', rowIndex: 0, startSlot: 0,
+        moduleWidth: 1, label: 'C1', terminalRole: 'All', circuitId: 'c1', channels: [],
+      } as DesignResponse['layout']['devices'][number])
+      return d
+    }
+    const terminalsBody = {
+      layoutVersion: 4,
+      circuits: [
+        { circuitId: 'c1', name: 'Kitchen ceiling', room: 'Kitchen', type: 'DimmedLighting', terminalCount: 1 },
+        { circuitId: 'c2', name: 'Hall', room: null, type: 'DimmedLighting', terminalCount: 1 },
+      ],
+    }
+    const terminalStub = () => stub(
+      () => json(withTerminal()),
+      url => (url === '/api/submains/s1/terminals' ? json(terminalsBody) : undefined))
+
+    it('opens the terminal order from the terminals', async () => {
+      vi.stubGlobal('fetch', terminalStub())
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+
+      expect(await screen.findByRole('dialog', { name: 'Terminal order' })).toBeInTheDocument()
+    })
+
+    it('saves the order with the layout version it was based on', async () => {
+      const fetchMock = terminalStub()
+      vi.stubGlobal('fetch', fetchMock)
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Move Hall up' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const put = fetchMock.mock.calls.find(c => c[1]?.method === 'PUT' && c[0] === '/api/submains/s1/terminals')
+      expect(put).toBeDefined()
+      expect(JSON.parse(String(put![1]!.body))).toEqual({
+        layoutVersion: 4,
+        circuits: [{ circuitId: 'c2', terminalCount: 1 }, { circuitId: 'c1', terminalCount: 1 }],
+      })
+    })
+  })
 })

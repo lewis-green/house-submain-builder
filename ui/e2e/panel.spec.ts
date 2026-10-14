@@ -420,3 +420,26 @@ test.describe('with a mouse or trackpad', () => {
     expect(after.x).toBeGreaterThan(before.x + 4 * MODULE_PX)
   })
 })
+
+test('a built panel can be edited: one more dimmed circuit, saved and rebuilt, keeps the names it had', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+  await page.goto(`/submains/${submainId}/panel`)
+  await expect(page.getByRole('button', { name: /Kitchen ceiling/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Lighting 4/ })).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Edit' }).tap()
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit E2E submain' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Dimmed lighting' })).toHaveValue('3')
+
+  await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
+  const save = page.getByRole('button', { name: /save and rebuild/i })
+  await expect(save).toBeEnabled()
+  await save.tap()
+
+  await expect(page).toHaveURL(new RegExp(`/submains/${submainId}/panel$`))
+  await expect(page.getByRole('status')).toContainText(/panel rebuilt/i)
+  await expect(page.getByRole('button', { name: /Lighting 4/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Kitchen ceiling/ })).toBeVisible()
+  const submain = await (await request.get(`${API}/submains/${submainId}`)).json()
+  expect(submain.circuitCount).toBe(5)
+})

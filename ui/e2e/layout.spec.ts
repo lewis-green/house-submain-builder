@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, seedRack, seedSubmain, threeDimmed } from './fixtures'
+import { API, placeRack, seedRack, seedSubmain, threeDimmed } from './fixtures'
 
 /**
  * The screens, at the four widths an iPhone can be. Nothing may make the page
@@ -9,13 +9,16 @@ for (const width of [320, 375, 393, 430]) {
   test(`no horizontal overflow at ${width}px`, async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
     const submain = await (await request.get(`${API}/submains/${submainId}`)).json()
-    const { rackId } = await seedRack(request)
+    const { rackId, projectId: rackHouse } = await seedRack(request)
+    // A house listed by location as well as one listed by kind.
+    await placeRack(request, rackId, 'Plant room under the back stairs')
 
     await page.setViewportSize({ width, height: 740 })
 
     const screens = [
       '/',
       `/projects/${submain.projectId}`,
+      `/projects/${rackHouse}`,
       `/projects/${submain.projectId}/panels/new`,
       `/panels/${submainId}`,
       `/panels/${submainId}/bom`,
@@ -49,7 +52,9 @@ for (const width of [320, 375, 393, 430]) {
   test(`no horizontal overflow at ${width}px with 200% text, and the sheet title wraps`, async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
     const submain = await (await request.get(`${API}/submains/${submainId}`)).json()
-    const { rackId } = await seedRack(request)
+    const { rackId, projectId: rackHouse } = await seedRack(request)
+    // A house listed by location as well as one listed by kind.
+    await placeRack(request, rackId, 'Plant room under the back stairs')
 
     await page.setViewportSize({ width, height: 740 })
     const doubleText = () => page.evaluate(() => { document.documentElement.style.fontSize = '32px' })
@@ -59,6 +64,7 @@ for (const width of [320, 375, 393, 430]) {
     const screens = [
       '/',
       `/projects/${submain.projectId}`,
+      `/projects/${rackHouse}`,
       `/projects/${submain.projectId}/panels/new`,
       `/panels/${submainId}`,
       `/panels/${submainId}/bom`,

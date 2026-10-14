@@ -57,3 +57,19 @@ export const threeDimmed = [
   { type: 'DimmedLighting', name: 'Hall', sequence: 3 },
   { type: 'Switched', name: 'Immersion', sequence: 4 },
 ]
+
+/**
+ * Puts the rack in a new location of its house, so the house page lists it by
+ * place. The rack edit replaces every setting, so it sends the others back.
+ */
+export async function placeRack(request: APIRequestContext, rackId: string, locationName: string) {
+  const rack = await (await request.get(`${API}/racks/${rackId}`)).json()
+  const location = await (await request.post(`${API}/projects/${rack.projectId}/locations`, { data: { name: locationName } })).json()
+  await request.patch(`${API}/racks/${rackId}`, {
+    data: {
+      name: rack.name, rackTypeId: rack.rackTypeId, fedFromSubmainId: rack.fedFromSubmainId, notes: rack.notes,
+      locationId: location.id,
+    },
+  })
+  return location as { id: string; name: string }
+}

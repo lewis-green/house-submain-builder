@@ -81,15 +81,6 @@ public static class LocationEndpoints
         return app;
     }
 
-    /// The problem to report when a panel or rack names a location outside its
-    /// own house — or one that does not exist — or null when the location is
-    /// fine. No location at all is always fine: it means "not placed".
-    internal static async Task<string?> LocationProblemAsync(
-        HouseConfigDbContext db, Guid projectId, Guid? locationId, CancellationToken ct)
-        => locationId is { } id && !await db.Locations.AnyAsync(l => l.Id == id && l.ProjectId == projectId, ct)
-            ? "Choose a location in this house, or none."
-            : null;
-
     private static async Task<Dictionary<string, string[]>> ValidateAsync(
         HouseConfigDbContext db, Guid projectId, Guid? self, string? name, CancellationToken ct)
     {

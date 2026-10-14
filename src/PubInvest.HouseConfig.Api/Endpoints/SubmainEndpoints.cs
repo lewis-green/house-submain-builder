@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Locations;
 using PubInvest.HouseConfig.Api.Services;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
@@ -31,7 +32,7 @@ public static class SubmainEndpoints
                 if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
-                if (await LocationEndpoints.LocationProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
+                if (await LocationRules.ProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
                 {
                     problems["locationId"] = [misplaced];
                 }
@@ -121,7 +122,7 @@ public static class SubmainEndpoints
                 if (submain is null) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
-                if (await LocationEndpoints.LocationProblemAsync(db, submain.ProjectId, request.LocationId, ct) is { } misplaced)
+                if (await LocationRules.ProblemAsync(db, submain.ProjectId, request.LocationId, ct) is { } misplaced)
                 {
                     problems["locationId"] = [misplaced];
                 }

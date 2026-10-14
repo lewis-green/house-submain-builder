@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
-using PubInvest.HouseConfig.Api.Endpoints;
+using PubInvest.HouseConfig.Api.Locations;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
 using PubInvest.HouseConfig.Data.Mapping;
@@ -97,7 +97,7 @@ public static class RackViews
             problems["fedFromSubmainId"] = ["Choose an automation panel in this house, or none."];
         }
 
-        if (await LocationEndpoints.LocationProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
+        if (await LocationRules.ProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
         {
             problems["locationId"] = [misplaced];
         }

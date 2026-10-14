@@ -10,6 +10,9 @@ interface Props {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/** The fields that bring up the on-screen keyboard: the only ones worth scrolling clear of it. */
+const TYPED_FIELD = 'textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"], input[type="password"]'
+
 /** A downward drag on the handle past this closes the sheet. */
 const DISMISS_DRAG_PX = 60
 
@@ -155,7 +158,11 @@ export function Sheet({ title, subtitle, onClose, children }: Props) {
   // dialog's own clip, out of reach.
   const onFocus = (e: React.FocusEvent) => {
     const scroller = body.current
-    if (!(e.target instanceof HTMLInputElement) || !scroller) return
+    // Only a field that brings up a keyboard is moved. A checkbox brings up
+    // none, and Android Chrome and Linux WebKit focus one the moment a finger
+    // presses it: scrolling then slides it out from under the finger before
+    // the tap lands, and the tick never happens.
+    if (!(e.target instanceof HTMLElement) || !e.target.matches(TYPED_FIELD) || !scroller) return
     const field = e.target.getBoundingClientRect()
     const box = scroller.getBoundingClientRect()
     scroller.scrollTop += (field.top + field.height / 2) - (box.top + box.height / 2)

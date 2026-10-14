@@ -192,6 +192,40 @@ describe('Sheet', () => {
     opener.remove()
   })
 
+  /**
+   * The sheet scrolls a focused field to its middle so the keyboard cannot hide
+   * it. A checkbox brings up no keyboard, and some browsers (Android Chrome,
+   * Linux WebKit) focus one the moment a finger presses it: scrolling then
+   * moves it out from under the finger before the tap lands, and the tick never
+   * happens. Only fields that are typed into are moved.
+   */
+  it('centres a text field it focuses, but never moves a checkbox out from under a tap', () => {
+    render(
+      <Sheet title="Switch 1" onClose={() => {}}>
+        <input aria-label="Port 1 label" />
+        <input type="checkbox" aria-label="Port 1 PoE" />
+      </Sheet>,
+    )
+    const field = screen.getByLabelText('Port 1 label')
+    const tick = screen.getByLabelText('Port 1 PoE')
+    const scroller = field.parentElement!
+
+    // jsdom has no layout: give the scroller a box and each control a place below its middle.
+    const rect = (top: number, height: number) => ({ top, height, bottom: top + height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) })
+    vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(rect(0, 400))
+    vi.spyOn(field, 'getBoundingClientRect').mockReturnValue(rect(600, 44))
+    vi.spyOn(tick, 'getBoundingClientRect').mockReturnValue(rect(600, 44))
+    const scrolledTo: number[] = []
+    let top = 0
+    Object.defineProperty(scroller, 'scrollTop', { get: () => top, set: v => { top = v; scrolledTo.push(v) }, configurable: true })
+
+    fireEvent.focus(tick)
+    expect(scrolledTo).toEqual([])
+
+    fireEvent.focus(field)
+    expect(scrolledTo).toEqual([422])
+  })
+
   it('lets two open sheets coexist without fighting over focus', () => {
     render(
       <>

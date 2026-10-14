@@ -1,5 +1,5 @@
 {
-  "name": "House Panel Designer",
+  "name": "Automation Panel Designer",
   "short_name": "Panels",
   "description": "Designs the electrical panel for a house, one automation panel at a time.",
   "start_url": "/",

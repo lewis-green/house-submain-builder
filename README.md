@@ -1,4 +1,4 @@
-# House Panel Designer
+# Automation Panel Designer
 
 Designs the electrical panel for a house, one submain at a time. Enter how many
 dimmed lighting, switched and LED tape circuits a submain carries; the app works

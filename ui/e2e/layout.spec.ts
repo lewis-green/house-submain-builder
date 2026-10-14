@@ -203,7 +203,7 @@ test('an HTML error page from the proxy leaves the app standing, with the typed 
 
 test('every screen has a title of its own and the Home Screen metadata', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle(/Houses · House Panel Designer/)
+  await expect(page).toHaveTitle(/Houses · Automation Panel Designer/)
 
   const meta = await page.evaluate(() => ({
     viewport: document.querySelector('meta[name=viewport]')?.getAttribute('content'),
@@ -222,7 +222,7 @@ test('every screen has a title of its own and the Home Screen metadata', async (
   }
 
   await page.goto('/catalogue')
-  await expect(page).toHaveTitle(/Catalogue · House Panel Designer/)
+  await expect(page).toHaveTitle(/Catalogue · Automation Panel Designer/)
 })
 
 test('no horizontal overflow at 320px with the terminal order sheet open', async ({ page, request }) => {

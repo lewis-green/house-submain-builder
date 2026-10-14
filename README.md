@@ -174,7 +174,8 @@ several cables to one channel. A circuit on several terminals is labelled
 C3.1, C3.2 and so on, and its line tiers are bridged with a cut-to-length line
 jumper bar, counted per bridged circuit as ceil(n/10) with offcuts not shared;
 its part number (`ASSUMED-LINE-JUMPER-BAR-10`) is assumed until confirmed, and
-the panel warns if the ruleset has no usable line bar. Terminals follow the
+the panel warns if a circuit is bridged but the ruleset has no usable line bar.
+Terminals follow the
 terminal order, so they can't be dragged. Terminal order is independent of the
 circuit sequence: moving terminals never changes which Shelly channel a circuit
 is on. Saving is one request, `PUT /submains/{id}/terminals`, that saves the

@@ -13,7 +13,7 @@ public class RackRevisionEndpointTests(HouseConfigApiFactory factory)
     private record RevisionDto(Guid Id, Guid RackId, int Number, bool Current);
     private record BomLineDto(string PartNumber, int Quantity);
     private record BomDto(BomLineDto[] Lines);
-    private record ProblemDto(Dictionary<string, string[]> Errors);
+    private record RefusalDto(string Message);
 
     private async Task<(HttpClient Client, Guid ProjectId, Guid RackId)> Rack()
     {
@@ -64,8 +64,8 @@ public class RackRevisionEndpointTests(HouseConfigApiFactory factory)
 
         var response = await client.PostAsJsonAsync($"/racks/{rackId}/revisions", new { });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("empty", (await response.Content.ReadFromJsonAsync<ProblemDto>())!.Errors["revision"][0]);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Contains("empty", (await response.Content.ReadFromJsonAsync<RefusalDto>())!.Message);
     }
 
     [Fact]

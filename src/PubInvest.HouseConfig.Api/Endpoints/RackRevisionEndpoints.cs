@@ -1,3 +1,4 @@
+using PubInvest.HouseConfig.Api.Contracts;
 using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Api.Racks;
 
@@ -15,9 +16,13 @@ public static class RackRevisionEndpoints
             {
                 var (revision, error) = await revisions.IssueAsync(id, http.User.Identity?.Name ?? "anonymous", ct);
 
+                // A refusal the user can act on (an empty rack, an accessory gone
+                // from the catalogue) is 422 in plain words, as every rack refusal
+                // is, so the issue button can show the reason rather than a
+                // generic validation message.
                 if (error is not null)
                 {
-                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["revision"] = [error] });
+                    return Results.Json(new RefusalResponse(error), statusCode: StatusCodes.Status422UnprocessableEntity);
                 }
 
                 if (revision is null) return Results.NotFound();

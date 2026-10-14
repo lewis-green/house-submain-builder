@@ -33,7 +33,7 @@ export function ProjectPage() {
       back={{ to: '/', label: 'Houses' }}
       actions={loaded ? (
         <>
-          <ButtonLink to={`/projects/${projectId}/submains/new`} variant="primary">Add automation panel</ButtonLink>
+          <ButtonLink to={`/projects/${projectId}/panels/new`} variant="primary">Add automation panel</ButtonLink>
           <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Bill of materials</ButtonLink>
         </>
       ) : undefined}
@@ -52,7 +52,7 @@ export function ProjectPage() {
           {submains.map(s => (
             <li key={s.id} className="py-1">
               <Link
-                to={`/submains/${s.id}/panel`}
+                to={`/panels/${s.id}`}
                 className="flex min-h-14 items-center gap-3 rounded-lg py-2 active:bg-press"
               >
                 {/* wrap-anywhere: an automation panel named by a long reference must break rather than spill off the page. */}

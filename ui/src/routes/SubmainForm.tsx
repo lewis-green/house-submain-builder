@@ -254,7 +254,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
         })
       }
       announce(words.done, 'ok')
-      navigate(`/submains/${saved.id}/panel`)
+      navigate(`/panels/${saved.id}`)
     } catch (e) {
       const error = e as ApiError
       setFieldErrors(error.fieldErrors)
@@ -292,7 +292,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
     <AppShell
       // The name as stored, not as typed: the title says which panel this is.
       title={editing ? `Edit ${built?.submain.name ?? 'panel'}` : 'New automation panel'}
-      back={editing ? { to: `/submains/${submainId}/panel`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
+      back={editing ? { to: `/panels/${submainId}`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
       actions={(
         <div className="w-full">
           {/* Always in the page, so the change is spoken as it happens — politely,

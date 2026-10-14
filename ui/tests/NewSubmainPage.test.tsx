@@ -46,10 +46,10 @@ function stubApi(previewResponse: () => Response = () => json(design)) {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/projects/p1/submains/new']}>
+    <MemoryRouter initialEntries={['/projects/p1/panels/new']}>
       <Routes>
-        <Route path="/projects/:projectId/submains/new" element={<NewSubmainPage />} />
-        <Route path="/submains/:submainId/panel" element={<h1>Panel screen</h1>} />
+        <Route path="/projects/:projectId/panels/new" element={<NewSubmainPage />} />
+        <Route path="/panels/:submainId" element={<h1>Panel screen</h1>} />
       </Routes>
     </MemoryRouter>,
   )

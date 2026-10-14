@@ -12,7 +12,7 @@ import { Skeleton } from '../components/Skeleton'
 export function BomPage() {
   const { projectId, submainId } = useParams()
   const scope = submainId ? `/submains/${submainId}` : `/projects/${projectId}`
-  const backTo = submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
+  const backTo = submainId ? `/panels/${submainId}` : `/projects/${projectId}`
 
   const [bom, setBom] = useState<BomView | null>(null)
   const [notIssued, setNotIssued] = useState(false)

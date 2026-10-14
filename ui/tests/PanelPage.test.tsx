@@ -69,8 +69,8 @@ const patchBody = (mock: ReturnType<typeof stub>, url: string) => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/submains/s1/panel']}>
-      <Routes><Route path="/submains/:submainId/panel" element={<PanelPage />} /></Routes>
+    <MemoryRouter initialEntries={['/panels/s1']}>
+      <Routes><Route path="/panels/:submainId" element={<PanelPage />} /></Routes>
     </MemoryRouter>,
   )
 
@@ -364,7 +364,7 @@ describe('PanelPage', () => {
     await screen.findByRole('button', { name: /dimmer 1/i })
 
     const edit = screen.getByRole('link', { name: /^edit$/i })
-    expect(edit).toHaveAttribute('href', '/submains/s1/edit')
+    expect(edit).toHaveAttribute('href', '/panels/s1/edit')
     expect(screen.getByRole('navigation').contains(edit)).toBe(true)
   })
 

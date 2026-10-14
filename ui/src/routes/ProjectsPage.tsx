@@ -96,8 +96,8 @@ export function ProjectsPage() {
                   <span className="block text-lg font-semibold">{p.name}</span>
                   {p.address && <span className="block text-ink-2">{p.address}</span>}
                 </span>
-                <span className="ml-auto flex shrink-0 items-center gap-3 text-ink-2">
-                  <span className="text-right">
+                <span className="ml-auto flex max-w-full shrink-0 items-center gap-3 text-ink-2">
+                  <span className="min-w-0 text-right">
                     {p.submainCount} {p.submainCount === 1 ? 'automation panel' : 'automation panels'}
                   </span>
                   <span aria-hidden="true" className="text-xl">›</span>

@@ -66,10 +66,10 @@ const bodiesOf = (fetchMock: ReturnType<typeof stubApi>, url: string, method: st
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/submains/s1/edit']}>
+    <MemoryRouter initialEntries={['/panels/s1/edit']}>
       <Routes>
-        <Route path="/submains/:submainId/edit" element={<EditSubmainPage />} />
-        <Route path="/submains/:submainId/panel" element={<><h1>Panel screen</h1><StatusRegion /></>} />
+        <Route path="/panels/:submainId/edit" element={<EditSubmainPage />} />
+        <Route path="/panels/:submainId" element={<><h1>Panel screen</h1><StatusRegion /></>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -94,7 +94,7 @@ describe('EditSubmainPage', () => {
     expect(screen.getByLabelText('Blinds')).toHaveValue('0')
     expect(screen.getByLabelText(/^tape name/i)).toHaveValue('Kitchen plinth')
     expect(screen.getByLabelText(/watts per metre/i)).toHaveValue(9.6)
-    expect(screen.getByRole('link', { name: /back to panel/i })).toHaveAttribute('href', '/submains/s1/panel')
+    expect(screen.getByRole('link', { name: /back to panel/i })).toHaveAttribute('href', '/panels/s1')
     expect(saveButton()).toBeInTheDocument()
   })
 

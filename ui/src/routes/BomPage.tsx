@@ -29,7 +29,7 @@ export function BomPage() {
   return (
     <AppShell
       title="Bill of materials"
-      subtitle={submainId ? 'For this submain' : 'For the whole house, from each issued PDF'}
+      subtitle={submainId ? 'For this automation panel' : 'For the whole house, from each issued PDF'}
       back={{ to: backTo, label: submainId ? 'Panel' : 'House' }}
       actions={bom && bom.lines.length > 0 ? (
         <a href={`/api${scope}/bom.csv`} className={buttonClass('primary')}>Download CSV</a>

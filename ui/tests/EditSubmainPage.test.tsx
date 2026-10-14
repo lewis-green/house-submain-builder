@@ -84,7 +84,7 @@ describe('EditSubmainPage', () => {
 
     renderPage()
 
-    expect(await screen.findByLabelText(/submain name/i)).toHaveValue('Ground floor')
+    expect(await screen.findByLabelText(/automation panel name/i)).toHaveValue('Ground floor')
     expect(screen.getByRole('heading', { level: 1, name: 'Edit Ground floor' })).toBeInTheDocument()
     expect(screen.getByLabelText('Enclosure')).toHaveValue('e0')
     expect(screen.getByLabelText(/cables enter at the bottom/i)).toBeChecked()
@@ -121,7 +121,7 @@ describe('EditSubmainPage', () => {
     const fetchMock = stubApi()
 
     renderPage()
-    const name = await screen.findByLabelText(/submain name/i)
+    const name = await screen.findByLabelText(/automation panel name/i)
     await userEvent.clear(name)
     await userEvent.type(name, 'Ground floor east')
     await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
@@ -156,7 +156,7 @@ describe('EditSubmainPage', () => {
     stubApi()
 
     renderPage()
-    await screen.findByLabelText(/submain name/i)
+    await screen.findByLabelText(/automation panel name/i)
     expect(screen.queryByText(/saving removes/i)).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /fewer dimmed lighting/i }))
@@ -176,7 +176,7 @@ describe('EditSubmainPage', () => {
     stubApi()
 
     renderPage()
-    await screen.findByLabelText(/submain name/i)
+    await screen.findByLabelText(/automation panel name/i)
     expect(saveButton()).not.toHaveAttribute('aria-describedby')
 
     await userEvent.click(screen.getByRole('button', { name: /fewer switched/i }))
@@ -220,14 +220,14 @@ describe('EditSubmainPage', () => {
   })
 
   it('shows a refused name by the name field, as the create form does', async () => {
-    stubApi(() => json({ title: 'One or more validation errors occurred.', errors: { name: ['A submain name is required.'] } }, 400))
+    stubApi(() => json({ title: 'One or more validation errors occurred.', errors: { name: ['An automation panel name is required.'] } }, 400))
 
     renderPage()
-    await userEvent.clear(await screen.findByLabelText(/submain name/i))
+    await userEvent.clear(await screen.findByLabelText(/automation panel name/i))
     await waitFor(() => expect(saveButton()).toBeEnabled())
     await userEvent.click(saveButton())
 
-    expect(await screen.findByText('A submain name is required.')).toBeInTheDocument()
+    expect(await screen.findByText('An automation panel name is required.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /panel screen/i })).not.toBeInTheDocument()
   })
 
@@ -284,11 +284,11 @@ describe('EditSubmainPage', () => {
 
     renderPage()
     expect(await screen.findByRole('alert')).toHaveTextContent(/circuits down/i)
-    expect(screen.queryByLabelText(/submain name/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/automation panel name/i)).not.toBeInTheDocument()
 
     failing = false
     await userEvent.click(screen.getByRole('button', { name: /try again/i }))
 
-    expect(await screen.findByLabelText(/submain name/i)).toHaveValue('Ground floor')
+    expect(await screen.findByLabelText(/automation panel name/i)).toHaveValue('Ground floor')
   })
 })

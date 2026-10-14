@@ -26,7 +26,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!auth.isAuthenticated) {
     return (
-      <AppShell title={APP_NAME} subtitle="Panel drawings, schedules and parts lists, one submain at a time.">
+      <AppShell title={APP_NAME} subtitle="Panel drawings, schedules and parts lists, one automation panel at a time.">
         <p className="mb-4 text-ink-2">Sign in to see your houses.</p>
         <Button onClick={() => void auth.signinRedirect()}>Sign in</Button>
       </AppShell>

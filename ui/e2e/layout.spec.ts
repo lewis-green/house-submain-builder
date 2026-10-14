@@ -121,14 +121,14 @@ test('a failed Generate leaves no submain in the house, and a retry makes exactl
     : r.continue())
 
   await page.goto(`/projects/${project.id}/submains/new`)
-  await page.getByLabel(/submain name/i).fill('Kept inputs')
+  await page.getByLabel(/automation panel name/i).fill('Kept inputs')
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
   const generate = page.getByRole('button', { name: /generate panel/i })
   await expect(generate).toBeEnabled()
   await generate.tap()
 
   await expect(page.getByRole('status')).toContainText(/not generated: generator down/i)
-  await expect(page.getByLabel(/submain name/i)).toHaveValue('Kept inputs')
+  await expect(page.getByLabel(/automation panel name/i)).toHaveValue('Kept inputs')
   expect(await submainsOf()).toEqual([])
 
   // The server is back: the same tap creates one submain, with its panel, and goes to it.

@@ -297,7 +297,7 @@ export function PanelPage() {
 
       {design && empty && (
         <EmptyState
-          title="This submain has no panel yet"
+          title="This automation panel has no layout yet"
           hint="Enter its circuits in the wizard and the panel is laid out for you."
           action={submain && (
             <ButtonLink to={`/projects/${submain.projectId}/submains/new`} variant="primary">Design the panel</ButtonLink>
@@ -416,7 +416,7 @@ export function PanelPage() {
               />
               <Toggle
                 label="Fit a main isolator"
-                hint="Turn this off for a submain already isolated upstream."
+                hint="Turn this off for an automation panel already isolated upstream."
                 checked={submain?.hasIsolator ?? true}
                 disabled={reworking || !submain}
                 onChange={hasIsolator => void setInstallOption({ hasIsolator })}

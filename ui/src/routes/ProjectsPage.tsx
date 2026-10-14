@@ -76,7 +76,7 @@ export function ProjectsPage() {
       {projects && (projects.length === 0 ? (
         <EmptyState
           title="No houses yet"
-          hint="Add one below. Each house holds the submains whose panels you design."
+          hint="Add one below. Each house holds the automation panels you design."
         />
       ) : (
         <ul className="divide-y divide-rule border-y border-rule">
@@ -98,7 +98,7 @@ export function ProjectsPage() {
                 </span>
                 <span className="ml-auto flex shrink-0 items-center gap-3 text-ink-2">
                   <span className="text-right">
-                    {p.submainCount} {p.submainCount === 1 ? 'submain' : 'submains'}
+                    {p.submainCount} {p.submainCount === 1 ? 'automation panel' : 'automation panels'}
                   </span>
                   <span aria-hidden="true" className="text-xl">›</span>
                 </span>

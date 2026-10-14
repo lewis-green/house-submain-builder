@@ -398,14 +398,14 @@ describe('PanelPage', () => {
     expect(screen.getByText(/tap a device to name its circuits/i)).toBeInTheDocument()
   })
 
-  it('tells the engineer when a submain has no panel yet', async () => {
+  it('tells the engineer when a submain has no layout yet', async () => {
     vi.stubGlobal('fetch', stub(() => json({
       ...design(), layout: { rows: 0, slotsPerRow: 0, devices: [] },
     })))
 
     renderPage()
 
-    expect(await screen.findByText(/no panel yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no layout yet/i)).toBeInTheDocument()
   })
 
   describe('terminal order', () => {

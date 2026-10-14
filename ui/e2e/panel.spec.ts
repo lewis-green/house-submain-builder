@@ -428,7 +428,7 @@ test('a built panel can be edited: one more dimmed circuit, saved and rebuilt, k
   await expect(page.getByRole('button', { name: /Lighting 4/ })).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Edit' }).tap()
-  await expect(page.getByRole('heading', { level: 1, name: 'Edit E2E submain' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit E2E automation panel' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Dimmed lighting' })).toHaveValue('3')
 
   await page.getByRole('button', { name: /more dimmed lighting/i }).tap()

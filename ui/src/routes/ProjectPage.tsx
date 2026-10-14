@@ -33,7 +33,7 @@ export function ProjectPage() {
       back={{ to: '/', label: 'Houses' }}
       actions={loaded ? (
         <>
-          <ButtonLink to={`/projects/${projectId}/submains/new`} variant="primary">Add submain</ButtonLink>
+          <ButtonLink to={`/projects/${projectId}/submains/new`} variant="primary">Add automation panel</ButtonLink>
           <ButtonLink to={`/projects/${projectId}/bom`} variant="ghost">Bill of materials</ButtonLink>
         </>
       ) : undefined}
@@ -43,8 +43,8 @@ export function ProjectPage() {
 
       {submains && (submains.length === 0 ? (
         <EmptyState
-          title="No submains yet"
-          hint="A submain is one panel. Add the first one and its panel is designed from the circuits it feeds."
+          title="No automation panels yet"
+          hint="Add the first automation panel and its layout is designed from the circuits it feeds."
         />
       ) : (
         <ul className="divide-y divide-rule border-y border-rule">
@@ -55,7 +55,7 @@ export function ProjectPage() {
                 to={`/submains/${s.id}/panel`}
                 className="flex min-h-14 items-center gap-3 rounded-lg py-2 active:bg-press"
               >
-                {/* wrap-anywhere: a submain named by a long reference must break rather than spill off the page. */}
+                {/* wrap-anywhere: an automation panel named by a long reference must break rather than spill off the page. */}
                 <span className="min-w-0 flex-1 wrap-anywhere">
                   <span className="block text-lg font-semibold">{s.name}</span>
                   <span className="block text-ink-2">

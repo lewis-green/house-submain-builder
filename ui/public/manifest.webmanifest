@@ -1,7 +1,7 @@
 {
   "name": "House Panel Designer",
   "short_name": "Panels",
-  "description": "Designs the electrical panel for a house, one submain at a time.",
+  "description": "Designs the electrical panel for a house, one automation panel at a time.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

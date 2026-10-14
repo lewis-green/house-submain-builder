@@ -29,6 +29,14 @@ public static class CatalogueEndpoints
                     Payload = DomainMapper.ToDomain(r)
                 }));
 
+        group.MapGet("/rack-types", async (HouseConfigDbContext db, CancellationToken ct) =>
+            (await db.RackTypes.OrderBy(r => r.HeightU).ThenBy(r => r.Model).ToListAsync(ct))
+                .Select(DomainMapper.ToDomain));
+
+        group.MapGet("/rack-device-types", async (HouseConfigDbContext db, CancellationToken ct) =>
+            (await db.RackDeviceTypes.OrderBy(d => d.Kind).ThenBy(d => d.Model).ToListAsync(ct))
+                .Select(DomainMapper.ToDomain));
+
         return app;
     }
 }

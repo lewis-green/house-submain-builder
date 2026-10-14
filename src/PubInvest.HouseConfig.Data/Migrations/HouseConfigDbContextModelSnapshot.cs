@@ -313,6 +313,82 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.ToTable("Projects");
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackDeviceTypeRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("HeightU")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PoeBudgetW")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PortGroupsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RequiredAccessoryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PartNumber")
+                        .IsUnique();
+
+                    b.ToTable("RackDeviceTypes");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackTypeRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("HeightU")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Mounting")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RackTypes");
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RuleSetRow", b =>
                 {
                     b.Property<Guid>("Id")

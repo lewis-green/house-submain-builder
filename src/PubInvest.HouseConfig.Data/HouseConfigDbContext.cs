@@ -16,6 +16,8 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<DeviceTypeRow> DeviceTypes => Set<DeviceTypeRow>();
     public DbSet<EnclosureTypeRow> Enclosures => Set<EnclosureTypeRow>();
     public DbSet<RuleSetRow> RuleSets => Set<RuleSetRow>();
+    public DbSet<RackTypeRow> RackTypes => Set<RackTypeRow>();
+    public DbSet<RackDeviceTypeRow> RackDeviceTypes => Set<RackDeviceTypeRow>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -51,6 +53,7 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
             .HasForeignKey(o => o.SubmainId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<DeviceTypeRow>().HasIndex(d => d.PartNumber).IsUnique();
+        b.Entity<RackDeviceTypeRow>().HasIndex(d => d.PartNumber).IsUnique();
         b.Entity<RuleSetRow>().HasIndex(r => new { r.Name, r.Version }).IsUnique();
         b.Entity<PanelRevision>().HasIndex(r => new { r.SubmainId, r.LayoutVersion });
 

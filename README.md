@@ -91,6 +91,15 @@ don't commit it filled.
    server, and the screen says when the PDF on offer is behind the panel.
 7. **Bill of materials** lists the parts to order, with anything not mounted in
    the panel (the LED driver) marked as external.
+8. **Edit** on the panel screen opens the panel back in the form that built it,
+   filled in as it stands: change the name, the enclosure, the counts or the
+   tape runs, and **Save and rebuild** saves and lays it out again in one
+   transaction. Circuits you keep keep their names, rooms and terminal order,
+   though, as with any rebuild, a channel freed by hand is reassigned. A lower
+   count removes the last circuits of that type, and the form names them beside
+   the button before you save. If the panel was changed elsewhere since the form
+   opened, it will not save over that; Reload starts it again from the panel as
+   it now is.
 
 ### The catalogue is not confirmed yet
 
@@ -116,11 +125,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 333 tests (127 Domain, 27 Data, 179 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 235 Vitest tests in jsdom
+dotnet test          # 336 tests (127 Domain, 27 Data, 182 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 268 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 33 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 35 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -130,8 +139,8 @@ images, and pushes them to GHCR from `main`.
 
 `ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
-horizontal overflow at four widths and again with 200% text, the wizard, Home
-Screen metadata, and a few checks with a mouse (30 tests). It brings up its own stack and takes it down again, so it needs
+horizontal overflow at four widths and again with 200% text, the wizard and
+editing a built panel, Home Screen metadata, and a few checks with a mouse (35 tests). It brings up its own stack and takes it down again, so it needs
 nothing running first and never touches a development database:
 
 ```bash

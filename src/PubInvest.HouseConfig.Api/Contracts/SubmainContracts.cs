@@ -10,6 +10,13 @@ public sealed record CircuitRequest(
     Guid? Id, string Type, string Name, string? Room, int Sequence,
     decimal? WattsPerMetre, decimal? LengthMetres);
 
+/// One circuit as the build form reads it back to edit a built panel: enough to
+/// prefill the counts and tape runs, and the id to send each one back with so
+/// what the engineer did to it since — its name, room, terminal place — survives.
+public sealed record CircuitResponse(
+    Guid Id, string Type, string Name, string? Room, int Sequence,
+    decimal? WattsPerMetre, decimal? LengthMetres);
+
 // HasIsolator and TerminalsAtBottom are nullable on the wire and left alone when
 // absent: the wizard sends a subset of these fields, and a missing bool must not
 // read as "no isolator".

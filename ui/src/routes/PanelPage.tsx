@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
+import { currentDetails } from '../api/submainDetails'
 import type {
   DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse, TerminalCircuit, TerminalsResponse,
 } from '../api/types'
@@ -34,6 +35,9 @@ const GUTTER_PX = 44
 const PAD_PX = 8
 /** The smallest target a thumb can rely on; below it a device is for looking at, not tapping. */
 const TAPPABLE_PX = 44
+
+/** The screen's nav links, alike so neither reads as the main one. */
+const navLink = 'inline-flex min-h-11 min-w-0 items-center rounded-lg px-3 text-right font-medium text-ink-2 active:bg-press'
 
 export function PanelPage() {
   const { submainId } = useParams()
@@ -164,8 +168,7 @@ export function PanelPage() {
     setReworking(true)
     try {
       setSubmain(await api.patch<SubmainResponse>(`/submains/${submain.id}`, {
-        name: submain.name,
-        enclosureTypeId: submain.enclosureTypeId,
+        ...currentDetails(submain),
         ...option,
         rebuild: true,
       }))
@@ -276,11 +279,13 @@ export function PanelPage() {
       back={{ to: submain ? `/projects/${submain.projectId}` : '/', label: 'House' }}
       // The parts list is a place to go, not something done to the panel, so it
       // sits with the title like Catalogue on the houses screen — and the bar
-      // below keeps to the PDF pair, one row even on a 320px phone.
+      // below keeps to the PDF pair, one row even on a 320px phone. Edit goes
+      // there too: it leaves this screen for the form that built the panel.
       nav={design && !empty && submainId ? (
-        <Link to={`/submains/${submainId}/bom`} className="inline-flex min-h-11 min-w-0 items-center rounded-lg px-3 text-right font-medium text-ink-2 active:bg-press">
-          Bill of materials
-        </Link>
+        <>
+          <Link to={`/submains/${submainId}/bom`} className={navLink}>Bill of materials</Link>
+          <Link to={`/submains/${submainId}/edit`} className={navLink}>Edit</Link>
+        </>
       ) : undefined}
       actions={design && !empty && submainId
         ? <IssueButton submainId={submainId} layoutVersion={design.layoutVersion} syncKey={loads} />

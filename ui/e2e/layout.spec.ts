@@ -18,6 +18,7 @@ for (const width of [320, 375, 393, 430]) {
       `/projects/${submain.projectId}/submains/new`,
       `/submains/${submainId}/panel`,
       `/submains/${submainId}/bom`,
+      `/submains/${submainId}/edit`,
       '/catalogue',
       '/nope',
     ]
@@ -57,6 +58,7 @@ for (const width of [320, 375, 393, 430]) {
       `/projects/${submain.projectId}/submains/new`,
       `/submains/${submainId}/panel`,
       `/submains/${submainId}/bom`,
+      `/submains/${submainId}/edit`,
       '/catalogue',
       '/nope',
     ]
@@ -239,4 +241,20 @@ test('no horizontal overflow at 320px with the terminal order sheet open', async
   })
   expect(overflow.page).toBeLessThanOrEqual(0)
   expect(overflow.sheet).toBeLessThanOrEqual(0)
+})
+
+test('at 320px the panel keeps Back, Bill of materials and Edit on one row above the title', async ({ page, request }) => {
+  const { submainId } = await seedSubmain(request, threeDimmed)
+  await page.setViewportSize({ width: 320, height: 740 })
+  await page.goto(`/submains/${submainId}/panel`, { waitUntil: 'networkidle' })
+
+  const tops = await Promise.all([
+    page.getByRole('link', { name: /back to house/i }),
+    page.getByRole('link', { name: 'Bill of materials' }),
+    page.getByRole('link', { name: 'Edit' }),
+  ].map(async link => (await link.boundingBox())!))
+
+  // One row, and each link on a single line of text: none taller than a tap target.
+  expect(new Set(tops.map(b => Math.round(b.y))).size).toBe(1)
+  for (const box of tops) expect(box.height).toBeLessThanOrEqual(44)
 })

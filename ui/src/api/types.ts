@@ -144,6 +144,17 @@ export interface CircuitInput {
   lengthMetres?: number | null
 }
 
+/** A stored circuit, as GET /submains/{id}/circuits reads it back to edit the panel. */
+export interface CircuitResponse {
+  id: string
+  type: CircuitType
+  name: string
+  room: string | null
+  sequence: number
+  wattsPerMetre: number | null
+  lengthMetres: number | null
+}
+
 export interface BomLineView {
   catalogueId: string
   partNumber: string

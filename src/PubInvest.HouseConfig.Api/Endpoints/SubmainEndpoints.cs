@@ -85,6 +85,23 @@ public static class SubmainEndpoints
             })
             .WithTags("Submains");
 
+        // Sequence order, the order the build form groups them in. Terminal
+        // order is the terminal sheet's business (GET /terminals).
+        app.MapGet("/submains/{id:guid}/circuits", async (Guid id, HouseConfigDbContext db, CancellationToken ct) =>
+            {
+                if (!await db.Submains.AnyAsync(s => s.Id == id, ct)) return Results.NotFound();
+
+                var circuits = await db.Circuits
+                    .Where(c => c.SubmainId == id)
+                    .OrderBy(c => c.Sequence)
+                    .Select(c => new CircuitResponse(
+                        c.Id, c.Type, c.Name, c.Room, c.Sequence, c.WattsPerMetre, c.LengthMetres))
+                    .ToListAsync(ct);
+
+                return Results.Ok(circuits);
+            })
+            .WithTags("Submains");
+
         app.MapPatch("/submains/{id:guid}", async (
                 Guid id,
                 UpdateSubmainRequest request,

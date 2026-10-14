@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NewSubmainPage } from '../src/routes/NewSubmainPage'
+import { NewSubmainPage } from '../src/routes/SubmainForm'
 import type { DesignResponse } from '../src/api/types'
 
 const json = (body: unknown, status = 200) =>

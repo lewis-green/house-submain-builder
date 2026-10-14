@@ -12,7 +12,7 @@ import { Skeleton } from '../components/Skeleton'
 export function BomPage() {
   const { projectId, submainId } = useParams()
   const scope = submainId ? `/submains/${submainId}` : `/projects/${projectId}`
-  const backTo = submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
+  const backTo = submainId ? `/panels/${submainId}` : `/projects/${projectId}`
 
   const [bom, setBom] = useState<BomView | null>(null)
   const [notIssued, setNotIssued] = useState(false)
@@ -28,20 +28,20 @@ export function BomPage() {
 
   return (
     <AppShell
-      title="Bill of materials"
-      subtitle={submainId ? 'For this submain' : 'For the whole house, from each issued PDF'}
+      title="Parts list"
+      subtitle={submainId ? 'For this automation panel' : 'For the whole house, from each issued PDF'}
       back={{ to: backTo, label: submainId ? 'Panel' : 'House' }}
       actions={bom && bom.lines.length > 0 ? (
         <a href={`/api${scope}/bom.csv`} className={buttonClass('primary')}>Download CSV</a>
       ) : undefined}
     >
       {error && <ErrorNote message={error} onRetry={() => { setError(null); void load() }} />}
-      {!bom && !notIssued && !error && <Skeleton label="Loading bill of materials" rows={4} rowClass="h-16" />}
+      {!bom && !notIssued && !error && <Skeleton label="Loading parts list" rows={4} rowClass="h-16" />}
 
       {notIssued && (
         <EmptyState
           title="Nothing has been issued yet"
-          hint="A bill of materials comes from an issued PDF revision, so it lists what was actually drawn."
+          hint="A parts list comes from an issued PDF revision, so it lists what was actually drawn."
           action={<ButtonLink to={backTo} variant="primary">{submainId ? 'Go to the panel' : 'Back to the house'}</ButtonLink>}
         />
       )}

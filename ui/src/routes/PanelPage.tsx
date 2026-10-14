@@ -283,8 +283,8 @@ export function PanelPage() {
       // there too: it leaves this screen for the form that built the panel.
       nav={design && !empty && submainId ? (
         <>
-          <Link to={`/submains/${submainId}/bom`} className={navLink}>Bill of materials</Link>
-          <Link to={`/submains/${submainId}/edit`} className={navLink}>Edit</Link>
+          <Link to={`/panels/${submainId}/bom`} className={navLink}>Parts list</Link>
+          <Link to={`/panels/${submainId}/edit`} className={navLink}>Edit</Link>
         </>
       ) : undefined}
       actions={design && !empty && submainId
@@ -297,10 +297,10 @@ export function PanelPage() {
 
       {design && empty && (
         <EmptyState
-          title="This submain has no panel yet"
+          title="This automation panel has no layout yet"
           hint="Enter its circuits in the wizard and the panel is laid out for you."
           action={submain && (
-            <ButtonLink to={`/projects/${submain.projectId}/submains/new`} variant="primary">Design the panel</ButtonLink>
+            <ButtonLink to={`/projects/${submain.projectId}/panels/new`} variant="primary">Design the panel</ButtonLink>
           )}
         />
       )}
@@ -416,7 +416,7 @@ export function PanelPage() {
               />
               <Toggle
                 label="Fit a main isolator"
-                hint="Turn this off for a submain already isolated upstream."
+                hint="Turn this off for an automation panel already isolated upstream."
                 checked={submain?.hasIsolator ?? true}
                 disabled={reworking || !submain}
                 onChange={hasIsolator => void setInstallOption({ hasIsolator })}

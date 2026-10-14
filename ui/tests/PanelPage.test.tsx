@@ -69,8 +69,8 @@ const patchBody = (mock: ReturnType<typeof stub>, url: string) => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/submains/s1/panel']}>
-      <Routes><Route path="/submains/:submainId/panel" element={<PanelPage />} /></Routes>
+    <MemoryRouter initialEntries={['/panels/s1']}>
+      <Routes><Route path="/panels/:submainId" element={<PanelPage />} /></Routes>
     </MemoryRouter>,
   )
 
@@ -350,8 +350,8 @@ describe('PanelPage', () => {
     const options = screen.getByText(/install options/i)
     expect(drawing.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('button', { name: /issue pdf/i })).toBeInTheDocument()
-    // Bill of materials is a place to go, so it lives with the title and leaves the bar to the PDF pair.
-    const bom = screen.getByRole('link', { name: /bill of materials/i })
+    // Parts list is a place to go, so it lives with the title and leaves the bar to the PDF pair.
+    const bom = screen.getByRole('link', { name: /parts list/i })
     expect(screen.getByRole('navigation').contains(bom)).toBe(true)
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(document.title).toMatch(/ground floor/i)
@@ -364,7 +364,7 @@ describe('PanelPage', () => {
     await screen.findByRole('button', { name: /dimmer 1/i })
 
     const edit = screen.getByRole('link', { name: /^edit$/i })
-    expect(edit).toHaveAttribute('href', '/submains/s1/edit')
+    expect(edit).toHaveAttribute('href', '/panels/s1/edit')
     expect(screen.getByRole('navigation').contains(edit)).toBe(true)
   })
 
@@ -398,14 +398,14 @@ describe('PanelPage', () => {
     expect(screen.getByText(/tap a device to name its circuits/i)).toBeInTheDocument()
   })
 
-  it('tells the engineer when a submain has no panel yet', async () => {
+  it('tells the engineer when a submain has no layout yet', async () => {
     vi.stubGlobal('fetch', stub(() => json({
       ...design(), layout: { rows: 0, slotsPerRow: 0, devices: [] },
     })))
 
     renderPage()
 
-    expect(await screen.findByText(/no panel yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no layout yet/i)).toBeInTheDocument()
   })
 
   describe('terminal order', () => {

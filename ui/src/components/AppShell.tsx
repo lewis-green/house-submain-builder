@@ -44,7 +44,7 @@ export function AppShell({ title, subtitle, back, nav, actions, children }: Prop
       {/* Standalone on an iPhone draws under the status bar: this keeps that strip opaque as the page scrolls. */}
       <div aria-hidden="true" className="fixed inset-x-0 top-0 z-20 h-[env(safe-area-inset-top)] bg-paper" />
       <header className="pt-[env(safe-area-inset-top)]">
-        {/* flex-wrap: at 200% text on a 320px phone, Back and "Bill of materials" do
+        {/* flex-wrap: at 200% text on a 320px phone, Back and "Parts list" do
             not fit one row, and the nav takes a row of its own rather than being
             squeezed until a word spills off the page. */}
         <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">

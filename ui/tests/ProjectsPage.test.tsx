@@ -18,7 +18,7 @@ describe('ProjectsPage', () => {
     render(<MemoryRouter><ProjectsPage /></MemoryRouter>)
 
     expect(await screen.findByText('Willow House')).toBeInTheDocument()
-    expect(screen.getByText(/2 submains/)).toBeInTheDocument()
+    expect(screen.getByText(/2 automation panels/)).toBeInTheDocument()
   })
 
   it('shows an empty state rather than a bare list', async () => {

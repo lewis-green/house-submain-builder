@@ -209,7 +209,7 @@ public static class SubmainEndpoints
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            problems["name"] = ["A submain name is required."];
+            problems["name"] = ["An automation panel name is required."];
         }
 
         if (circuits is null) return problems;

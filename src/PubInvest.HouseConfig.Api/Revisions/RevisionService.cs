@@ -90,16 +90,16 @@ public sealed class RevisionService(HouseConfigDbContext db)
 
         if (devices.Count == 0)
         {
-            return (null, null, "This submain has no panel yet. Generate one before issuing a revision.");
+            return (null, null, "This automation panel has no layout yet. Generate one before issuing a revision.");
         }
 
         if (submain.EnclosureTypeId is null)
         {
-            return (null, null, "This submain has no enclosure.");
+            return (null, null, "This automation panel has no enclosure.");
         }
 
         var enclosureRow = await db.Enclosures.SingleOrDefaultAsync(e => e.Id == submain.EnclosureTypeId, ct);
-        if (enclosureRow is null) return (null, null, "This submain's enclosure is not in the catalogue.");
+        if (enclosureRow is null) return (null, null, "This automation panel's enclosure is not in the catalogue.");
 
         var ruleSetRow = submain.RuleSetId is null
             ? await db.RuleSets.FirstOrDefaultAsync(r => r.IsDefault, ct)

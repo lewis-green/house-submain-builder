@@ -37,7 +37,7 @@ public static class OrphanReporter
                 DiagnosticSeverity.Warning,
                 DiagnosticCodes.OrphanedAssignment,
                 $"Circuit {id} was wired to a channel but has no channel in the new layout.",
-                "Re-add the circuit to the submain, or delete it if it is no longer needed."))
+                "Re-add the circuit to the automation panel, or delete it if it is no longer needed."))
             .ToList();
     }
 }

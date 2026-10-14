@@ -17,8 +17,8 @@ const bom: BomView = {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/submains/s1/bom']}>
-      <Routes><Route path="/submains/:submainId/bom" element={<BomPage />} /></Routes>
+    <MemoryRouter initialEntries={['/panels/s1/bom']}>
+      <Routes><Route path="/panels/:submainId/bom" element={<BomPage />} /></Routes>
     </MemoryRouter>,
   )
 
@@ -60,8 +60,8 @@ describe('BomPage', () => {
     // An empty state inside the page, with a way on, rather than an alert that replaces it.
     expect(await screen.findByText(/nothing has been issued yet/i)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /go to the panel/i })).toHaveAttribute('href', '/submains/s1/panel')
-    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/submains/s1/panel')
+    expect(screen.getByRole('link', { name: /go to the panel/i })).toHaveAttribute('href', '/panels/s1')
+    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/panels/s1')
   })
 
   it('says so when there is nothing to order', async () => {
@@ -87,6 +87,6 @@ describe('BomPage', () => {
     renderPage()
 
     const back = await screen.findByRole('link', { name: /back/i })
-    expect(back).toHaveAttribute('href', '/submains/s1/panel')
+    expect(back).toHaveAttribute('href', '/panels/s1')
   })
 })

@@ -1,10 +1,10 @@
-# House Panel Designer
+# Automation Panel Designer
 
-Designs the electrical panel for a house, one submain at a time. Enter how many
-dimmed lighting, switched and LED tape circuits a submain carries; the app works
+Designs the electrical panel for a house, one automation panel at a time. Enter how many
+dimmed lighting, switched and LED tape circuits an automation panel carries; the app works
 out how many Shelly Pro devices that needs, lays them out in a DIN enclosure to
 house best practice, draws the result to scale, and produces a printable panel
-drawing with its circuit schedule and a bill of materials.
+drawing with its circuit schedule and a parts list.
 
 ## Running it
 
@@ -71,14 +71,14 @@ don't commit it filled.
 ## Seeing it work
 
 1. **Add a house** on the first screen.
-2. **Add submain**. Pick the 3-row enclosure, say how the panel is installed —
+2. **Add automation panel**. Pick the 3-row enclosure, say how the panel is installed —
    whether the cables enter at the bottom, and whether it needs its own isolator
    — then enter circuit counts, say 4 dimmed and 2 switched. The preview updates
    as you type and tells you what the panel needs and whether it fits.
 3. **Generate panel**. The drawing appears to scale: termination across the top
    row — circuit terminals, then a +24V and a -24V joint for each tape run, then
    the two-pole isolator hard against the right — and the Shelly kit below it.
-   The submain and its panel are saved in one transaction, so a design the
+   The automation panel and its layout are saved in one transaction, so a design the
    generator refuses, or a request that fails on the way, leaves nothing in the
    house.
 4. **Tap a device** to name its channels: a room and a circuit name for each
@@ -87,9 +87,9 @@ don't commit it filled.
 5. **Long-press and drag** a device to move it. Invalid targets go red; the move
    is saved and survives re-generation.
 6. **Issue & download PDF** on the panel screen. Page 1 is the drawing, page 2
-   the circuit schedule and bill of materials. Revisions are numbered by the
+   the circuit schedule and parts list. Revisions are numbered by the
    server, and the screen says when the PDF on offer is behind the panel.
-7. **Bill of materials** lists the parts to order, with anything not mounted in
+7. **Parts list** lists the parts to order, with anything not mounted in
    the panel (the LED driver) marked as external.
 8. **Edit** on the panel screen opens the panel back in the form that built it,
    filled in as it stands: change the name, the enclosure, the counts or the
@@ -107,16 +107,16 @@ Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
 the two-pole isolator, the 24V joint blocks, the external driver wattages, the
 jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
 terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
-a generated bill of materials.
+a generated parts list.
 
-The bill of materials carries **no prices**. It is a parts list — part number,
+The parts list carries **no prices**. It lists each part by part number,
 description, quantity, and whether the part is mounted in the panel — and
 costing happens wherever your pricing actually lives.
 
 **Confirmed from real hardware:** the Shelly Pro Dimmer is 2 channels at 1 DIN
 module, the Shelly Pro relay is 4 channels at 3 modules, and three WAGO
 2003-7646 fit in one module. Everything else needs checking against a datasheet
-before anyone orders from a generated BOM.
+before anyone orders from a generated parts list.
 
 Parts can be corrected in the **Catalogue** screen (linked from the houses list)
 without a redeploy — widths there are entered in DIN modules, not internal slot
@@ -126,10 +126,10 @@ units.
 
 ```bash
 dotnet test          # 336 tests (127 Domain, 27 Data, 182 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 268 Vitest tests in jsdom
+cd ui && npm test    # 273 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 35 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 36 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -140,7 +140,7 @@ images, and pushes them to GHCR from `main`.
 `ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard and
-editing a built panel, Home Screen metadata, and a few checks with a mouse (35 tests). It brings up its own stack and takes it down again, so it needs
+editing a built panel, Home Screen metadata, and a few checks with a mouse (36 tests). It brings up its own stack and takes it down again, so it needs
 nothing running first and never touches a development database:
 
 ```bash
@@ -200,7 +200,7 @@ the schedule and the parts list from ever disagreeing.
 switched load, a blind and a tape run are circuits: they carry a room and a
 name, and the ruleset says which device drives each kind. An energy meter or a
 LAN switch feeds nothing, so no count of anything will ever imply one — those are
-added to the submain by device type and quantity, and packed like everything
+added to the automation panel by device type and quantity, and packed like everything
 else.
 
 **A ruleset is versioned, and the seeder upgrades it.** Catalogue rows are left
@@ -210,8 +210,8 @@ the old rules for ever — adding a preferred device for a new kind of circuit
 would leave every existing house generating nothing for it.
 
 **Two facts about the install, not the rules.** Whether the cables enter at the
-top or the bottom, and whether this submain is isolated upstream, are stored on
-the submain and changeable on the panel screen. The packer always builds
+top or the bottom, and whether this automation panel is isolated upstream, are stored on
+the automation panel and changeable on the panel screen. The packer always builds
 downward from row 0; a bottom-fed panel is the same layout mirrored, so one
 ladder of rules describes both and the spare row ends up away from the glands.
 Changing either on the panel screen is one request — `PATCH /submains/{id}`

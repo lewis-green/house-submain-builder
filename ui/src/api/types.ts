@@ -62,6 +62,8 @@ export interface PlacedDeviceResponse {
   label: string
   terminalRole: TerminalRole
   channels: ChannelResponse[]
+  /** Terminals only: the circuit landing on this block. Absent from older responses. */
+  circuitId?: string | null
 }
 
 export interface LayoutResponse {
@@ -167,3 +169,20 @@ export interface RevisionView {
   /** Server-decided: does this revision still match the submain as it is now? */
   current: boolean
 }
+
+/** One circuit as the terminal sheet shows it, in terminal order. */
+export interface TerminalCircuit {
+  circuitId: string
+  name: string
+  room: string | null
+  type: CircuitType
+  terminalCount: number
+}
+
+export interface TerminalsResponse {
+  layoutVersion: number
+  circuits: TerminalCircuit[]
+}
+
+/** The most terminals one circuit may land on. Mirrors TerminalBandBuilder.MaxTerminalsPerCircuit. */
+export const MAX_TERMINALS_PER_CIRCUIT = 12

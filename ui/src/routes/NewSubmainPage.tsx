@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
+import { currentDetails } from '../api/submainDetails'
 import type {
   CircuitResponse, DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, SubmainResponse,
 } from '../api/types'
@@ -206,12 +207,10 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
     try {
       let saved: SubmainResponse
       if (built) {
-        // PATCH replaces the submain's details with whatever it is sent, so the
-        // ones this form does not show go back as they came, not as blanks.
-        const { reference, feedCableSize, originBreakerAmps, phase, ruleSetId, notes } = built.submain
+        // The details this form does not show go back as they came, not as blanks.
         saved = await api.patch<SubmainResponse>(`/submains/${built.submain.id}`, {
+          ...currentDetails(built.submain),
           name: name.trim(),
-          reference, feedCableSize, originBreakerAmps, phase, ruleSetId, notes,
           ...request,
           rebuild: true,
         })

@@ -280,6 +280,27 @@ describe('PanelPage', () => {
     })
   })
 
+  it('keeps the details the panel screen does not show when an install option rebuilds it', async () => {
+    // PATCH replaces these with whatever it is sent: leaving them out would blank
+    // them, and a missing ruleset would quietly become the default one.
+    const detailed = {
+      ...submain, reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1',
+      ruleSetId: 'r7', notes: 'Under the stairs',
+    }
+    const underlying = stub(() => json(design()))
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
+      url === '/api/submains/s1' ? json(detailed) : underlying(url, init))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    await userEvent.click(await screen.findByLabelText(/fit a main isolator/i))
+
+    await waitFor(() => expect(patchBody(fetchMock as unknown as ReturnType<typeof stub>, '/api/submains/s1')).toMatchObject({
+      reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1', ruleSetId: 'r7', notes: 'Under the stairs',
+      hasIsolator: false, rebuild: true,
+    }))
+  })
+
   it('says when a circuit has been saved, and keeps saying it for a screen reader', async () => {
     const fetchMock = stub(() => json(design()))
     vi.stubGlobal('fetch', fetchMock)

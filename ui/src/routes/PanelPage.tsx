@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
+import { currentDetails } from '../api/submainDetails'
 import type {
   DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse, TerminalCircuit, TerminalsResponse,
 } from '../api/types'
@@ -167,8 +168,7 @@ export function PanelPage() {
     setReworking(true)
     try {
       setSubmain(await api.patch<SubmainResponse>(`/submains/${submain.id}`, {
-        name: submain.name,
-        enclosureTypeId: submain.enclosureTypeId,
+        ...currentDetails(submain),
         ...option,
         rebuild: true,
       }))

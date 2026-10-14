@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Endpoints;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
 using PubInvest.HouseConfig.Data.Mapping;
@@ -40,7 +41,8 @@ public static class RackViews
 
         return new RackResponse(
             rack.Id, rack.ProjectId, rack.Name, cabinet.Id, cabinet.Description, cabinet.HeightU,
-            spans.Sum(s => s.HeightU), rack.FedFromSubmainId, feed, rack.Notes, rack.LayoutVersion);
+            spans.Sum(s => s.HeightU), rack.FedFromSubmainId, feed, rack.Notes, rack.LayoutVersion,
+            rack.LocationId);
     }
 
     public static async Task<RackLayoutResponse?> LayoutAsync(HouseConfigDbContext db, Guid rackId, CancellationToken ct)
@@ -93,6 +95,11 @@ public static class RackViews
             && !await db.Submains.AnyAsync(s => s.Id == feed && s.ProjectId == projectId, ct))
         {
             problems["fedFromSubmainId"] = ["Choose an automation panel in this house, or none."];
+        }
+
+        if (await LocationEndpoints.LocationProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
+        {
+            problems["locationId"] = [misplaced];
         }
 
         return problems;

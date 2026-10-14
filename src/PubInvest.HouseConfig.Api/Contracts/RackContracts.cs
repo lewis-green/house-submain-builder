@@ -2,7 +2,8 @@ using PubInvest.HouseConfig.Domain.Racks;
 
 namespace PubInvest.HouseConfig.Api.Contracts;
 
-public sealed record SaveRackRequest(string Name, Guid RackTypeId, Guid? FedFromSubmainId, string? Notes = null);
+public sealed record SaveRackRequest(
+    string Name, Guid RackTypeId, Guid? FedFromSubmainId, string? Notes = null, Guid? LocationId = null);
 
 public sealed record RackResponse(
     Guid Id,
@@ -15,7 +16,8 @@ public sealed record RackResponse(
     Guid? FedFromSubmainId,
     string? FedFromSubmainName,
     string? Notes,
-    int LayoutVersion);
+    int LayoutVersion,
+    Guid? LocationId);
 
 public sealed record RackPortResponse(int Number, string? Label, bool Poe);
 

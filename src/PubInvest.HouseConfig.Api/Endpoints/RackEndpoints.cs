@@ -43,6 +43,7 @@ public static class RackEndpoints
                     RackTypeId = request.RackTypeId,
                     FedFromSubmainId = request.FedFromSubmainId,
                     Notes = request.Notes,
+                    LocationId = request.LocationId,
                     CreatedAt = DateTimeOffset.UtcNow,
                 };
 
@@ -95,6 +96,7 @@ public static class RackEndpoints
                 rack.RackTypeId = request.RackTypeId;
                 rack.FedFromSubmainId = request.FedFromSubmainId;
                 rack.Notes = request.Notes;
+                rack.LocationId = request.LocationId;
 
                 try
                 {

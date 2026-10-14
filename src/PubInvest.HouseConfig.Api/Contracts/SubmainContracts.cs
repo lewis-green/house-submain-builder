@@ -30,23 +30,28 @@ public sealed record CreateSubmainRequest(
     bool? HasIsolator, bool? TerminalsAtBottom,
     IReadOnlyList<CircuitRequest>? Circuits,
     IReadOnlyList<ExtraFixtureRequest>? ExtraFixtures,
-    bool? Generate = null);
+    bool? Generate = null,
+    Guid? LocationId = null);
 
 // Rebuild: regenerate the panel in the same transaction as the edit. An install
 // option or a fixture only means anything once the panel is built again, so the
 // two either both happen or neither does — a saved option over an unchanged
 // drawing is a state nobody can see.
+// LocationId is replaced like Reference and Notes: leaving it out unplaces the
+// panel, so every caller sends the panel's current one back (submainDetails.ts).
 public sealed record UpdateSubmainRequest(
     string Name, string? Reference, string? FeedCableSize, int? OriginBreakerAmps, string? Phase,
     Guid? EnclosureTypeId, Guid? RuleSetId, string? Notes,
     bool? HasIsolator, bool? TerminalsAtBottom,
     IReadOnlyList<CircuitRequest>? Circuits,
     IReadOnlyList<ExtraFixtureRequest>? ExtraFixtures,
-    bool? Rebuild = null);
+    bool? Rebuild = null,
+    Guid? LocationId = null);
 
 public sealed record SubmainResponse(
     Guid Id, Guid ProjectId, string Name, string? Reference, string? FeedCableSize,
     int? OriginBreakerAmps, string? Phase, Guid? EnclosureTypeId, Guid? RuleSetId, string? Notes,
     bool HasIsolator, bool TerminalsAtBottom,
     int LayoutVersion, int CircuitCount, int DeviceCount,
-    IReadOnlyList<ExtraFixtureResponse> ExtraFixtures);
+    IReadOnlyList<ExtraFixtureResponse> ExtraFixtures,
+    Guid? LocationId);

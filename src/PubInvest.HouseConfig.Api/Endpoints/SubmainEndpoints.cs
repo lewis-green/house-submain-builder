@@ -31,6 +31,10 @@ public static class SubmainEndpoints
                 if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
+                if (await LocationEndpoints.LocationProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
+                {
+                    problems["locationId"] = [misplaced];
+                }
                 if (problems.Count > 0) return Results.ValidationProblem(problems);
 
                 var submain = new Submain
@@ -45,6 +49,7 @@ public static class SubmainEndpoints
                     EnclosureTypeId = request.EnclosureTypeId,
                     RuleSetId = request.RuleSetId,
                     Notes = request.Notes,
+                    LocationId = request.LocationId,
                     HasIsolator = request.HasIsolator ?? true,
                     TerminalsAtBottom = request.TerminalsAtBottom ?? false,
                     LayoutVersion = 0,
@@ -116,6 +121,10 @@ public static class SubmainEndpoints
                 if (submain is null) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
+                if (await LocationEndpoints.LocationProblemAsync(db, submain.ProjectId, request.LocationId, ct) is { } misplaced)
+                {
+                    problems["locationId"] = [misplaced];
+                }
                 if (problems.Count > 0) return Results.ValidationProblem(problems);
 
                 // As on create: the edit and the rebuild stand or fall together.
@@ -129,6 +138,7 @@ public static class SubmainEndpoints
                 submain.EnclosureTypeId = request.EnclosureTypeId;
                 submain.RuleSetId = request.RuleSetId;
                 submain.Notes = request.Notes;
+                submain.LocationId = request.LocationId;
                 submain.HasIsolator = request.HasIsolator ?? submain.HasIsolator;
                 submain.TerminalsAtBottom = request.TerminalsAtBottom ?? submain.TerminalsAtBottom;
 
@@ -278,5 +288,6 @@ public static class SubmainEndpoints
         s.EnclosureTypeId, s.RuleSetId, s.Notes, s.HasIsolator, s.TerminalsAtBottom, s.LayoutVersion,
         s.Circuits.Count, s.Devices.Count,
         s.ExtraFixtures.OrderBy(f => f.Sequence)
-            .Select(f => new ExtraFixtureResponse(f.DeviceTypeId, f.Quantity)).ToList());
+            .Select(f => new ExtraFixtureResponse(f.DeviceTypeId, f.Quantity)).ToList(),
+        s.LocationId);
 }

@@ -59,6 +59,7 @@ app.MapOpenApi();
 
 app.MapProjectEndpoints();
 app.MapSubmainEndpoints();
+app.MapLocationEndpoints();
 app.MapCatalogueEndpoints();
 app.MapDesignEndpoints();
 app.MapCircuitEndpoints();

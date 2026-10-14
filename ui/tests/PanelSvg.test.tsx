@@ -30,13 +30,51 @@ describe('PanelSvg', () => {
     expect(screen.getByRole('button', { name: /dimmer 1.*kitchen ceiling/i })).toBeInTheDocument()
   })
 
-  it('groups a run of terminals into one labelled block', () => {
-    render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} />)
+  it('draws a run of terminals as one block with each terminal labelled', () => {
+    const { container } = render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} />)
 
-    // A picture, not a button: terminals have nothing to name or move, so a
-    // tap on them would only open an empty sheet.
+    // Without a handler the run is still a picture: nothing to open.
     expect(screen.getByRole('img', { name: /L1.*L3/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /L1/ })).not.toBeInTheDocument()
+    const labels = [...container.querySelectorAll('text')].map(t => t.textContent)
+    expect(labels).toEqual(expect.arrayContaining(['L1', 'L2', 'L3']))
+  })
+
+  it('opens the terminal order from the run when it can', async () => {
+    const onOpenTerminals = vi.fn()
+    render(<PanelSvg layout={layout} selectedId={null} onSelect={() => {}} onOpenTerminals={onOpenTerminals} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /terminals L1–L3/i }))
+
+    expect(onOpenTerminals).toHaveBeenCalled()
+  })
+
+  it('marks a circuit bridged across several terminals with a bar', () => {
+    const bridged: LayoutResponse = {
+      rows: 1, slotsPerRow: 54,
+      devices: [
+        { ...terminal(1, 0), label: 'C1', circuitId: 'a' },
+        { ...terminal(2, 1), label: 'C2.1', circuitId: 'b' },
+        { ...terminal(3, 2), label: 'C2.2', circuitId: 'b' },
+      ],
+    }
+    const { container } = render(<PanelSvg layout={bridged} selectedId={null} onSelect={() => {}} />)
+
+    expect(container.querySelector('[data-bridge="C2.1–C2.2"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-bridge]')).toHaveLength(1)
+  })
+
+  it('never draws a bridge bar across another circuit\'s terminal', () => {
+    const interleaved: LayoutResponse = {
+      rows: 1, slotsPerRow: 54,
+      devices: [
+        { ...terminal(1, 0), label: 'C2.1', circuitId: 'b' },
+        { ...terminal(2, 1), label: 'C3', circuitId: 'c' },
+        { ...terminal(3, 2), label: 'C2.2', circuitId: 'b' },
+      ],
+    }
+    const { container } = render(<PanelSvg layout={interleaved} selectedId={null} onSelect={() => {}} />)
+
+    expect(container.querySelectorAll('[data-bridge]')).toHaveLength(0)
   })
 
   it('says in words, not only colour, when a dragged device has no room', () => {

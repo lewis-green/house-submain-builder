@@ -17,6 +17,8 @@ interface Props {
   dragging?: DragState | null
   /** Drawn size over the layout's own pixels. Labels scale with it. */
   zoom?: number
+  /** Opens the terminal order. Without it the terminal run is only a picture. */
+  onOpenTerminals?: () => void
 }
 
 /** A run of adjacent terminals drawn as one block. Grouping is for drawing only. */
@@ -66,6 +68,23 @@ function groupTerminals(devices: PlacedDeviceResponse[]): TerminalGroup[] {
   return groups
 }
 
+/** Each run of adjacent terminals carrying one circuit, two or more long, as first and last member. */
+function bridgedRuns(members: PlacedDeviceResponse[]) {
+  const runs: PlacedDeviceResponse[][] = []
+  for (const m of members) {
+    const run = runs.at(-1)
+    const prev = run?.at(-1)
+    if (run && prev && m.circuitId && prev.circuitId === m.circuitId && prev.startSlot + prev.moduleWidth === m.startSlot) {
+      run.push(m)
+    } else {
+      runs.push([m])
+    }
+  }
+  return runs
+    .filter(run => run.length > 1 && run[0].circuitId)
+    .map(run => ({ first: run[0], last: run.at(-1)! }))
+}
+
 function describe(device: PlacedDeviceResponse): string {
   const named = device.channels.filter(c => c.circuitName).map(c => c.circuitName)
   const spare = device.channels.filter(c => c.isSpare).length
@@ -86,7 +105,7 @@ const inset = (rect: { x: number; y: number; width: number; height: number }) =>
   height: rect.height - DEVICE_INSET * 2,
 })
 
-export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1 }: Props) {
+export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1, onOpenTerminals }: Props) {
   const size = panelSize(layout)
   const groups = groupTerminals(layout.devices)
   // The device being dragged is drawn last, so its ghost — the dashed stroke
@@ -158,24 +177,62 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1 }: P
         </g>
       ))}
 
-      {/* Terminals have nothing to name or move, so a run of them is one
-          labelled picture rather than a button that opens an empty sheet. */}
+      {/* A run of terminals is one block, each terminal labelled on its side,
+          with a bar over each circuit bridged across several. The run opens
+          the terminal order when the page offers it. Unlike the devices it
+          keeps the global focus ring: it has no selected stroke to show focus. */}
       {groups.map(group => {
         const rect = inset(deviceRect(group))
         const style = deviceStyle('Terminal240')
+        const interactive = Boolean(onOpenTerminals)
         return (
-          <g key={group.key} role="img" aria-label={`Terminals ${group.label}`}>
+          <g
+            key={group.key}
+            role={interactive ? 'button' : 'img'}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={interactive ? `Terminals ${group.label}, change order` : `Terminals ${group.label}`}
+            onClick={onOpenTerminals}
+            onKeyDown={interactive
+              ? e => { if (e.key === 'Enter' || e.key === ' ') onOpenTerminals!() }
+              : undefined}
+            className={interactive ? 'cursor-pointer' : undefined}
+          >
             <rect {...rect} rx={3} className={`${style.fill} ${style.stroke}`} strokeWidth={1} />
-            <text
-              x={rect.x + rect.width / 2}
-              y={rect.y + rect.height / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              clipPath={`url(#clip-${group.key})`}
-              className={`${style.text} pointer-events-none text-[13px] font-semibold`}
-            >
-              {group.label}
-            </text>
+            <g clipPath={`url(#clip-${group.key})`} className="pointer-events-none">
+              {group.members.map((member, i) => {
+                const x = slotToX(member.startSlot)
+                const cx = x + slotToX(member.moduleWidth) / 2
+                const bottom = rect.y + rect.height - 8
+                return (
+                  <g key={member.id ?? `${member.rowIndex}-${member.startSlot}`}>
+                    {i > 0 && (
+                      <line x1={x} y1={rect.y} x2={x} y2={rect.y + rect.height} className={style.stroke} strokeWidth={0.75} />
+                    )}
+                    <text
+                      x={cx}
+                      y={bottom}
+                      transform={`rotate(-90 ${cx} ${bottom})`}
+                      dominantBaseline="middle"
+                      className={`${style.text} text-[12px] font-semibold`}
+                    >
+                      {member.label}
+                    </text>
+                  </g>
+                )
+              })}
+              {bridgedRuns(group.members).map(({ first, last }) => (
+                <rect
+                  key={`bridge-${first.label}`}
+                  data-bridge={`${first.label}–${last.label}`}
+                  x={slotToX(first.startSlot) + 2}
+                  y={rect.y + 3}
+                  width={slotToX(last.startSlot + last.moduleWidth) - slotToX(first.startSlot) - 4}
+                  height={4}
+                  rx={2}
+                  className="fill-ink-2"
+                />
+              ))}
+            </g>
           </g>
         )
       })}

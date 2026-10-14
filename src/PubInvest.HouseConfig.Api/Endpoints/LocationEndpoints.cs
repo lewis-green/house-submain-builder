@@ -105,13 +105,18 @@ public static class LocationEndpoints
     }
 
     /// Saves, turning the unique index's refusal — two people adding the same
-    /// name at once, past the check — into the same answer the check gives.
+    /// name at once, past the check — into the same answer the check gives, and
+    /// a rename of a location someone removed meanwhile into a 404.
     private static async Task<IResult?> SaveAsync(HouseConfigDbContext db, Guid projectId, string name, CancellationToken ct)
     {
         try
         {
             await db.SaveChangesAsync(ct);
             return null;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.NotFound();
         }
         catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {

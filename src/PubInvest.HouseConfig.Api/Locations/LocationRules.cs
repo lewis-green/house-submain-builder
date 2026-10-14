@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using PubInvest.HouseConfig.Data;
 
 namespace PubInvest.HouseConfig.Api.Locations;
@@ -18,4 +19,15 @@ public static class LocationRules
         => locationId is { } id && !await db.Locations.AnyAsync(l => l.Id == id && l.ProjectId == projectId, ct)
             ? NotInThisHouse
             : null;
+
+    /// True when a save failed because the location it named has gone — removed
+    /// by someone else after ProblemAsync passed it. Told apart from every other
+    /// missing reference by the foreign key's name, which ends in the column.
+    public static bool IsMissingLocation(DbUpdateException e)
+        => e.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } fk
+           && fk.ConstraintName?.EndsWith("_Locations_LocationId", StringComparison.Ordinal) == true;
+
+    /// The same answer ProblemAsync's check gives, for a save that lost the race.
+    public static IResult Misplaced()
+        => Results.ValidationProblem(new Dictionary<string, string[]> { ["locationId"] = [NotInThisHouse] });
 }

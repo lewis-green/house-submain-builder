@@ -71,7 +71,7 @@ public static class SubmainEndpoints
                 // the insert too, so the house never gains a submain with no panel.
                 await using var transaction = await db.Database.BeginTransactionAsync(ct);
                 db.Submains.Add(submain);
-                await db.SaveChangesAsync(ct);
+                if (await SaveAsync(db, ct) is { } gone) return gone;
 
                 if (request.Generate == true)
                 {
@@ -153,7 +153,7 @@ public static class SubmainEndpoints
                     ApplyExtraFixtures(db, submain, request.ExtraFixtures);
                 }
 
-                await db.SaveChangesAsync(ct);
+                if (await SaveAsync(db, ct) is { } gone) return gone;
 
                 if (request.Rebuild == true)
                 {
@@ -167,6 +167,22 @@ public static class SubmainEndpoints
             .WithTags("Submains");
 
         return app;
+    }
+
+    /// Saves, or answers as the location check would when the location was
+    /// removed between that check and this save. The caller's transaction is
+    /// still open, so returning the answer rolls the edit back.
+    private static async Task<IResult?> SaveAsync(HouseConfigDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return null;
+        }
+        catch (DbUpdateException e) when (LocationRules.IsMissingLocation(e))
+        {
+            return LocationRules.Misplaced();
+        }
     }
 
     /// The same answers POST /design/generate gives when it stores nothing — a

@@ -17,6 +17,9 @@ namespace PubInvest.HouseConfig.Data.Migrations
                 type: "uuid",
                 nullable: true);
 
+            // The default is 1 on purpose: circuits stored before this existed land on
+            // one terminal. The model deliberately has no HasDefaultValue to match, as
+            // EF would then treat a CLR 0 as unset and write the default instead.
             migrationBuilder.AddColumn<int>(
                 name: "TerminalCount",
                 table: "Circuits",

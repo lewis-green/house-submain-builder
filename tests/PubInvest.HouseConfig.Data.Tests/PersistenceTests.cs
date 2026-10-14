@@ -113,6 +113,34 @@ public class PersistenceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task A_circuit_stored_before_terminal_counts_lands_on_one_terminal()
+    {
+        var projectId = Guid.NewGuid();
+        var submainId = Guid.NewGuid();
+        var circuitId = Guid.NewGuid();
+
+        await using (var db = fixture.CreateContext())
+        {
+            db.Projects.Add(new Project
+            {
+                Id = projectId, Name = "Old House", CreatedAt = DateTimeOffset.UtcNow, CreatedBy = "test",
+                Submains = [new Submain { Id = submainId, Name = "Old", LayoutVersion = 1 }]
+            });
+            await db.SaveChangesAsync();
+
+            // Raw SQL leaves TerminalCount out, as a row written before the column existed would.
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""INSERT INTO "Circuits" ("Id", "SubmainId", "Type", "Name", "Sequence") VALUES ({circuitId}, {submainId}, 'Switched', 'Old', 1)""");
+        }
+
+        await using var fresh = fixture.CreateContext();
+        var circuit = await fresh.Circuits.SingleAsync(c => c.Id == circuitId);
+
+        Assert.Equal(1, circuit.TerminalCount);
+        Assert.Null(circuit.TerminalPosition);
+    }
+
+    [Fact]
     public void A_new_circuit_row_lands_on_one_terminal()
     {
         Assert.Equal(1, new CircuitRow().TerminalCount);

@@ -1,7 +1,7 @@
 {
   "_unit": "Every width is in slot units. One slot unit = 1/3 DIN module (T), because three WAGO 2003-7646 fit in one T. Dimmer 1T = 3, relay 3T = 9, terminal 1/3T = 1, a 24-way row = 72.",
   "_confirmed": "Shelly Pro Dimmer 2 channels at 1T; Shelly Pro relay 4 channels at 3T; WAGO 2003-7646 at 3 per T, carrying L/N/E on one slice. Earth commons through the DIN rail; neutrals commoned with a bar; live loops out to the Shelly. The incoming feed lands on a two-pole isolator. LED drivers are NOT DIN mount and sit outside the panel; the panel carries a 12-way +24V and a 12-way -24V WAGO.",
-  "_assumed": "Everything marked ASSUMED has NOT been confirmed against a datasheet: the isolator, the 24V joint blocks, the external driver wattages, the jumper bar ways and end stops per bank. Confirm before ordering from a generated bill of materials. The Shelly widths, channel counts and load ratings came from the house catalogue supplied by the engineer, not from a datasheet read here.",
+  "_assumed": "Everything marked ASSUMED has NOT been confirmed against a datasheet: the isolator, the 24V joint blocks, the external driver wattages, the jumper bar ways and end stops per bank, and the line jumper bar (ASSUMED-LINE-JUMPER-BAR-10, 10-way, cut to length for each bridged circuit). Confirm before ordering from a generated bill of materials. The Shelly widths, channel counts and load ratings came from the house catalogue supplied by the engineer, not from a datasheet read here.",
   "version": 1,
   "deviceTypes": [
     {

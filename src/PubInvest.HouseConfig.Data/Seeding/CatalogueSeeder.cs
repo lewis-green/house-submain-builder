@@ -17,6 +17,10 @@ public static class CatalogueSeeder
     /// house generating nothing for it, with only a diagnostic to show for it.
     /// Rulesets cannot be edited in place through the API — an admin makes their
     /// own — so nobody's work is at stake.
+    ///
+    /// An upgrade leaves IsDefault alone; only an insert takes it from the seed.
+    /// An admin may have made their own ruleset the default and cleared this one,
+    /// and re-marking the shipped ruleset would leave two defaults.
     public static async Task<int> SeedAsync(
         HouseConfigDbContext db,
         SeedDocument seed,
@@ -69,7 +73,6 @@ public static class CatalogueSeeder
 
             stored.Name = r.Name;
             stored.Version = r.Version;
-            stored.IsDefault = r.IsDefault;
             stored.PayloadJson = payload;
             upgraded++;
         }

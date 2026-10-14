@@ -271,7 +271,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
           {generateError?.inputs === request && (
             <div className="mb-3"><ErrorNote compact message={`${words.failed}: ${generateError.message}`} /></div>
           )}
-          <Button type="submit" form="new-submain" disabled={generating || !ready || whyNot !== null} className="w-full">
+          <Button type="submit" form="submain-form" disabled={generating || !ready || whyNot !== null} className="w-full">
             {generating ? words.busy : words.act}
           </Button>
           {whyNot && <p className="mt-2 text-center text-sm text-ink-2">{whyNot}</p>}
@@ -285,7 +285,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
 
       {ready && (
         <form
-          id="new-submain"
+          id="submain-form"
           className="space-y-6"
           onSubmit={e => { e.preventDefault(); void generate() }}
         >

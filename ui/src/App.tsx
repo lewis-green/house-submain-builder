@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { BomPage } from './routes/BomPage'
 import { CataloguePage } from './routes/CataloguePage'
-import { EditSubmainPage, NewSubmainPage } from './routes/NewSubmainPage'
+import { EditSubmainPage, NewSubmainPage } from './routes/SubmainForm'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PanelPage } from './routes/PanelPage'
 import { ProjectPage } from './routes/ProjectPage'

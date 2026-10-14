@@ -69,8 +69,13 @@ test('the terminal run shows a focus ring when reached by keyboard', async ({ pa
   const { submainId } = await seedSubmain(request, threeDimmed)
   await page.goto(`/submains/${submainId}/panel`)
   const run = page.getByRole('button', { name: /Terminals C1/ })
-  await run.focus()
-  // WebKit has been patchy drawing outlines on SVG children; prove it is drawn.
+  // Reached as a keyboard user would: Tab until it has focus, bounded.
+  for (let i = 0; i < 30 && !(await run.evaluate(el => el === document.activeElement)); i++) {
+    await page.keyboard.press('Tab')
+  }
+  await expect(run).toBeFocused()
+  // WebKit has been patchy drawing outlines on SVG children. A computed outline
+  // style other than none is evidence the ring is drawn, not proof of pixels.
   const outline = await run.evaluate(el => getComputedStyle(el).outlineStyle)
   expect(outline).not.toBe('none')
 })

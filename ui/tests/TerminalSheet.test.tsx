@@ -70,4 +70,42 @@ describe('TerminalSheet', () => {
     expect(names()).toEqual(['Kitchen', 'Porch', 'Hall'])
     expect(screen.getByRole('button', { name: 'Save order' })).toBeEnabled()
   })
+
+  it('says why a save was refused, inside the sheet, until the next edit', async () => {
+    show(vi.fn().mockRejectedValue(new Error('No room for 4 more terminals')))
+    await userEvent.click(screen.getByRole('button', { name: 'Move Porch up' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No room for 4 more terminals')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Move Hall up' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('ignores close requests and disables Cancel while saving', async () => {
+    let finish: () => void = () => {}
+    const onSave = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    const onClose = vi.fn()
+    render(<TerminalSheet circuits={circuits} onSave={onSave} onClose={onClose} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Move Porch up' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    await userEvent.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    finish()
+  })
+
+  it('names the type of each circuit', () => {
+    show()
+    expect(within(rows()[0]).getByText(/Dimmed lighting/)).toBeInTheDocument()
+    expect(within(rows()[2]).getByText(/Switched/)).toBeInTheDocument()
+  })
+
+  it('moves focus to the other move button when a row reaches an end', async () => {
+    show()
+    await userEvent.click(screen.getByRole('button', { name: 'Move Hall up' }))
+    expect(screen.getByRole('button', { name: 'Move Hall up' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move Hall down' })).toHaveFocus()
+  })
 })

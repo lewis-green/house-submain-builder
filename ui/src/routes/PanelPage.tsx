@@ -194,14 +194,17 @@ export function PanelPage() {
     }
   }
 
-  async function openTerminals() {
+  // One load at a time (a double tap would fetch twice), and not over a device
+  // sheet that is already open.
+  const openTerminals = () => once(async () => {
+    if (selectedId) return
     try {
       const response = await api.get<TerminalsResponse>(`/submains/${submainId}/terminals`)
       setTerminals(response.circuits)
     } catch (e) {
       announce(`Terminals not loaded: ${(e as ApiError).message}`, 'error')
     }
-  }
+  })
 
   /**
    * One request: the order and counts are saved and the panel rebuilt together,
@@ -209,7 +212,7 @@ export function PanelPage() {
    * Rethrows a refusal so the sheet keeps the edit.
    */
   async function saveTerminals(circuits: { circuitId: string; terminalCount: number }[]) {
-    if (!design) return
+    if (!design) throw new Error('The panel has not loaded yet')
     try {
       await api.put(`/submains/${submainId}/terminals`, { layoutVersion: design.layoutVersion, circuits })
       setTerminals(null)

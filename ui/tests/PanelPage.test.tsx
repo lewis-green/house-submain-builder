@@ -405,6 +405,56 @@ describe('PanelPage', () => {
       expect(await screen.findByRole('dialog', { name: 'Terminal order' })).toBeInTheDocument()
     })
 
+    const openAndSave = async () => {
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Move Hall up' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Save order' }))
+    }
+
+    it('keeps the sheet open and says why when the rebuild is refused', async () => {
+      const base = terminalStub()
+      vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) =>
+        url === '/api/submains/s1/terminals' && init?.method === 'PUT'
+          ? json({ diagnostics: [{ severity: 'Error', code: 'NO_ROOM', message: 'No room for 4 more terminals' }] }, 422)
+          : base(url, init)))
+
+      renderPage()
+      await openAndSave()
+
+      expect(await screen.findByRole('dialog', { name: 'Terminal order' })).toBeInTheDocument()
+      expect(await screen.findByRole('alert')).toHaveTextContent(/no room for 4 more terminals/i)
+    })
+
+    it('closes the sheet and reloads the layout on a stale version', async () => {
+      const base = terminalStub()
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
+        url === '/api/submains/s1/terminals' && init?.method === 'PUT'
+          ? json({ title: 'Conflict', conflict: true }, 409)
+          : base(url, init))
+      vi.stubGlobal('fetch', fetchMock)
+
+      renderPage()
+      await screen.findByRole('button', { name: /Terminals C1/ })
+      const layoutLoads = () => fetchMock.mock.calls.filter(c => c[0] === '/api/submains/s1/layout').length
+      const before = layoutLoads()
+      await openAndSave()
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(layoutLoads()).toBeGreaterThan(before))
+    })
+
+    it('says so and opens no sheet when the terminals cannot be loaded', async () => {
+      vi.stubGlobal('fetch', stub(
+        () => json(withTerminal()),
+        url => (url === '/api/submains/s1/terminals' ? json({ title: 'Boom' }, 500) : undefined)))
+
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: /Terminals C1/ }))
+
+      expect(await screen.findByText(/Terminals not loaded/)).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
     it('saves the order with the layout version it was based on', async () => {
       const fetchMock = terminalStub()
       vi.stubGlobal('fetch', fetchMock)

@@ -106,6 +106,14 @@ don't commit it filled.
    hold it first). Tap an item to label its ports — Return moves to the next
    port — and tick PoE where the cable needs it. **Issue PDF revision** gives
    the rack drawing, a schedule of every port and the parts to order.
+10. **Add location** on the house page — a plant room, a garage, a comms
+    cupboard. Place an automation panel in one from its form (**Location**),
+    and a rack when you add it or from its settings. Once a house has
+    locations, its page lists the panels and racks under the place they are
+    in, in the order the locations were added, with anything not yet placed
+    last. **Edit** beside a location renames or removes it; removing one keeps
+    its panels and racks, which simply become unplaced. A placed panel's or
+    rack's screen and its issued PDF say where it is.
 
 ### The catalogue is not confirmed yet
 
@@ -134,11 +142,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 414 tests (155 Domain, 31 Data, 228 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 319 Vitest tests in jsdom
+dotnet test          # 441 tests (155 Domain, 36 Data, 250 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 335 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 42 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 43 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -150,7 +158,8 @@ images, and pushes them to GHCR from `main`.
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard and
 editing a built panel, Home Screen metadata, the rack screen's port labelling,
-drag and PDF, and a few checks with a mouse (42 tests). It brings up its own
+drag and PDF, placing a panel in a location, and a few checks with a mouse
+(43 tests). It brings up its own
 stack and takes it down again, so it needs nothing running first and never
 touches a development database:
 
@@ -238,6 +247,15 @@ units with U1 at the bottom; the server places each item in the top free U
 and checks every move, exactly as it decides every panel layout. Ports are
 numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 
+**A location is where something is, not what owns it.** A panel or a rack
+points at one of its house's locations, or at none; removing a location sets
+them back to none rather than taking them with it. Names are unique within a
+house whatever their case — the endpoint says so, and a unique index over a
+case-insensitive ICU collation holds it. Like the notes, the location is one of
+the fields `PATCH /submains/{id}` and `PATCH /racks/{id}` replace with whatever
+they are sent, so every caller in the UI sends the current one back
+(`ui/src/api/submainDetails.ts` for panels).
+
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or
 a part next month cannot retroactively change what a drawing in someone's folder
@@ -246,7 +264,9 @@ said. The same snapshot is how the server knows whether a PDF is still current:
 issuing now would embed, so a renamed circuit or room — which moves no device
 and bumps no layout version — still marks the PDF on offer as out of date. The
 snapshot includes the two install options, so an option saved without a rebuild
-reads as out of date too.
+reads as out of date too, and the location's name, which the PDF prints in its
+header — so placing a panel or a rack dates the PDF issued before it. Revisions
+issued before locations existed read as unplaced and stay current.
 
 **Sign-in is a separate chunk.** `main.tsx` imports the OIDC provider and gate
 only when the runtime config names an identity provider, so installs that leave

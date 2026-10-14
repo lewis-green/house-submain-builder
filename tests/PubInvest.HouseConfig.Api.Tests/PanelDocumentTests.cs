@@ -53,7 +53,7 @@ public class PanelDocumentTests
                 new PreferredDevices(
                     DimmerType, DimmerType, DimmerType, RelayType, DimmerType, DimmerType,
                     DimmerType, DimmerType, [DimmerType]),
-                new TerminalRules(DimmerType, 1, DimmerType, 10, DimmerType, 2)),
+                new TerminalRules(DimmerType, DimmerType, 10, DimmerType, 2)),
             [
                 new DeviceType(DimmerType, "Shelly", "Pro Dimmer 2PM", "PH-DIM", DeviceCategory.Dimmer240, 3, 2, null, null, true),
                 new DeviceType(RelayType, "Shelly", "Pro relay", "PH-REL", DeviceCategory.Relay, 9, 4, null, null, true),

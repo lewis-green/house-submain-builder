@@ -158,7 +158,6 @@ public class ShippedSeedTests(PostgresFixture fixture)
         var seed = Load();
         var p = seed.RuleSets.Single(r => r.IsDefault).Payload;
 
-        Assert.Equal(1, p.Terminals.BlocksPerCircuit);
         Assert.Contains(seed.DeviceTypes, d => d.Id == p.Terminals.DeviceTypeId);
     }
 

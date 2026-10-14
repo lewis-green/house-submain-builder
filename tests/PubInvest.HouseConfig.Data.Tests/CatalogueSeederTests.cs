@@ -69,7 +69,6 @@ public class CatalogueSeederTests(PostgresFixture fixture)
                         isolator, dimmer, tapeDimmer, relay, relay, relay, dcPos, dcNeg, [psu]),
                     Terminals: new TerminalRules(
                         DeviceTypeId: terminal,
-                        BlocksPerCircuit: 1,
                         BridgeBarDeviceTypeId: bar,
                         BridgeBarWays: 10,
                         EndStopDeviceTypeId: endStop,

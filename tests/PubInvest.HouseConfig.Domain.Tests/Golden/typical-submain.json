@@ -12,6 +12,7 @@
         "Label": "Isolator",
         "Channels": [],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 24
       },
       {
@@ -23,6 +24,7 @@
         "Label": "C1",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 1
       },
       {
@@ -34,6 +36,7 @@
         "Label": "C2",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 2
       },
       {
@@ -45,6 +48,7 @@
         "Label": "C3",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 3
       },
       {
@@ -56,6 +60,7 @@
         "Label": "C4",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 4
       },
       {
@@ -67,6 +72,7 @@
         "Label": "C5",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 5
       },
       {
@@ -78,6 +84,7 @@
         "Label": "C6",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 6
       },
       {
@@ -89,6 +96,7 @@
         "Label": "C7",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 7
       },
       {
@@ -100,6 +108,7 @@
         "Label": "C8",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 8
       },
       {
@@ -111,6 +120,7 @@
         "Label": "C9",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 9
       },
       {
@@ -122,6 +132,7 @@
         "Label": "C10",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 10
       },
       {
@@ -133,6 +144,7 @@
         "Label": "C11",
         "Channels": [],
         "TerminalRole": "All",
+        "CircuitId": null,
         "EndSlotExclusive": 11
       },
       {
@@ -144,6 +156,7 @@
         "Label": "\u002B24V 1",
         "Channels": [],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 15
       },
       {
@@ -155,6 +168,7 @@
         "Label": "-24V 1",
         "Channels": [],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 4
       },
       {
@@ -166,6 +180,7 @@
         "Label": "\u002B24V 2",
         "Channels": [],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 8
       },
       {
@@ -177,6 +192,7 @@
         "Label": "-24V 2",
         "Channels": [],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 12
       },
       {
@@ -199,6 +215,7 @@
           }
         ],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 2
       },
       {
@@ -221,6 +238,7 @@
           }
         ],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 4
       },
       {
@@ -243,6 +261,7 @@
           }
         ],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 6
       },
       {
@@ -265,6 +284,7 @@
           }
         ],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 2
       },
       {
@@ -297,6 +317,7 @@
           }
         ],
         "TerminalRole": "None",
+        "CircuitId": null,
         "EndSlotExclusive": 24
       }
     ],

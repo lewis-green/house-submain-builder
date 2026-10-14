@@ -593,7 +593,6 @@
         },
         "terminals": {
           "deviceTypeId": "d1000000-0000-4000-8000-000000000006",
-          "blocksPerCircuit": 1,
           "bridgeBarDeviceTypeId": "d1000000-0000-4000-8000-000000000008",
           "bridgeBarWays": 10,
           "endStopDeviceTypeId": "d1000000-0000-4000-8000-000000000009",

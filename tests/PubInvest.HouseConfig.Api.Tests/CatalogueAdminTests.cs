@@ -206,7 +206,6 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
                 terminals = new
                 {
                     deviceTypeId = TestSeed.TerminalId,
-                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,
@@ -275,7 +274,6 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
                 terminals = new
                 {
                     deviceTypeId = TestSeed.TerminalId,
-                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,
@@ -336,7 +334,6 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
                 terminals = new
                 {
                     deviceTypeId = TestSeed.TerminalId,
-                    blocksPerCircuit = 1,
                     bridgeBarDeviceTypeId = TestSeed.BridgeId,
                     bridgeBarWays = 10,
                     endStopDeviceTypeId = TestSeed.EndStopId,

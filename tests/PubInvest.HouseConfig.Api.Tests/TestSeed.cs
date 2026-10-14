@@ -126,7 +126,6 @@ public static class TestSeed
                     ExternalDriver: [Psu240Id, Psu100Id]),
                 Terminals: new TerminalRules(
                     DeviceTypeId: TerminalId,
-                    BlocksPerCircuit: 1,
                     BridgeBarDeviceTypeId: BridgeId,
                     BridgeBarWays: 10,
                     EndStopDeviceTypeId: EndStopId,

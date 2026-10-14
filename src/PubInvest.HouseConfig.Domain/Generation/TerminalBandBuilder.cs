@@ -42,7 +42,7 @@ public static class TerminalBandBuilder
 
         if (circuits.Count == 0) return new TerminalBand([], [], []);
 
-        var perCircuit = Math.Max(terminals.BlocksPerCircuit, 1);
+        var perCircuit = 1;
         var ordered = circuits.OrderBy(c => c.Sequence).ToList();
         var devices = new List<RequiredDevice>();
 

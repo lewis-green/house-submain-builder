@@ -11,6 +11,7 @@ import { Button, ButtonLink } from '../components/Button'
 import { Diagnostics } from '../components/Diagnostics'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorNote } from '../components/ErrorNote'
+import { SelectField } from '../components/SelectField'
 import { Skeleton } from '../components/Skeleton'
 import { Toggle } from '../components/Toggle'
 import { announce } from '../components/status'
@@ -24,7 +25,7 @@ import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geome
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
 import { SLOT_UNITS_PER_MODULE } from '../units'
-import { asLocations, locationName } from '../locations/options'
+import { asLocations, locationName, locationOptions } from '../locations/options'
 import { FixturePicker } from '../wizard/FixturePicker'
 
 const ZOOM_STEP = 1.25
@@ -53,6 +54,7 @@ export function PanelPage() {
   const [rooms, setRooms] = useState<string[]>([])
   const [locations, setLocations] = useState<LocationResponse[]>([])
   const [reworking, setReworking] = useState(false)
+  const [moving, setMoving] = useState(false)
   // null until the catalogue has arrived: the picker has nothing honest to offer before then.
   const [catalogue, setCatalogue] = useState<DeviceTypeResponse[] | null>(null)
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
@@ -193,6 +195,33 @@ export function PanelPage() {
       await load()
     } finally {
       setReworking(false)
+    }
+  })
+
+  /**
+   * Where the panel is says nothing about how it is laid out, so a move is
+   * saved on its own, with no rebuild: no device moves and no channel is
+   * reassigned. Shown at once and put back if the server refuses. It shares
+   * the rebuild's guard, because each PATCH sends every detail back and two in
+   * flight would undo each other.
+   */
+  const moveTo = (locationId: string | null) => once(async () => {
+    if (!submain) return
+    const before = submain
+    setMoving(true)
+    setSubmain({ ...submain, locationId })
+    try {
+      await api.patch<SubmainResponse>(`/submains/${submain.id}`, { ...currentDetails(before), locationId })
+      const name = locationName(locations, locationId)
+      announce(name ? `Moved to ${name}` : 'No longer placed', 'ok')
+      // Reloaded, so the PDF button asks again: the location is printed on it.
+      await load()
+    } catch (e) {
+      const error = e as ApiError
+      setSubmain(before)
+      announce(`Not moved: ${error.fieldErrors.locationId?.[0] ?? error.message}`, 'error')
+    } finally {
+      setMoving(false)
     }
   })
 
@@ -429,6 +458,19 @@ export function PanelPage() {
               <Diagnostics diagnostics={design.diagnostics} />
             </div>
           )}
+
+          {/* Out in the open rather than with the install options: changing it
+              rebuilds nothing, and every one of those does. */}
+          <div className="mt-6">
+            <SelectField
+              label="Location"
+              hint="Where in the house this panel is. Moving it changes nothing on the panel. Add locations on the house page."
+              value={submain?.locationId ?? ''}
+              disabled={moving || reworking || !submain}
+              onChange={value => void moveTo(value || null)}
+              options={locationOptions(locations, submain?.locationId ?? null)}
+            />
+          </div>
 
           <details className="group mt-6 rounded-lg border border-rule bg-sheet">
             <summary className="flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-4 font-semibold active:bg-press">

@@ -317,6 +317,79 @@ describe('PanelPage', () => {
     expect(await screen.findByText('Plant room · 4 rows of 18 modules')).toBeInTheDocument()
   })
 
+  describe('the location picker', () => {
+    const places = [
+      { id: 'l1', name: 'Garage', notes: null, sequence: 0 },
+      { id: 'l2', name: 'Plant room', notes: null, sequence: 1 },
+    ]
+    const detailed = {
+      ...submain, reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1',
+      ruleSetId: 'r7', notes: 'Under the stairs', hasIsolator: false, locationId: 'l1',
+    }
+
+    /** A server that keeps the panel's location, and answers a PATCH with `patch`. */
+    function placed(patch: (body: Record<string, unknown>) => Response) {
+      let current: Record<string, unknown> = detailed
+      const underlying = stub(() => json(design()))
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/submains/s1' && init?.method === 'PATCH') {
+          const body = JSON.parse(String(init.body))
+          const response = patch(body)
+          if (response.ok) current = { ...current, locationId: body.locationId }
+          return response
+        }
+        if (url === '/api/submains/s1') return json(current)
+        if (url === '/api/projects/p1/locations') return json(places)
+        return underlying(url, init)
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+
+    it('moves the panel at once, sending every detail back and no rebuild', async () => {
+      const fetchMock = placed(body => json({ ...detailed, locationId: body.locationId }))
+
+      renderPage()
+      await screen.findByText('Garage · 4 rows of 18 modules')
+      await userEvent.selectOptions(screen.getByLabelText('Location'), 'l2')
+
+      expect(await screen.findByText('Plant room · 4 rows of 18 modules')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Moved to Plant room'))
+      const body = patchBody(fetchMock as unknown as ReturnType<typeof stub>, '/api/submains/s1')
+      expect(body).toMatchObject({
+        name: 'Ground Floor', reference: 'DB-2', feedCableSize: '10mm²', originBreakerAmps: 40, phase: 'L1',
+        enclosureTypeId: 'e1', ruleSetId: 'r7', notes: 'Under the stairs', locationId: 'l2',
+      })
+      expect(body).not.toHaveProperty('rebuild')
+      expect(body).not.toHaveProperty('circuits')
+      expect(screen.queryByText(/rebuilding/i)).not.toBeInTheDocument()
+    })
+
+    it('says the panel is no longer placed when Not placed is chosen', async () => {
+      const fetchMock = placed(body => json({ ...detailed, locationId: body.locationId }))
+
+      renderPage()
+      await screen.findByText('Garage · 4 rows of 18 modules')
+      await userEvent.selectOptions(screen.getByLabelText('Location'), '')
+
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No longer placed'))
+      expect(await screen.findByText('4 rows of 18 modules')).toBeInTheDocument()
+      expect(patchBody(fetchMock as unknown as ReturnType<typeof stub>, '/api/submains/s1').locationId).toBeNull()
+    })
+
+    it('puts the location back and says why when the move is refused', async () => {
+      placed(() => json({ errors: { locationId: ['Choose a location in this house, or none.'] } }, 400))
+
+      renderPage()
+      await screen.findByText('Garage · 4 rows of 18 modules')
+      await userEvent.selectOptions(screen.getByLabelText('Location'), 'l2')
+
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/not moved: choose a location in this house/i))
+      expect(screen.getByLabelText('Location')).toHaveValue('l1')
+      expect(screen.getByText('Garage · 4 rows of 18 modules')).toBeInTheDocument()
+    })
+  })
+
   it('says nothing of a location when the panel is not placed', async () => {
     vi.stubGlobal('fetch', stub(() => json(design()), url =>
       url === '/api/projects/p1/locations' ? json([{ id: 'l1', name: 'Garage', notes: null, sequence: 0 }]) : undefined))
@@ -324,7 +397,8 @@ describe('PanelPage', () => {
     renderPage()
 
     expect(await screen.findByText('4 rows of 18 modules')).toBeInTheDocument()
-    expect(screen.queryByText(/Garage/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Garage ·/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Location')).toHaveValue('')
   })
 
   it('says when a circuit has been saved, and keeps saying it for a screen reader', async () => {

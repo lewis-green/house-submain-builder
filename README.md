@@ -115,7 +115,7 @@ jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
 terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
 a generated parts list. The rack cabinets, the 24-port patch panel and
 the USW-Pro-Max-16-PoE's rack-mount kit carry ASSUMED part numbers, and the
-three switches' port splits and PoE budgets come from retailer listings rather
+three USW-Pro-Max switches' port splits and PoE budgets come from retailer listings rather
 than Ubiquiti's datasheets.
 
 The parts list carries **no prices**. It lists each part by part number,

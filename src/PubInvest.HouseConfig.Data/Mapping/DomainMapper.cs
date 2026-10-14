@@ -28,7 +28,7 @@ public static class DomainMapper
 
     public static Circuit ToDomain(CircuitRow row) => new(
         row.Id, Enum.Parse<CircuitType>(row.Type), row.Name, row.Room, row.Sequence,
-        row.WattsPerMetre, row.LengthMetres);
+        row.WattsPerMetre, row.LengthMetres, row.TerminalPosition, row.TerminalCount);
 
     public static RuleSetPayload ToDomain(RuleSetRow row)
         => JsonSerializer.Deserialize<RuleSetPayload>(row.PayloadJson, Json)

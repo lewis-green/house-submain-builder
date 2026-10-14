@@ -23,15 +23,22 @@ bridged together (say 6 cables landing for one dimmer channel).
 - **Terminal count is per circuit.** It replaces the ruleset's global
   `BlocksPerCircuit`. A circuit with more than one terminal has its line tier
   bridged with a cut-to-length jumper bar.
-- **Reorder is in place, count is a regenerate.** Reordering only relabels.
-  Changing a count adds or removes terminals, which changes geometry.
+- **One save, always a rebuild.** Order and counts are saved together and
+  the panel is rebuilt in the same transaction, the way install options are.
+  Every terminal is the same width, so a reorder alone gives the same
+  geometry. There is no separate in-place relabel path.
+- **The terminal-to-circuit link is a field on the device, not a channel.**
+  A terminal channel carrying a circuit id would trip the "already wired to
+  another channel" check on channel edits, and would hide real orphans from
+  `OrphanReporter`.
 
 ## 1. Data
 
 - `CircuitRow.TerminalPosition` (`int?`), with a migration. Null means "use
   `Sequence`", so existing projects keep their current order.
-- Domain `Circuit` gains `int? TerminalPosition`. Effective terminal order is
-  `TerminalPosition ?? Sequence`, ties broken by `Sequence`.
+- Domain `Circuit` gains `int? TerminalPosition`. Terminal order puts the
+  circuits that have a position first, in position order, then the rest in
+  `Sequence` order. With no positions at all this is today's order.
 - `CircuitRow.TerminalCount` (`int`, default 1, valid range 1–12), in the
   same migration. Existing rows get 1. Domain `Circuit` and `CircuitInput` /
   `CircuitSnapshot` gain it too. In snapshots it is nullable, read as 1.
@@ -42,11 +49,9 @@ bridged together (say 6 cables landing for one dimmer channel).
   count is 1, or `C{n}.1`…`C{n}.{k}` otherwise, where `n` is the 1-based
   circuit position. So circuits keep consecutive numbers whatever their
   counts.
-- Each terminal `RequiredDevice` carries one channel (index 0) with the
-  circuit's id, so the persisted `DeviceInstance` links terminal to circuit.
-  Terminals have `channelCount: 0` in the catalogue. This channel is a link,
-  not a Shelly output. It must not show as a spare channel, and it must not
-  count towards capacity, the BOM or orphan reporting.
+- `RequiredDevice`, `PlacedDevice`, `DeviceInstance` and
+  `PlacedDeviceResponse` gain a nullable `CircuitId`, set only on terminals.
+  Terminals keep no channels.
 - `CircuitSnapshot` in revisions gains `TerminalPosition` and
   `TerminalCount`. Both are nullable, so old snapshots still deserialize.
 
@@ -61,45 +66,33 @@ bridged together (say 6 cables landing for one dimmer channel).
   circuits, so it over-orders slightly rather than under-ordering.
 - `TerminalBand.Accessories` carries the line bars next to the neutral bars
   and end stops. The neutral bar count still uses the total number of blocks.
-- `SubmainEndpoints.ApplyCircuits` keeps `TerminalPosition` on circuits that
-  survive an edit. New circuits get null, which puts them at the end in
-  `Sequence` order.
+- `SubmainEndpoints.ApplyCircuits` keeps `TerminalPosition` and
+  `TerminalCount` on circuits that survive an edit. New circuits get null and
+  1, which puts them at the end in `Sequence` order.
+- When a generate or preview request carries its own circuit list, circuits
+  whose id matches a stored circuit take that circuit's `TerminalPosition`
+  and `TerminalCount`.
 
-## 2. Reorder endpoint
+## 2. Endpoints
 
-`PUT /submains/{id}/terminal-order`, body `{ "circuitIds": [guid, …] }`.
+`GET /submains/{id}/terminals` returns
+`{ layoutVersion, circuits: [{ circuitId, name, room, type, terminalCount }] }`
+in terminal order. It returns 404 for an unknown submain.
+
+`PUT /submains/{id}/terminals`, body
+`{ "layoutVersion": n, "circuits": [{ "circuitId": guid, "terminalCount": k }, …] }`,
+in the new terminal order.
 
 - 404 if the submain is unknown.
-- 400 (validation problem on `circuitIds`) unless the list holds every circuit
-  of the submain exactly once.
-- Sets `TerminalPosition = index + 1` on each circuit.
-- If the submain has a generated layout, it relabels in place. It takes the
-  terminal devices (`Category == Terminal240`) sorted by row, then slot, and
-  walks them in step with the new order, `TerminalCount` blocks per
-  circuit. For
-  each terminal it rewrites `Label` and the channel's `CircuitId`. No
-  geometry changes, so `LayoutVersion` is neither checked nor bumped,
-  matching circuit rename.
-- If the number of terminals on the panel doesn't match the sum of
-  `TerminalCount` (a stale layout), it saves the order and skips the relabel. The response
-  says `relabelled: false`, so the UI can tell the user to regenerate.
-- Returns `{ relabelled, terminals: [{ circuitId, label }] }`.
-
-## 2b. Terminal count endpoint
-
-Changing counts changes geometry, so it goes through regenerate.
-
-`PUT /submains/{id}/terminal-counts`, body
-`{ "layoutVersion": n, "counts": [{ "circuitId": guid, "terminalCount": k }] }`.
-
-- 400 if a count is outside 1–12 or an id is not one of the submain's
-  circuits. Circuits left out keep their count.
-- 409 on a stale `layoutVersion`, the same as the other layout edits.
-- Saves the counts, then runs the same generate as `DesignService.GenerateAsync`.
-  That covers the atomic save, position overrides, orphan reporting and the
-  version bump. It returns the normal design response, including diagnostics
-  such as the rail being full.
-- If generation has errors, nothing is saved, the same as generate today.
+- 409 `ConflictResponse` on a stale `layoutVersion`.
+- 400 (validation problem on `circuits`) unless the list holds every circuit
+  of the submain exactly once, and every `terminalCount` is 1–12.
+- In one transaction, it sets `TerminalPosition = index + 1` and
+  `TerminalCount`, then runs `DesignService.GenerateAsync`. That covers
+  position overrides, orphan reporting and the version bump. If generation
+  refuses (a 422 with diagnostics, e.g. the rail is full), the transaction
+  rolls back and nothing is saved, the same as an install-option rebuild.
+- On success it returns the same body as the GET.
 
 ## 3. UI
 
@@ -107,9 +100,9 @@ Changing counts changes geometry, so it goes through regenerate.
 - The run stays one block, with a thin divider line between terminals.
 - A circuit with several terminals gets a bar drawn along the top edge of its
   blocks, so the bridged group reads as one circuit.
-- When a terminal's drawn width fits the rotated label (zoom-dependent), each
-  terminal shows its own `C#` on its side, and the run label is dropped.
-  Otherwise the run keeps its `C1–C44` label.
+- Each terminal shows its own label on its side, at 12px. That fits the 18px
+  terminal at every zoom, because labels scale with the drawing. The run's
+  `C1–C44` stays as its accessible name.
 - The run becomes a button (`aria-label="Terminals C1–C44, change order"`)
   that opens the terminal sheet. This replaces today's `role="img"`.
 
@@ -119,14 +112,11 @@ Changing counts changes geometry, so it goes through regenerate.
   shows the range: `C3.1–C3.6`.
 - Up and down buttons on each row, at least 44px, disabled at the ends. Labels
   renumber live as rows move.
-- Save calls the reorder endpoint when only the order changed. It calls the
-  counts endpoint (then the reorder endpoint, if the order also changed) when
-  any count changed. Then it refreshes the design. A 409 shows the usual
-  "panel changed, reload" message. Cancel throws the changes
+- Save sends one `PUT`, then reloads the panel. A 409 shows the usual "panel
+  changed elsewhere — reloading" message. A 422 keeps the sheet open, shows
+  the generator's reason and saves nothing. Cancel throws the changes
   away. Save is disabled until something changes. Uses `useSingleFlight` as
   the other sheets do.
-- If `relabelled: false`, it shows a note: "Order saved. Regenerate the
-  panel to apply it."
 
 ## 4. PDF
 
@@ -135,8 +125,7 @@ Changing counts changes geometry, so it goes through regenerate.
   `CircuitId`), and is blank for spare channels. A bridged circuit shows its
   range, `C3.1–C3.6`.
 - `PanelSvgRenderer` draws the same dividers between terminals in a run, and
-  the per-terminal rotated `C#` when it fits at PDF scale, plus the bar over
-  each bridged group.
+  the per-terminal rotated label, plus the bar over each bridged group.
 
 ## 5. Tests
 
@@ -144,20 +133,18 @@ Changing counts changes geometry, so it goes through regenerate.
   to `Sequence`, mixes the two (positioned first, the rest after), labels
   `C3.1`…`C3.6` for a count of 6 with the next circuit still `C4`, adds
   `ceil(N/ways)` line bars per bridged circuit (6 → 1, 12 → 2 at 10-way, none
-  for count 1), and gives each terminal a channel
-  with its circuit id. Shelly channel assignment is unchanged when only
+  for count 1), and sets each terminal's `CircuitId`. Shelly channel assignment is unchanged when only
   `TerminalPosition` changes.
-- **API:** reorder relabels in place. Device ids, positions and
-  `LayoutVersion` stay the same, and Shelly channels stay the same. It
-  rejects missing, duplicate or foreign ids, saves without relabelling on a
-  stale layout, keeps the order across regenerate, and keeps it across a
-  circuit edit. The counts endpoint regenerates with the extra terminals and
-  line bars in the BOM, returns 409 on a stale version, rejects counts outside
-  1–12, and saves nothing when generation fails. The PDF schedule shows the
-  Terminal column, with ranges for bridged circuits.
+- **API:** GET lists circuits in terminal order. PUT reorders, so the
+  terminal labels follow the new order and the Shelly channels don't change.
+  It adds blocks and a line bar for a count of 6, returns 409 on a stale
+  version, rejects missing, duplicate or foreign ids and counts outside 1–12,
+  and saves nothing when generation refuses. The order survives a circuit
+  edit and a rebuild. The stored layout and generate both report terminal
+  `circuitId`. The PDF schedule shows the Terminal column, with ranges for
+  bridged circuits.
 - **UI unit:** the sheet moves rows, renumbers, disables the end buttons,
-  sends the right id list, and calls the counts endpoint only when a count
-  changed.
+  and sends the circuits in their new order with their counts.
 - **E2E:** open the panel, open the terminal sheet, move one circuit up,
   save, and see the new order in the sheet after a reload. Then set a
   circuit to 3 cables, save, and see `C{n}.1–C{n}.3` in the sheet.

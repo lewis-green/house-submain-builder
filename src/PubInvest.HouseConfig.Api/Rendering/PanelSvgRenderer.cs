@@ -116,11 +116,45 @@ public static class PanelSvgRenderer
                .Append(CultureInfo.InvariantCulture,
                    $"fill=\"{style.Fill}\" stroke=\"{style.Stroke}\" stroke-width=\"0.3\"/>");
 
-            svg.Append(CultureInfo.InvariantCulture,
-                $"<text x=\"{N(x + w / 2)}\" y=\"{N(y + h / 2)}\" text-anchor=\"middle\" ")
-               .Append("dominant-baseline=\"middle\" font-size=\"3\" fill=\"#1e293b\">")
-               .Append(SecurityElement.Escape(group.Label))
-               .Append("</text>");
+            // Each terminal on its own: a divider between neighbours, and its
+            // label on its side, as the screen draws it.
+            foreach (var (member, i) in group.Members.Select((m, i) => (m, i)))
+            {
+                var mx = PanelGeometry.SlotToX(member.StartSlot);
+                var mw = PanelGeometry.SlotToX(member.ModuleWidth);
+
+                if (i > 0)
+                {
+                    svg.Append(CultureInfo.InvariantCulture,
+                        $"<line x1=\"{N(mx)}\" y1=\"{N(y)}\" x2=\"{N(mx)}\" y2=\"{N(y + h)}\" ")
+                       .Append("stroke=\"#94a3b8\" stroke-width=\"0.2\"/>");
+                }
+
+                var cx = mx + mw / 2;
+                var cy = y + h - 2;
+                svg.Append(CultureInfo.InvariantCulture,
+                    $"<text x=\"{N(cx)}\" y=\"{N(cy)}\" transform=\"rotate(-90 {N(cx)} {N(cy)})\" ")
+                   .Append("dominant-baseline=\"middle\" font-size=\"2.6\" fill=\"#1e293b\">")
+                   .Append(SecurityElement.Escape(member.Label))
+                   .Append("</text>");
+            }
+
+            // A bar along the top of each circuit bridged across several blocks.
+            foreach (var bridged in group.Members
+                         .Where(m => m.CircuitId is not null)
+                         .GroupBy(m => m.CircuitId)
+                         .Where(g => g.Count() > 1))
+            {
+                var first = bridged.First();
+                var last = bridged.Last();
+                var bx = PanelGeometry.SlotToX(first.StartSlot) + 0.6;
+                var bw = PanelGeometry.SlotToX(last.EndSlotExclusive) - PanelGeometry.SlotToX(first.StartSlot) - 1.2;
+
+                svg.Append(CultureInfo.InvariantCulture,
+                    $"<rect data-bridge=\"{SecurityElement.Escape($"{first.Label}–{last.Label}")}\" ")
+                   .Append(CultureInfo.InvariantCulture,
+                       $"x=\"{N(bx)}\" y=\"{N(y + 1)}\" width=\"{N(bw)}\" height=\"1.2\" rx=\"0.4\" fill=\"#475569\"/>");
+            }
         }
     }
 
@@ -183,7 +217,7 @@ public static class PanelSvgRenderer
         }
     }
 
-    private sealed record Group(int RowIndex, int StartSlot, int Slots, string Label, TerminalRole Role);
+    private sealed record Group(int RowIndex, int StartSlot, int Slots, TerminalRole Role, List<PlacedDevice> Members);
 
     private static List<Group> GroupTerminals(PanelLayout layout)
     {
@@ -200,16 +234,15 @@ public static class PanelSvgRenderer
                 && last.StartSlot + last.Slots == device.StartSlot
                 && last.Role == device.TerminalRole)
             {
-                var first = last.Label.Split('–')[0];
                 groups[^1] = last with
                 {
                     Slots = last.Slots + device.ModuleWidth,
-                    Label = $"{first}–{device.Label}",
+                    Members = [.. last.Members, device],
                 };
             }
             else
             {
-                groups.Add(new Group(device.RowIndex, device.StartSlot, device.ModuleWidth, device.Label, device.TerminalRole));
+                groups.Add(new Group(device.RowIndex, device.StartSlot, device.ModuleWidth, device.TerminalRole, [device]));
             }
         }
 

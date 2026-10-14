@@ -158,6 +158,28 @@ public class PanelDocumentTests
     }
 
     [Fact]
+    public void The_schedule_says_which_terminal_each_circuit_lands_on()
+    {
+        var terminalType = Guid.NewGuid();
+        var snapshot = Snapshot(
+        [
+            new(terminalType, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All, CircuitB),
+            new(terminalType, DeviceCategory.Terminal240, 0, 1, 1, "C2.1", [], TerminalRole.All, CircuitA),
+            new(terminalType, DeviceCategory.Terminal240, 0, 2, 1, "C2.2", [], TerminalRole.All, CircuitA),
+            new(DimmerType, DeviceCategory.Dimmer240, 1, 0, 3, "Dimmer 1",
+                [new ChannelAssignment(0, CircuitA, false), new ChannelAssignment(1, null, true)], TerminalRole.None),
+            new(RelayType, DeviceCategory.Relay, 2, 0, 9, "Relay 1",
+                [new ChannelAssignment(0, CircuitB, false)], TerminalRole.None),
+        ]);
+
+        var text = PdfText(new PanelDocument(snapshot, DateTimeOffset.UnixEpoch, "tester").GeneratePdf());
+
+        Assert.Contains("Terminal", text);
+        Assert.Contains("C2.1–C2.2", text);
+        Assert.Contains("C1", text);
+    }
+
+    [Fact]
     public void The_schedule_and_legend_use_words_not_enum_names()
     {
         var text = PdfText(Document().GeneratePdf());

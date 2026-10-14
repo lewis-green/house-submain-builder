@@ -21,6 +21,7 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<Rack> Racks => Set<Rack>();
     public DbSet<RackItem> RackItems => Set<RackItem>();
     public DbSet<RackPort> RackPorts => Set<RackPort>();
+    public DbSet<RackRevision> RackRevisions => Set<RackRevision>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -83,6 +84,10 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
             .HasForeignKey(p => p.RackItemId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<RackPort>().HasKey(p => new { p.RackItemId, p.Number });
+
+        b.Entity<Rack>().HasMany<RackRevision>().WithOne()
+            .HasForeignKey(r => r.RackId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<RackRevision>().HasIndex(r => r.RackId);
         b.Entity<RuleSetRow>().HasIndex(r => new { r.Name, r.Version }).IsUnique();
         b.Entity<PanelRevision>().HasIndex(r => new { r.SubmainId, r.LayoutVersion });
 

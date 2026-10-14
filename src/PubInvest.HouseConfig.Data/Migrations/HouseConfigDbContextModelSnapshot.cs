@@ -456,6 +456,36 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.ToTable("RackPorts");
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("LayoutVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RackId");
+
+                    b.ToTable("RackRevisions");
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackTypeRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -651,6 +681,15 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.RackItem", null)
                         .WithMany("Ports")
                         .HasForeignKey("RackItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackRevision", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Rack", null)
+                        .WithMany()
+                        .HasForeignKey("RackId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

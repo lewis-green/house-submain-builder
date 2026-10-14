@@ -26,6 +26,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<PubInvest.HouseConfig.Api.Services.DesignService>();
 builder.Services.AddScoped<PubInvest.HouseConfig.Api.Revisions.RevisionService>();
+builder.Services.AddScoped<PubInvest.HouseConfig.Api.Racks.RackRevisionService>();
 builder.Services.AddHealthChecks().AddDbContextCheck<HouseConfigDbContext>();
 builder.Services.AddOpenApi();
 
@@ -66,6 +67,7 @@ app.MapRevisionEndpoints();
 app.MapExportEndpoints();
 app.MapRackEndpoints();
 app.MapRackItemEndpoints();
+app.MapRackRevisionEndpoints();
 app.MapCatalogueAdminEndpoints(authEnabled);
 
 if (builder.Configuration.GetValue("HouseConfig:SeedOnStartup", false))

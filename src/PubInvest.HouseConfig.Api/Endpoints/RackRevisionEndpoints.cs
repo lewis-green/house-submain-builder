@@ -1,0 +1,77 @@
+using PubInvest.HouseConfig.Api.Documents;
+using PubInvest.HouseConfig.Api.Racks;
+
+namespace PubInvest.HouseConfig.Api.Endpoints;
+
+public static class RackRevisionEndpoints
+{
+    public static IEndpointRouteBuilder MapRackRevisionEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/racks/{id:guid}/revisions", async (
+                Guid id,
+                RackRevisionService revisions,
+                HttpContext http,
+                CancellationToken ct) =>
+            {
+                var (revision, error) = await revisions.IssueAsync(id, http.User.Identity?.Name ?? "anonymous", ct);
+
+                if (error is not null)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["revision"] = [error] });
+                }
+
+                if (revision is null) return Results.NotFound();
+
+                // Just issued from the rack as it is, so current by definition.
+                return Results.Created($"/rack-revisions/{revision.Id}", new
+                {
+                    revision.Id,
+                    revision.RackId,
+                    Number = await revisions.NumberOfAsync(revision, ct),
+                    revision.LayoutVersion,
+                    revision.IssuedAt,
+                    revision.IssuedBy,
+                    Current = true,
+                });
+            })
+            .WithTags("Rack revisions");
+
+        app.MapGet("/racks/{id:guid}/revisions", async (
+                Guid id,
+                RackRevisionService revisions,
+                CancellationToken ct) =>
+            {
+                var isCurrent = await revisions.CurrentCheckAsync(id, ct);
+                var list = await revisions.ListAsync(id, ct);
+                return list.Select((r, i) => new
+                {
+                    r.Id, r.RackId, Number = list.Count - i, r.LayoutVersion, r.IssuedAt, r.IssuedBy, Current = isCurrent(r),
+                });
+            })
+            .WithTags("Rack revisions");
+
+        app.MapGet("/racks/{id:guid}/bom", async (Guid id, RackRevisionService revisions, CancellationToken ct) =>
+            {
+                var revision = await revisions.LatestAsync(id, ct);
+                return revision is null
+                    ? Results.NotFound()
+                    : Results.Ok(ExportEndpoints.Describe(RackRevisionService.Read(revision).Bom));
+            })
+            .WithTags("Rack revisions");
+
+        app.MapGet("/racks/{id:guid}/bom.csv", async (Guid id, RackRevisionService revisions, CancellationToken ct) =>
+            {
+                var revision = await revisions.LatestAsync(id, ct);
+                if (revision is null) return Results.NotFound();
+
+                var snapshot = RackRevisionService.Read(revision);
+                var csv = BomCsv.Write(snapshot.Bom, $"{snapshot.ProjectName} — {snapshot.RackName}");
+                return Results.File(
+                    System.Text.Encoding.UTF8.GetBytes(csv), "text/csv",
+                    $"{ExportEndpoints.Slug(snapshot.RackName)}-bom.csv");
+            })
+            .WithTags("Rack revisions");
+
+        return app;
+    }
+}

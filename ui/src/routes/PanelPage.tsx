@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  DesignResponse, DeviceTypeResponse, ExtraFixture, SubmainResponse,
+  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button, ButtonLink } from '../components/Button'
@@ -79,6 +79,14 @@ export function PanelPage() {
 
   useEffect(() => { void load() }, [load])
   useEffect(() => { void loadCatalogue() }, [loadCatalogue])
+
+  // The racks this submain feeds, a link each. A failure costs the line, not the panel.
+  const [feeds, setFeeds] = useState<FedRack[]>([])
+  useEffect(() => {
+    api.get<FedRack[]>(`/submains/${submainId}/racks`)
+      .then(list => setFeeds(Array.isArray(list) ? list : []))
+      .catch(() => setFeeds([]))
+  }, [submainId])
 
   const toPanelPoint = useCallback((clientX: number, clientY: number) => {
     const box = svgWrapper.current?.getBoundingClientRect()
@@ -235,7 +243,7 @@ export function PanelPage() {
         </Link>
       ) : undefined}
       actions={design && !empty && submainId
-        ? <IssueButton submainId={submainId} layoutVersion={design.layoutVersion} syncKey={loads} />
+        ? <IssueButton kind="submain" ownerId={submainId} layoutVersion={design.layoutVersion} syncKey={loads} />
         : undefined}
     >
       {loadError && <ErrorNote message={loadError} onRetry={() => { setLoadError(null); void load() }} />}
@@ -254,6 +262,20 @@ export function PanelPage() {
 
       {design && !empty && (
         <>
+          {feeds.length > 0 && (
+            <p className="mb-3 text-ink-2">
+              Feeds:{' '}
+              {feeds.map((rack, i) => (
+                <Fragment key={rack.id}>
+                  {i > 0 && ', '}
+                  <Link to={`/racks/${rack.id}`} className="inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-2">
+                    {rack.name}
+                  </Link>
+                </Fragment>
+              ))}
+            </p>
+          )}
+
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {/* Never zooms in: after a Fit below ZOOM_MIN, "−" holds rather than jumps up. */}

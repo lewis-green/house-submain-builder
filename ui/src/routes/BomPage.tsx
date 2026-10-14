@@ -10,9 +10,10 @@ import { ErrorNote } from '../components/ErrorNote'
 import { Skeleton } from '../components/Skeleton'
 
 export function BomPage() {
-  const { projectId, submainId } = useParams()
-  const scope = submainId ? `/submains/${submainId}` : `/projects/${projectId}`
-  const backTo = submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
+  const { projectId, submainId, rackId } = useParams()
+  const scope = rackId ? `/racks/${rackId}` : submainId ? `/submains/${submainId}` : `/projects/${projectId}`
+  const backTo = rackId ? `/racks/${rackId}` : submainId ? `/submains/${submainId}/panel` : `/projects/${projectId}`
+  const owner = rackId ? 'rack' : submainId ? 'panel' : null
 
   const [bom, setBom] = useState<BomView | null>(null)
   const [notIssued, setNotIssued] = useState(false)
@@ -29,8 +30,8 @@ export function BomPage() {
   return (
     <AppShell
       title="Bill of materials"
-      subtitle={submainId ? 'For this submain' : 'For the whole house, from each issued PDF'}
-      back={{ to: backTo, label: submainId ? 'Panel' : 'House' }}
+      subtitle={owner === 'rack' ? 'For this rack' : owner === 'panel' ? 'For this submain' : 'For the whole house, from each issued PDF'}
+      back={{ to: backTo, label: owner === 'rack' ? 'Rack' : owner === 'panel' ? 'Panel' : 'House' }}
       actions={bom && bom.lines.length > 0 ? (
         <a href={`/api${scope}/bom.csv`} className={buttonClass('primary')}>Download CSV</a>
       ) : undefined}
@@ -42,12 +43,12 @@ export function BomPage() {
         <EmptyState
           title="Nothing has been issued yet"
           hint="A bill of materials comes from an issued PDF revision, so it lists what was actually drawn."
-          action={<ButtonLink to={backTo} variant="primary">{submainId ? 'Go to the panel' : 'Back to the house'}</ButtonLink>}
+          action={<ButtonLink to={backTo} variant="primary">{owner ? `Go to the ${owner}` : 'Back to the house'}</ButtonLink>}
         />
       )}
 
       {bom && bom.lines.length === 0 && (
-        <EmptyState title="Nothing to order" hint="The issued panel has no parts in it." />
+        <EmptyState title="Nothing to order" hint={`The issued ${owner ?? 'drawings have'} no parts in ${owner ? 'it' : 'them'}.`} />
       )}
 
       {bom && bom.lines.length > 0 && (

@@ -8,20 +8,36 @@ import { announce } from '../components/status'
 import { useSingleFlight } from '../components/useSingleFlight'
 
 interface Props {
-  submainId: string
+  kind: 'submain' | 'rack'
+  /** The submain's or the rack's id. */
+  ownerId: string
   /** The layout as drawn right now; a change here means the list is asked again. */
   layoutVersion: number
   /**
-   * Bumped by the panel after every save that could change what the PDF
-   * prints — a circuit name, a room, a freed channel, a rebuild. Positions bump
-   * layoutVersion; these do not, so without it a renamed circuit would leave
-   * the old PDF offered as current.
+   * Bumped after every save that could change what the PDF prints but does
+   * not move anything — a circuit name, a room, a port label. Positions bump
+   * layoutVersion; these do not, so without it an edit would leave the old
+   * PDF offered as current.
    */
   syncKey?: number
 }
 
+/** Panels and racks issue the same way, from different addresses. */
+const routes = {
+  submain: {
+    revisions: (id: string) => `/submains/${id}/revisions`,
+    pdf: (revisionId: string) => `/api/revisions/${revisionId}/export/pdf`,
+    changed: 'The panel has changed since that PDF was issued.',
+  },
+  rack: {
+    revisions: (id: string) => `/racks/${id}/revisions`,
+    pdf: (revisionId: string) => `/api/rack-revisions/${revisionId}/export/pdf`,
+    changed: 'The rack has changed since that PDF was issued.',
+  },
+} as const
+
 /**
- * Issues a revision, then offers its PDF as a plain link. The PDF always
+ * Issues a panel or rack revision, then offers its PDF as a plain link. The PDF always
  * renders from what was issued. It is a link and not a window.open after the
  * request: iOS Safari only honours window.open inside the tap itself, and
  * blocks it silently once a network round-trip has passed — which issued the
@@ -34,7 +50,8 @@ interface Props {
  * schedule would show. The server also numbers the revisions, so "revision 3"
  * means the same thing here, in the status line and on the paper.
  */
-export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
+export function IssueButton({ kind, ownerId, layoutVersion, syncKey = 0 }: Props) {
+  const route = routes[kind]
   const [busy, setBusy] = useState(false)
   const once = useSingleFlight()
   // null until the server has answered once: not knowing what is issued is
@@ -45,7 +62,7 @@ export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    api.get<RevisionView[]>(`/submains/${submainId}/revisions`)
+    api.get<RevisionView[]>(route.revisions(ownerId))
       .then(list => {
         if (cancelled) return
         setRevisions(Array.isArray(list) ? list : [])
@@ -54,7 +71,7 @@ export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
       // The last good list stays on offer; what is lost is knowing whether it is still current.
       .catch((e: ApiError) => { if (!cancelled) setListError(e.message) })
     return () => { cancelled = true }
-  }, [submainId, layoutVersion, syncKey, attempt])
+  }, [route, ownerId, layoutVersion, syncKey, attempt])
 
   const latest = (revisions ?? []).reduce<RevisionView | null>(
     (best, r) => (!best || r.number > best.number ? r : best), null)
@@ -64,7 +81,7 @@ export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
   const issue = () => once(async () => {
     setBusy(true)
     try {
-      const revision = await api.post<RevisionView>(`/submains/${submainId}/revisions`)
+      const revision = await api.post<RevisionView>(route.revisions(ownerId))
       // Issued from the submain as it stands, so current — whatever the list said before.
       setRevisions(list => [...(list ?? []).map(r => ({ ...r, current: false })), { ...revision, current: true }])
       setListError(null)
@@ -97,7 +114,7 @@ export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
       {/* One row, however narrow the phone: the pair share it and wrap their own words. */}
       <div className="grid w-full grid-cols-2 gap-3">
         <a
-          href={`/api/revisions/${latest.id}/export/pdf`}
+          href={route.pdf(latest.id)}
           target="_blank"
           rel="noopener"
           className={buttonClass(stale ? 'secondary' : 'primary', 'text-center')}
@@ -110,7 +127,7 @@ export function IssueButton({ submainId, layoutVersion, syncKey = 0 }: Props) {
       </div>
       {listError
         ? <ErrorNote compact message={`Could not check whether that PDF is still current: ${listError}`} onRetry={retry} />
-        : stale && <p className="w-full text-sm text-ink-2">The panel has changed since that PDF was issued.</p>}
+        : stale && <p className="w-full text-sm text-ink-2">{route.changed}</p>}
     </>
   )
 }

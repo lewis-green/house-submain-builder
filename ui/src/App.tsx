@@ -7,6 +7,7 @@ import { NotFoundPage } from './routes/NotFoundPage'
 import { PanelPage } from './routes/PanelPage'
 import { ProjectPage } from './routes/ProjectPage'
 import { ProjectsPage } from './routes/ProjectsPage'
+import { RackPage } from './routes/RackPage'
 
 export function App() {
   return (
@@ -19,6 +20,8 @@ export function App() {
       <Route path="/projects/:projectId/racks/new" element={<NewRackPage />} />
       <Route path="/submains/:submainId/panel" element={<PanelPage />} />
       <Route path="/submains/:submainId/bom" element={<BomPage />} />
+      <Route path="/racks/:rackId" element={<RackPage />} />
+      <Route path="/racks/:rackId/bom" element={<BomPage />} />
       {/* Without this an unknown address renders nothing at all, which reads as
           a broken app rather than a wrong link. */}
       <Route path="*" element={<NotFoundPage />} />

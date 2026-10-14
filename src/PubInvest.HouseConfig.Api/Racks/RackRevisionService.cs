@@ -128,7 +128,10 @@ public sealed class RackRevisionService(HouseConfigDbContext db)
                     i.Ports.OrderBy(p => p.Number).Select(p => new RackPortSnapshot(p.Number, p.Label, p.Poe)).ToList()))
                 .ToList(),
             used,
-            RackBom.Build(cabinet, placed, catalogue));
+            RackBom.Build(cabinet, placed, catalogue),
+            rack.LocationId is { } locationId
+                ? await db.Locations.Where(l => l.Id == locationId).Select(l => l.Name).SingleOrDefaultAsync(ct)
+                : null);
 
         return (snapshot, rack, null);
     }

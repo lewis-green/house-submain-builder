@@ -98,6 +98,24 @@ public class PanelDocumentTests
     }
 
     [Fact]
+    public void The_header_says_where_in_the_house_the_panel_is()
+    {
+        var snapshot = Snapshot() with { LocationName = "Plant room" };
+
+        var text = PdfText(new PanelDocument(snapshot, DateTimeOffset.UnixEpoch, "tester").GeneratePdf());
+
+        Assert.Contains("Ground Floor West  ·  Plant room", text);
+    }
+
+    [Fact]
+    public void An_unplaced_panel_has_nothing_after_its_name()
+    {
+        var text = PdfText(Document().GeneratePdf());
+
+        Assert.DoesNotContain("Ground Floor West  ·", text);
+    }
+
+    [Fact]
     public void The_schedule_names_every_assigned_circuit()
     {
         var text = PdfText(Document().GeneratePdf());

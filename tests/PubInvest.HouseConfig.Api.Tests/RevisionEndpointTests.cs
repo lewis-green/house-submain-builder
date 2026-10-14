@@ -10,6 +10,7 @@ public class RevisionEndpointTests(HouseConfigApiFactory factory)
 {
     private record ProjectDto(Guid Id);
     private record SubmainDto(Guid Id);
+    private record SubmainDetailsDto(Guid ProjectId, string Name, Guid? EnclosureTypeId, Guid? RuleSetId);
     private record DesignDto(int LayoutVersion);
     private record RevisionDto(Guid Id, Guid SubmainId, int Number, int LayoutVersion, DateTimeOffset IssuedAt, string IssuedBy, bool Current);
     private record RevisionDetailDto(Guid Id, int Number, int LayoutVersion, bool Current, string SnapshotJson);
@@ -325,6 +326,51 @@ public class RevisionEndpointTests(HouseConfigApiFactory factory)
         }
 
         Assert.True((await Listed(client, submainId, revision.Id)).Current);
+    }
+
+    /// And for revisions issued before panels had a location: they were
+    /// unplaced, and an unplaced panel issued now says the same.
+    [Fact]
+    public async Task A_revision_issued_before_locations_were_recorded_is_still_current()
+    {
+        var client = factory.CreateClient();
+        var (submainId, _) = await Generated(client, ThreeDimmed);
+        var revision = await Issue(client, submainId);
+
+        await using (var db = factory.NewDbContext())
+        {
+            var stored = await db.PanelRevisions.SingleAsync(r => r.Id == revision.Id);
+            Assert.Contains("\"locationName\":null", stored.SnapshotJson);
+            stored.SnapshotJson = stored.SnapshotJson.Replace(",\"locationName\":null", "");
+            Assert.DoesNotContain("locationName", stored.SnapshotJson);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True((await Listed(client, submainId, revision.Id)).Current);
+    }
+
+    /// The location is printed in the header, so placing the panel dates the
+    /// drawing issued before it, and the next one says where the panel is.
+    [Fact]
+    public async Task Placing_a_panel_dates_its_revision_and_the_next_pdf_says_where_it_is()
+    {
+        var client = factory.CreateClient();
+        var (submainId, _) = await Generated(client, ThreeDimmed);
+        var before = await Issue(client, submainId);
+        var submain = await client.GetFromJsonAsync<SubmainDetailsDto>($"/submains/{submainId}");
+        var location = await (await client.PostAsJsonAsync($"/projects/{submain!.ProjectId}/locations", new { name = "Plant room" }))
+            .Content.ReadFromJsonAsync<SubmainDto>();
+
+        await client.PatchAsJsonAsync($"/submains/{submainId}", new
+        {
+            name = submain.Name, enclosureTypeId = submain.EnclosureTypeId, ruleSetId = submain.RuleSetId,
+            locationId = location!.Id,
+        });
+
+        Assert.False((await Listed(client, submainId, before.Id)).Current);
+        var after = await Issue(client, submainId);
+        var text = PdfText(await client.GetByteArrayAsync($"/revisions/{after.Id}/export/pdf"));
+        Assert.Contains("Issued submain  ·  Plant room", text);
     }
 
     [Fact]

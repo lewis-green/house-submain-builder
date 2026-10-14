@@ -14,7 +14,10 @@ public sealed record RackSnapshot(
     IReadOnlyList<RackItemSnapshot> Items,
     /// The item types placed and the accessories they need, as they were.
     IReadOnlyList<RackDeviceType> Catalogue,
-    BillOfMaterials Bom);
+    BillOfMaterials Bom,
+    /// Where in the house the rack is, or null when it is not placed — as every
+    /// rack issued before locations existed was, so those still compare equal.
+    string? LocationName = null);
 
 public sealed record RackItemSnapshot(
     Guid RackDeviceTypeId,

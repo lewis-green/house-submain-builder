@@ -50,6 +50,11 @@ public sealed class PanelDocument(
             {
                 text.Span($"{snapshot.ProjectName} — ").SemiBold().FontSize(13);
                 text.Span(snapshot.SubmainName).FontSize(13);
+
+                if (snapshot.LocationName is not null)
+                {
+                    text.Span($"  ·  {snapshot.LocationName}").FontSize(13);
+                }
             });
 
             column.Item().Text(text =>

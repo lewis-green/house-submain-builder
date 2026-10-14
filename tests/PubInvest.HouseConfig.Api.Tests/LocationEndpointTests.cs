@@ -63,8 +63,8 @@ public class LocationEndpointTests(HouseConfigApiFactory factory)
         await AddLocation(client, projectId, "Attic");
 
         Assert.Equal("Plant room", plant.Name);
-        var listed = await client.GetFromJsonAsync<LocationDto[]>($"/projects/{projectId}/locations");
-        Assert.Equal(["Plant room", "Garage", "Attic"], listed!.Select(l => l.Name).ToArray());
+        var listed = (await client.GetFromJsonAsync<LocationDto[]>($"/projects/{projectId}/locations"))!;
+        Assert.Equal(["Plant room", "Garage", "Attic"], listed.Select(l => l.Name).ToArray());
         Assert.Equal(listed.Select(l => l.Sequence).Order().ToArray(), listed.Select(l => l.Sequence).ToArray());
     }
 

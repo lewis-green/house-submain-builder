@@ -28,7 +28,11 @@ public sealed record RevisionSnapshot(
     /// the panel was never rebuilt for it. Defaulted, so revisions issued before
     /// they were recorded still read.
     bool HasIsolator = true,
-    bool TerminalsAtBottom = false);
+    bool TerminalsAtBottom = false,
+    /// Where in the house the panel is, printed in the header. Null when it is
+    /// not placed — which every revision issued before locations existed was,
+    /// so the default lets those read and still compare equal.
+    string? LocationName = null);
 
 /// Revisions issued before terminal places existed read as unplaced circuits
 /// on one terminal each, which is what they were. TerminalCount is therefore

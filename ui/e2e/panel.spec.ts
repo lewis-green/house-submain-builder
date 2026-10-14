@@ -437,7 +437,8 @@ test('a built panel can be edited: one more dimmed circuit, saved and rebuilt, k
   await save.tap()
 
   await expect(page).toHaveURL(new RegExp(`/submains/${submainId}/panel$`))
-  await expect(page.getByRole('status')).toContainText(/panel rebuilt/i)
+  // The panel's loading skeleton is a status too: pick the announcement by what it says.
+  await expect(page.getByRole('status').filter({ hasText: /panel rebuilt/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /Lighting 4/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Kitchen ceiling/ })).toBeVisible()
   const submain = await (await request.get(`${API}/submains/${submainId}`)).json()

@@ -11,7 +11,7 @@ const json = (body: unknown, status = 200) =>
 const stub = (existing: unknown[], post: () => Response) =>
   vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST' ? post() : json(existing))
 
-const show = (syncKey = 0) => render(<><IssueButton submainId="s1" layoutVersion={4} syncKey={syncKey} /><StatusRegion /></>)
+const show = (syncKey = 0) => render(<><IssueButton kind="submain" ownerId="s1" layoutVersion={4} syncKey={syncKey} /><StatusRegion /></>)
 
 describe('IssueButton', () => {
   beforeEach(() => vi.restoreAllMocks())
@@ -69,7 +69,7 @@ describe('IssueButton', () => {
     expect(screen.queryByText(/changed since/i)).not.toBeInTheDocument()
 
     current = false
-    rerender(<><IssueButton submainId="s1" layoutVersion={4} syncKey={1} /><StatusRegion /></>)
+    rerender(<><IssueButton kind="submain" ownerId="s1" layoutVersion={4} syncKey={1} /><StatusRegion /></>)
 
     expect(await screen.findByText(/changed since that pdf was issued/i)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -117,7 +117,7 @@ describe('IssueButton', () => {
     expect(await screen.findByRole('link', { name: /open pdf \(revision 1\)/i })).toBeInTheDocument()
 
     failing = true
-    rerender(<><IssueButton submainId="s1" layoutVersion={4} syncKey={1} /><StatusRegion /></>)
+    rerender(<><IssueButton kind="submain" ownerId="s1" layoutVersion={4} syncKey={1} /><StatusRegion /></>)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not check whether that pdf is still current/i)
     expect(screen.getByRole('link', { name: /open pdf \(revision 1\)/i })).toBeInTheDocument()
@@ -146,5 +146,18 @@ describe('IssueButton', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(/no panel yet/i)
     expect(screen.queryByRole('link', { name: /open pdf/i })).not.toBeInTheDocument()
+  })
+
+  it('issues a rack revision from the rack\'s address and links its pdf', async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
+      ? json({ id: 'rr1', rackId: 'r1', number: 1, layoutVersion: 2, issuedAt: '2026-01-01', issuedBy: 'a', current: true })
+      : json([]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<><IssueButton kind="rack" ownerId="r1" layoutVersion={2} /><StatusRegion /></>)
+    await userEvent.click(await screen.findByRole('button', { name: /issue pdf/i }))
+
+    expect(await screen.findByRole('link', { name: /open pdf/i })).toHaveAttribute('href', '/api/rack-revisions/rr1/export/pdf')
+    expect(fetchMock.mock.calls.map(c => c[0])).toContain('/api/racks/r1/revisions')
   })
 })

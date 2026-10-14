@@ -53,6 +53,32 @@ public static class CatalogueSeeder
             inserted++;
         }
 
+        // Rack rows follow the same rule as device types: added by id once,
+        // never overwritten, so a confirmed part number survives a redeploy.
+        var existingRackTypeIds = await db.RackTypes.Select(r => r.Id).ToListAsync(cancellationToken);
+        foreach (var r in (seed.RackTypes ?? []).Where(r => !existingRackTypeIds.Contains(r.Id)))
+        {
+            db.RackTypes.Add(new RackTypeRow
+            {
+                Id = r.Id, Manufacturer = r.Manufacturer, Model = r.Model, PartNumber = r.PartNumber,
+                HeightU = r.HeightU, Mounting = r.Mounting
+            });
+            inserted++;
+        }
+
+        var existingRackDeviceIds = await db.RackDeviceTypes.Select(d => d.Id).ToListAsync(cancellationToken);
+        foreach (var d in (seed.RackDeviceTypes ?? []).Where(d => !existingRackDeviceIds.Contains(d.Id)))
+        {
+            db.RackDeviceTypes.Add(new RackDeviceTypeRow
+            {
+                Id = d.Id, Manufacturer = d.Manufacturer, Model = d.Model, PartNumber = d.PartNumber,
+                Kind = d.Kind, HeightU = d.HeightU,
+                PortGroupsJson = JsonSerializer.Serialize(d.PortGroups, DomainMapper.Json),
+                PoeBudgetW = d.PoeBudgetW, RequiredAccessoryId = d.RequiredAccessoryId, Active = d.Active
+            });
+            inserted++;
+        }
+
         var existingRuleSets = await db.RuleSets.ToDictionaryAsync(r => r.Id, cancellationToken);
         foreach (var r in seed.RuleSets)
         {

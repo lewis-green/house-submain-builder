@@ -1,5 +1,6 @@
 using PubInvest.HouseConfig.Data.Seeding;
 using PubInvest.HouseConfig.Domain.Catalogue;
+using PubInvest.HouseConfig.Domain.Racks;
 using PubInvest.HouseConfig.Domain.Rules;
 
 namespace PubInvest.HouseConfig.Api.Tests;
@@ -28,6 +29,16 @@ public static class TestSeed
     public static readonly Guid EnclosureId     = new("bbbb0000-0000-4000-8000-000000000001");
     public static readonly Guid TinyEnclosureId = new("bbbb0000-0000-4000-8000-000000000002");
     public static readonly Guid RuleSetId       = new("cccc0000-0000-4000-8000-000000000001");
+
+    public static readonly Guid Cabinet4UId      = new("dddd0000-0000-4000-8000-000000000001");
+    public static readonly Guid Cabinet2UId      = new("dddd0000-0000-4000-8000-000000000002");
+    public static readonly Guid Cabinet42UId     = new("dddd0000-0000-4000-8000-000000000003");
+    public static readonly Guid Switch48Id       = new("dddd0000-0000-4000-8000-000000000011");
+    public static readonly Guid Switch16Id       = new("dddd0000-0000-4000-8000-000000000012");
+    public static readonly Guid PatchPanelId     = new("dddd0000-0000-4000-8000-000000000013");
+    public static readonly Guid PatchPanel2UId   = new("dddd0000-0000-4000-8000-000000000014");
+    public static readonly Guid RackKitId        = new("dddd0000-0000-4000-8000-000000000015");
+    public static readonly Guid InactiveSwitchId = new("dddd0000-0000-4000-8000-000000000016");
 
     /// Termination stays on the top row whatever else moves: circuit terminals
     /// then the 24V pair from the left, the isolator hard against the right.
@@ -134,5 +145,27 @@ public static class TestSeed
                     EndStopsPerBank: 2,
                     LineBridgeBarDeviceTypeId: LineBridgeId,
                     LineBridgeBarWays: 10)))
+        ],
+        RackTypes:
+        [
+            new SeedRackType(Cabinet4UId, "Test", "4U cabinet", "T-CAB4", 4, "Wall"),
+            new SeedRackType(Cabinet2UId, "Test", "2U cabinet", "T-CAB2", 2, "Wall"),
+            new SeedRackType(Cabinet42UId, "Test", "42U cabinet", "T-CAB42", 42, "Floor"),
+        ],
+        RackDeviceTypes:
+        [
+            new SeedRackDeviceType(Switch48Id, "Ubiquiti", "Test 48 PoE", "T-SW48", "Switch", 1,
+                [new PortGroup("1G", 1, 32, true), new PortGroup("2.5G", 33, 48, true), new PortGroup("SFP+", 49, 52, false)],
+                720, null, true),
+            new SeedRackDeviceType(Switch16Id, "Ubiquiti", "Test 16 PoE", "T-SW16", "Switch", 1,
+                [new PortGroup("1G", 1, 12, true), new PortGroup("2.5G", 13, 16, true), new PortGroup("SFP+", 17, 18, false)],
+                180, RackKitId, true),
+            new SeedRackDeviceType(PatchPanelId, "Test", "24-port patch panel", "T-PP24", "PatchPanel", 1,
+                [new PortGroup("RJ45", 1, 24, true)], null, null, true),
+            new SeedRackDeviceType(PatchPanel2UId, "Test", "48-port patch panel 2U", "T-PP48", "PatchPanel", 2,
+                [new PortGroup("RJ45", 1, 48, true)], null, null, true),
+            new SeedRackDeviceType(RackKitId, "Ubiquiti", "Test rack kit", "T-KIT", "Accessory", 0, [], null, null, true),
+            new SeedRackDeviceType(InactiveSwitchId, "Ubiquiti", "Test retired switch", "T-SWOLD", "Switch", 1,
+                [new PortGroup("1G", 1, 8, true)], null, null, false),
         ]);
 }

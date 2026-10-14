@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Racks;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
 using PubInvest.HouseConfig.Data.Mapping;
@@ -143,6 +144,86 @@ public static class CatalogueAdminEndpoints
                 {
                     row.Id, row.Name, row.Version, row.IsDefault,
                 });
+            });
+
+        group.MapPatch("/rack-types/{id:guid}", async (
+                Guid id,
+                SaveRackTypeRequest request,
+                HouseConfigDbContext db,
+                CancellationToken ct) =>
+            {
+                var row = await db.RackTypes.SingleOrDefaultAsync(r => r.Id == id, ct);
+                if (row is null) return Results.NotFound();
+
+                var problems = RackCatalogueRules.Validate(request);
+                if (problems.Count > 0) return Results.ValidationProblem(problems);
+
+                // Making a cabinet shorter than an item already placed in one
+                // would leave that item outside its own cabinet.
+                var tallest = await (from rack in db.Racks
+                                     where rack.RackTypeId == id
+                                     from item in rack.Items
+                                     orderby item.TopU descending
+                                     select new { rack.Name, item.TopU }).FirstOrDefaultAsync(ct);
+                if (tallest is not null && tallest.TopU > request.HeightU)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["heightU"] = [$"Rack '{tallest.Name}' has an item at U{tallest.TopU}. Move it before making this cabinet shorter."]
+                    });
+                }
+
+                row.Manufacturer = request.Manufacturer.Trim();
+                row.Model = request.Model.Trim();
+                row.PartNumber = request.PartNumber.Trim();
+                row.HeightU = request.HeightU;
+                row.Mounting = request.Mounting;
+                await db.SaveChangesAsync(ct);
+
+                return Results.Ok(DomainMapper.ToDomain(row));
+            });
+
+        group.MapPatch("/rack-device-types/{id:guid}", async (
+                Guid id,
+                SaveRackDeviceTypeRequest request,
+                HouseConfigDbContext db,
+                CancellationToken ct) =>
+            {
+                var row = await db.RackDeviceTypes.SingleOrDefaultAsync(r => r.Id == id, ct);
+                if (row is null) return Results.NotFound();
+
+                var problems = await RackCatalogueRules.ValidateAsync(db, id, request, ct);
+                if (problems.Count > 0) return Results.ValidationProblem(problems);
+
+                // An item already in a rack keeps its shape: a new height could
+                // overlap its neighbours, and new port groups would renumber its
+                // labelled ports. Its name, part number and whether it is still
+                // offered can change freely.
+                var current = DomainMapper.ToDomain(row);
+                var placed = await db.RackItems.CountAsync(i => i.RackDeviceTypeId == id, ct);
+                var reshaped = request.HeightU != current.HeightU
+                               || request.Kind != current.Kind.ToString()
+                               || !request.PortGroups.SequenceEqual(current.PortGroups);
+                if (placed > 0 && reshaped)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["portGroups"] = [$"Placed in {placed} {(placed == 1 ? "rack" : "racks")}: its kind, height and ports cannot change. Add a new catalogue item instead."]
+                    });
+                }
+
+                row.Manufacturer = request.Manufacturer.Trim();
+                row.Model = request.Model.Trim();
+                row.PartNumber = request.PartNumber.Trim();
+                row.Kind = request.Kind;
+                row.HeightU = request.HeightU;
+                row.PortGroupsJson = JsonSerializer.Serialize(request.PortGroups, DomainMapper.Json);
+                row.PoeBudgetW = request.PoeBudgetW;
+                row.RequiredAccessoryId = request.RequiredAccessoryId;
+                row.Active = request.Active;
+                await db.SaveChangesAsync(ct);
+
+                return Results.Ok(DomainMapper.ToDomain(row));
             });
 
         return app;

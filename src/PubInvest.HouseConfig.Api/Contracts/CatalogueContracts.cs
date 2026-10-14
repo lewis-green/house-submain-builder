@@ -1,3 +1,4 @@
+using PubInvest.HouseConfig.Domain.Racks;
 using PubInvest.HouseConfig.Domain.Rules;
 
 namespace PubInvest.HouseConfig.Api.Contracts;
@@ -25,3 +26,21 @@ public sealed record SaveRuleSetRequest(
     int Version,
     bool IsDefault,
     RuleSetPayload Payload);
+
+public sealed record SaveRackTypeRequest(
+    string Manufacturer,
+    string Model,
+    string PartNumber,
+    int HeightU,
+    string Mounting);
+
+public sealed record SaveRackDeviceTypeRequest(
+    string Manufacturer,
+    string Model,
+    string PartNumber,
+    string Kind,
+    int HeightU,
+    IReadOnlyList<PortGroup> PortGroups,
+    int? PoeBudgetW,
+    Guid? RequiredAccessoryId,
+    bool Active);

@@ -5,6 +5,7 @@ using PubInvest.HouseConfig.Domain.Catalogue;
 using PubInvest.HouseConfig.Domain.Circuits;
 using PubInvest.HouseConfig.Domain.Generation;
 using PubInvest.HouseConfig.Domain.Layout;
+using PubInvest.HouseConfig.Domain.Racks;
 using PubInvest.HouseConfig.Domain.Rules;
 
 namespace PubInvest.HouseConfig.Data.Mapping;
@@ -25,6 +26,16 @@ public static class DomainMapper
 
     public static EnclosureType ToDomain(EnclosureTypeRow row) => new(
         row.Id, row.Manufacturer, row.Model, row.Rows, row.SlotsPerRow, row.IpRating);
+
+    public static RackType ToDomain(RackTypeRow row) => new(
+        row.Id, row.Manufacturer, row.Model, row.PartNumber, row.HeightU, row.Mounting);
+
+    public static RackDeviceType ToDomain(RackDeviceTypeRow row) => new(
+        row.Id, row.Manufacturer, row.Model, row.PartNumber,
+        Enum.Parse<RackDeviceKind>(row.Kind),
+        row.HeightU,
+        JsonSerializer.Deserialize<List<PortGroup>>(row.PortGroupsJson, Json) ?? [],
+        row.PoeBudgetW, row.RequiredAccessoryId, row.Active);
 
     public static Circuit ToDomain(CircuitRow row) => new(
         row.Id, Enum.Parse<CircuitType>(row.Type), row.Name, row.Room, row.Sequence,

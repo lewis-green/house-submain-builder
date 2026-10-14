@@ -100,6 +100,12 @@ don't commit it filled.
    the button before you save. If the panel was changed elsewhere since the form
    opened, it will not save over that; Reload starts it again from the panel as
    it now is.
+9. **Add rack** on the house page. Pick a cabinet and, if it has one, the
+   submain that feeds it. On the rack screen, **Add to rack** puts a switch or
+   a patch panel in the top free U; drag an item to move it (on a touchscreen,
+   hold it first). Tap an item to label its ports — Return moves to the next
+   port — and tick PoE where the cable needs it. **Issue PDF revision** gives
+   the rack drawing, a schedule of every port and the parts to order.
 
 ### The catalogue is not confirmed yet
 
@@ -107,7 +113,10 @@ Several parts in `seed/catalogue.v1.json` still carry `ASSUMED` part numbers —
 the two-pole isolator, the 24V joint blocks, the external driver wattages, the
 jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
 terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
-a generated bill of materials.
+a generated bill of materials. The rack cabinets, the 24-port patch panel and
+the USW-Pro-Max-16-PoE's rack-mount kit carry ASSUMED part numbers, and the
+three switches' port splits and PoE budgets come from retailer listings rather
+than Ubiquiti's datasheets.
 
 The bill of materials carries **no prices**. It is a parts list — part number,
 description, quantity, and whether the part is mounted in the panel — and
@@ -125,11 +134,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 336 tests (127 Domain, 27 Data, 182 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 268 Vitest tests in jsdom
+dotnet test          # 414 tests (155 Domain, 31 Data, 228 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 313 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 35 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 41 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -140,8 +149,10 @@ images, and pushes them to GHCR from `main`.
 `ui/e2e/` is a Playwright suite that runs in WebKit with iPhone 15 emulation —
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard and
-editing a built panel, Home Screen metadata, and a few checks with a mouse (35 tests). It brings up its own stack and takes it down again, so it needs
-nothing running first and never touches a development database:
+editing a built panel, Home Screen metadata, the rack screen's port labelling,
+drag and PDF, and a few checks with a mouse (41 tests). It brings up its own
+stack and takes it down again, so it needs nothing running first and never
+touches a development database:
 
 ```bash
 cd ui
@@ -164,7 +175,7 @@ src/PubInvest.HouseConfig.Data/     EF Core, Postgres, catalogue seeding
 src/PubInvest.HouseConfig.Api/      minimal API, revisions, PDF and BOM export
 ui/                                 React 19 + Vite + TypeScript + Tailwind
 seed/catalogue.v1.json              devices, enclosures and the default ruleset
-docs/superpowers/                   the design spec and the four implementation plans
+docs/superpowers/                   the design specs and the six implementation plans
 ```
 
 Three ideas are worth knowing before reading the code:
@@ -219,6 +230,13 @@ with `rebuild: true` — that saves the option and regenerates the panel in the
 same transaction, so a rebuild the generator refuses leaves the option as it
 was. (`POST /projects/{id}/submains` with `generate: true` is the wizard's
 equivalent.)
+
+**A rack sits beside the submains, not inside one.** The submain that feeds
+it is a link on the rack — blank, or changed, without the rack moving — and
+feeding a rack changes nothing on that panel. Racks are measured in rack
+units with U1 at the bottom; the server places each item in the top free U
+and checks every move, exactly as it decides every panel layout. Ports are
+numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or

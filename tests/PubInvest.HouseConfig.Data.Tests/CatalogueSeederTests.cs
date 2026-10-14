@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Data.Mapping;
 using PubInvest.HouseConfig.Data.Seeding;
 using PubInvest.HouseConfig.Domain.Catalogue;
+using PubInvest.HouseConfig.Domain.Racks;
 using PubInvest.HouseConfig.Domain.Rules;
 
 namespace PubInvest.HouseConfig.Data.Tests;
@@ -248,5 +249,52 @@ public class CatalogueSeederTests(PostgresFixture fixture)
 
             Assert.All(referenced, id => Assert.Contains(id, known));
         }
+    }
+
+    [Fact]
+    public async Task Rack_catalogue_rows_are_added_once_and_an_edit_survives_a_reseed()
+    {
+        const string tag = "c0c0c0c0";
+        Guid Id(int n) => new($"{tag}-0000-4000-8000-{n:D12}");
+        // Held in locals because EF cannot translate a call to a local function
+        // inside a query lambda.
+        var cabinetId = Id(101);
+        var switchId = Id(102);
+
+        var seed = Document(tag) with
+        {
+            RackTypes = [new SeedRackType(cabinetId, "Generic", "12U wall cabinet", $"{tag}-CAB12", 12, "Wall")],
+            RackDeviceTypes =
+            [
+                new SeedRackDeviceType(switchId, "Ubiquiti", "Test switch", $"{tag}-SW", "Switch", 1,
+                    [new PortGroup("1G", 1, 8, true), new PortGroup("SFP+", 9, 10, false)], 60, null, true),
+            ],
+        };
+
+        await using (var db = fixture.CreateContext())
+        {
+            await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
+        }
+
+        await using (var db = fixture.CreateContext())
+        {
+            var row = await db.RackDeviceTypes.SingleAsync(d => d.Id == switchId);
+            row.PartNumber = $"{tag}-SW-CONFIRMED";
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = fixture.CreateContext())
+        {
+            await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
+        }
+
+        await using var verify = fixture.CreateContext();
+        Assert.Equal(12, (await verify.RackTypes.SingleAsync(r => r.Id == cabinetId)).HeightU);
+
+        var sw = DomainMapper.ToDomain(await verify.RackDeviceTypes.SingleAsync(d => d.Id == switchId));
+        Assert.Equal($"{tag}-SW-CONFIRMED", sw.PartNumber);
+        Assert.Equal(10, sw.PortCount);
+        Assert.False(sw.GroupOf(9)!.PoeTick);
+        Assert.Null(sw.GroupOf(11));
     }
 }

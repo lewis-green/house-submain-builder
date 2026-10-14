@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Documents;
+using PubInvest.HouseConfig.Api.Racks;
 using PubInvest.HouseConfig.Api.Revisions;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Domain.Bom;
@@ -84,9 +85,10 @@ public static class ExportEndpoints
                 Guid id,
                 HouseConfigDbContext db,
                 RevisionService revisions,
+                RackRevisionService racks,
                 CancellationToken ct) =>
             {
-                var (bom, error) = await HouseBom(id, db, revisions, ct);
+                var (bom, error) = await HouseBom(id, db, revisions, racks, ct);
                 if (error is not null) return Results.NotFound();
                 return Results.Ok(Describe(bom!));
             })
@@ -96,9 +98,10 @@ public static class ExportEndpoints
                 Guid id,
                 HouseConfigDbContext db,
                 RevisionService revisions,
+                RackRevisionService racks,
                 CancellationToken ct) =>
             {
-                var (bom, error) = await HouseBom(id, db, revisions, ct);
+                var (bom, error) = await HouseBom(id, db, revisions, racks, ct);
                 if (error is not null) return Results.NotFound();
 
                 var project = await db.Projects.SingleAsync(p => p.Id == id, ct);
@@ -112,28 +115,30 @@ public static class ExportEndpoints
         return app;
     }
 
-    /// A house BOM sums each submain's latest *issued* revision, so it costs what
-    /// was issued rather than whatever is being edited right now.
+    /// A house BOM sums each submain's and each rack's latest *issued*
+    /// revision, so it lists what was issued rather than whatever is being
+    /// edited right now.
     private static async Task<(BillOfMaterials? Bom, string? Error)> HouseBom(
         Guid projectId,
         HouseConfigDbContext db,
         RevisionService revisions,
+        RackRevisionService racks,
         CancellationToken ct)
     {
         if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return (null, "No such house.");
 
-        var submainIds = await db.Submains
-            .Where(s => s.ProjectId == projectId)
-            .Select(s => s.Id)
-            .ToListAsync(ct);
-
         var lines = new List<BomLine>();
 
-        foreach (var submainId in submainIds)
+        foreach (var submainId in await db.Submains.Where(s => s.ProjectId == projectId).Select(s => s.Id).ToListAsync(ct))
         {
             var revision = await revisions.LatestAsync(submainId, ct);
-            if (revision is null) continue;
-            lines.AddRange(RevisionService.Read(revision).Bom.Lines);
+            if (revision is not null) lines.AddRange(RevisionService.Read(revision).Bom.Lines);
+        }
+
+        foreach (var rackId in await db.Racks.Where(r => r.ProjectId == projectId).Select(r => r.Id).ToListAsync(ct))
+        {
+            var revision = await racks.LatestAsync(rackId, ct);
+            if (revision is not null) lines.AddRange(RackRevisionService.Read(revision).Bom.Lines);
         }
 
         var merged = lines
@@ -150,7 +155,7 @@ public static class ExportEndpoints
         return (new BillOfMaterials(merged), null);
     }
 
-    private static object Describe(BillOfMaterials bom) => new
+    internal static object Describe(BillOfMaterials bom) => new
     {
         lines = bom.Lines.Select(l => new
         {
@@ -166,7 +171,7 @@ public static class ExportEndpoints
         return Results.File(bytes, "application/pdf", $"{Slug(snapshot.SubmainName)}-panel.pdf");
     }
 
-    private static string Slug(string value)
+    internal static string Slug(string value)
     {
         var chars = value.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray();
         return new string(chars).Trim('-');

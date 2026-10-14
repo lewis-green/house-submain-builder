@@ -30,6 +30,27 @@ export async function seedSubmain(request: APIRequestContext, circuits: unknown[
   return { submainId: submain.id, layoutVersion: design.layoutVersion, devices: design.layout.devices }
 }
 
+export interface SeededRack {
+  projectId: string
+  rackId: string
+  items: { id: string; label: string; topU: number }[]
+}
+
+/** A house with a 12U rack holding a 48-port switch and a patch panel, built straight through the API. */
+export async function seedRack(request: APIRequestContext): Promise<SeededRack> {
+  const cabinets = await (await request.get(`${API}/catalogue/rack-types`)).json()
+  const types = await (await request.get(`${API}/catalogue/rack-device-types`)).json()
+  const twelve = cabinets.find((c: { heightU: number }) => c.heightU === 12)
+  const sw = types.find((t: { model: string }) => t.model === 'USW-Pro-Max-48-PoE')
+  const panel = types.find((t: { kind: string }) => t.kind === 'PatchPanel')
+
+  const project = await (await request.post(`${API}/projects`, { data: { name: `E2E rack ${Date.now()}-${Math.random()}` } })).json()
+  const rack = await (await request.post(`${API}/projects/${project.id}/racks`, { data: { name: 'Comms cupboard', rackTypeId: twelve.id } })).json()
+  await request.post(`${API}/racks/${rack.id}/items`, { data: { rackDeviceTypeId: sw.id } })
+  const layout = await (await request.post(`${API}/racks/${rack.id}/items`, { data: { rackDeviceTypeId: panel.id } })).json()
+  return { projectId: project.id, rackId: rack.id, items: layout.items }
+}
+
 export const threeDimmed = [
   { type: 'DimmedLighting', name: 'Kitchen ceiling', sequence: 1 },
   { type: 'DimmedLighting', name: 'Kitchen island', sequence: 2 },

@@ -72,6 +72,21 @@ describe('BomPage', () => {
     expect(await screen.findByText(/nothing to order/i)).toBeInTheDocument()
   })
 
+  it('says whose issued drawing is empty, in a whole sentence', async () => {
+    // A fresh Response per call: a body reads once, and two pages are rendered here.
+    vi.stubGlobal('fetch', vi.fn(async () => json({ lines: [] })))
+
+    renderPage()
+    expect(await screen.findByText('The issued panel has no parts in it.')).toBeInTheDocument()
+
+    render(
+      <MemoryRouter initialEntries={['/racks/r1/bom']}>
+        <Routes><Route path="/racks/:rackId/bom" element={<BomPage />} /></Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('The issued rack has no parts in it.')).toBeInTheDocument()
+  })
+
   it('offers the csv download for the scope it is showing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 
@@ -88,5 +103,24 @@ describe('BomPage', () => {
 
     const back = await screen.findByRole('link', { name: /back/i })
     expect(back).toHaveAttribute('href', '/submains/s1/panel')
+  })
+
+  it('lists a rack\'s parts from the rack\'s address, with the csv and the way back to the rack', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url === '/api/racks/r1/bom'
+      ? json({ lines: [{ catalogueId: 'k', partNumber: 'T-KIT', description: 'Rack kit', quantity: 1, panelMounted: true }] })
+      : json({ title: 'Not Found' }, 404)))
+
+    render(
+      <MemoryRouter initialEntries={['/racks/r1/bom']}>
+        <Routes><Route path="/racks/:rackId/bom" element={<BomPage />} /></Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Rack kit')).toBeInTheDocument()
+    expect(screen.getByText('T-KIT')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /download csv/i })).toHaveAttribute('href', '/api/racks/r1/bom.csv')
+    const back = screen.getByRole('link', { name: /back/i })
+    expect(back).toHaveTextContent('Rack')
+    expect(back).toHaveAttribute('href', '/racks/r1')
   })
 })

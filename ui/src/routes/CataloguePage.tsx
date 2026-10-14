@@ -8,6 +8,7 @@ import { Field } from '../components/Field'
 import { Skeleton } from '../components/Skeleton'
 import { announce } from '../components/status'
 import { SLOT_UNITS_PER_MODULE, formatModules } from '../units'
+import { RackCatalogueSections } from './RackCatalogueSections'
 
 type DeviceTypeView = DeviceTypeResponse
 
@@ -95,6 +96,8 @@ export function CataloguePage() {
               ))}
             </ul>
           </section>
+
+          <RackCatalogueSections />
         </>
       )}
     </AppShell>

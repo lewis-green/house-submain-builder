@@ -181,10 +181,59 @@ public class ShippedSeedTests(PostgresFixture fixture)
         var inserted = await CatalogueSeeder.SeedAsync(db, seed, CancellationToken.None);
 
         Assert.Equal(
-            seed.DeviceTypes.Count + seed.Enclosures.Count + seed.RuleSets.Count,
+            seed.DeviceTypes.Count + seed.Enclosures.Count + seed.RuleSets.Count
+            + seed.RackTypes!.Count + seed.RackDeviceTypes!.Count,
             inserted);
 
         var row = await db.RuleSets.SingleAsync(r => r.Id == seed.RuleSets[0].Id);
         Assert.Equal(0.8m, DomainMapper.ToDomain(row).PsuDeratingFactor);
+    }
+
+    [Fact]
+    public void The_shipped_rack_catalogue_has_cabinets_the_three_switches_a_patch_panel_and_the_rack_kit()
+    {
+        var seed = Load();
+
+        Assert.Equal(new[] { 6, 9, 12, 22, 42 }, seed.RackTypes!.Select(r => r.HeightU).Order());
+        var models = seed.RackDeviceTypes!.Select(d => d.Model).ToList();
+        Assert.Contains("USW-Pro-Max-48-PoE", models);
+        Assert.Contains("USW-Pro-Max-24-PoE", models);
+        Assert.Contains("USW-Pro-Max-16-PoE", models);
+        Assert.Contains(seed.RackDeviceTypes!, d => d.Kind == "PatchPanel");
+        Assert.Contains(seed.RackDeviceTypes!, d => d.Kind == "Accessory");
+    }
+
+    /// Ports run 1..N across groups with no gap and no overlap, or "port 33" on
+    /// a schedule would not be the 33rd socket on the front panel.
+    [Fact]
+    public void Every_shipped_rack_item_numbers_its_ports_from_one_without_gaps()
+    {
+        foreach (var d in Load().RackDeviceTypes!.Where(d => d.Kind != "Accessory"))
+        {
+            var next = 1;
+            foreach (var g in d.PortGroups)
+            {
+                Assert.True(g.From == next, $"{d.Model}: group {g.Name} starts at {g.From}, expected {next}");
+                Assert.True(g.To >= g.From, $"{d.Model}: group {g.Name} ends before it starts");
+                next = g.To + 1;
+            }
+            Assert.True(next > 1, $"{d.Model} has no ports");
+            Assert.True(d.HeightU >= 1, $"{d.Model} takes no rack space");
+        }
+    }
+
+    [Fact]
+    public void Every_required_accessory_is_a_shipped_accessory()
+    {
+        var seed = Load();
+        var accessories = seed.RackDeviceTypes!.Where(d => d.Kind == "Accessory").Select(d => d.Id).ToHashSet();
+
+        foreach (var d in seed.RackDeviceTypes!.Where(d => d.RequiredAccessoryId is not null))
+        {
+            Assert.Contains(d.RequiredAccessoryId!.Value, accessories);
+        }
+
+        // The half-width switch cannot go in a rack without its kit.
+        Assert.Contains(seed.RackDeviceTypes!, d => d.Model == "USW-Pro-Max-16-PoE" && d.RequiredAccessoryId is not null);
     }
 }

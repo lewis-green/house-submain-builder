@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, seedSubmain, threeDimmed } from './fixtures'
+import { API, seedRack, seedSubmain, threeDimmed } from './fixtures'
 
 /**
  * The screens, at the four widths an iPhone can be. Nothing may make the page
@@ -9,6 +9,7 @@ for (const width of [320, 375, 393, 430]) {
   test(`no horizontal overflow at ${width}px`, async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
     const submain = await (await request.get(`${API}/submains/${submainId}`)).json()
+    const { rackId } = await seedRack(request)
 
     await page.setViewportSize({ width, height: 740 })
 
@@ -18,6 +19,8 @@ for (const width of [320, 375, 393, 430]) {
       `/projects/${submain.projectId}/submains/new`,
       `/submains/${submainId}/panel`,
       `/submains/${submainId}/bom`,
+      `/projects/${submain.projectId}/racks/new`,
+      `/racks/${rackId}`,
       `/submains/${submainId}/edit`,
       '/catalogue',
       '/nope',
@@ -25,7 +28,7 @@ for (const width of [320, 375, 393, 430]) {
 
     for (const url of screens) {
       await page.goto(url, { waitUntil: 'networkidle' })
-      if (url.endsWith('/new')) {
+      if (url.endsWith('/submains/new')) {
         await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
         await page.getByRole('button', { name: /add tape circuit/i }).tap()
         await page.waitForTimeout(600)
@@ -46,6 +49,7 @@ for (const width of [320, 375, 393, 430]) {
   test(`no horizontal overflow at ${width}px with 200% text, and the sheet title wraps`, async ({ page, request }) => {
     const { submainId } = await seedSubmain(request, threeDimmed)
     const submain = await (await request.get(`${API}/submains/${submainId}`)).json()
+    const { rackId } = await seedRack(request)
 
     await page.setViewportSize({ width, height: 740 })
     const doubleText = () => page.evaluate(() => { document.documentElement.style.fontSize = '32px' })
@@ -58,6 +62,8 @@ for (const width of [320, 375, 393, 430]) {
       `/projects/${submain.projectId}/submains/new`,
       `/submains/${submainId}/panel`,
       `/submains/${submainId}/bom`,
+      `/projects/${submain.projectId}/racks/new`,
+      `/racks/${rackId}`,
       `/submains/${submainId}/edit`,
       '/catalogue',
       '/nope',
@@ -65,12 +71,15 @@ for (const width of [320, 375, 393, 430]) {
 
     for (const url of screens) {
       await page.goto(url, { waitUntil: 'networkidle' })
-      if (url.endsWith('/new')) {
+      if (url.endsWith('/submains/new')) {
         await page.getByRole('button', { name: /more dimmed lighting/i }).tap()
         await page.getByRole('button', { name: /add tape circuit/i }).tap()
         await page.waitForTimeout(600)
       }
-      if (url.endsWith('/panel')) await page.locator('details').evaluate(el => { (el as HTMLDetailsElement).open = true })
+      // The panel's install options and the rack's settings are folded away; unfold them, as a reader would.
+      if (url.endsWith('/panel') || url.startsWith('/racks/')) {
+        await page.locator('details').evaluate(el => { (el as HTMLDetailsElement).open = true })
+      }
       await doubleText()
       await page.waitForTimeout(300)
       expect(await overflow(), `${url} at ${width}px, 200% text`).toBeLessThanOrEqual(0)

@@ -322,6 +322,209 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.ToTable("Projects");
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Rack", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FedFromSubmainId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LayoutVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PatchPanelsNamed")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RackTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SwitchesNamed")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FedFromSubmainId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("RackTypeId");
+
+                    b.ToTable("Racks");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackDeviceTypeRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("HeightU")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PoeBudgetW")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PortGroupsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RequiredAccessoryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PartNumber")
+                        .IsUnique();
+
+                    b.ToTable("RackDeviceTypes");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RackDeviceTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TopU")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RackDeviceTypeId");
+
+                    b.HasIndex("RackId", "TopU")
+                        .IsUnique();
+
+                    b.ToTable("RackItems");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackPort", b =>
+                {
+                    b.Property<Guid>("RackItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Poe")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("RackItemId", "Number");
+
+                    b.ToTable("RackPorts");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("LayoutVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RackId");
+
+                    b.ToTable("RackRevisions");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackTypeRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("HeightU")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Mounting")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RackTypes");
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RuleSetRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -447,6 +650,59 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Rack", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
+                        .WithMany()
+                        .HasForeignKey("FedFromSubmainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.RackTypeRow", null)
+                        .WithMany()
+                        .HasForeignKey("RackTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackItem", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.RackDeviceTypeRow", null)
+                        .WithMany()
+                        .HasForeignKey("RackDeviceTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Rack", null)
+                        .WithMany("Items")
+                        .HasForeignKey("RackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackPort", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.RackItem", null)
+                        .WithMany("Ports")
+                        .HasForeignKey("RackItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackRevision", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Rack", null)
+                        .WithMany()
+                        .HasForeignKey("RackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Submain", b =>
                 {
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Project", "Project")
@@ -466,6 +722,16 @@ namespace PubInvest.HouseConfig.Data.Migrations
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Project", b =>
                 {
                     b.Navigation("Submains");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Rack", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackItem", b =>
+                {
+                    b.Navigation("Ports");
                 });
 
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Submain", b =>

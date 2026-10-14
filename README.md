@@ -164,7 +164,7 @@ src/PubInvest.HouseConfig.Data/     EF Core, Postgres, catalogue seeding
 src/PubInvest.HouseConfig.Api/      minimal API, revisions, PDF and BOM export
 ui/                                 React 19 + Vite + TypeScript + Tailwind
 seed/catalogue.v1.json              devices, enclosures and the default ruleset
-docs/superpowers/                   the design spec and the four implementation plans
+docs/superpowers/                   the design spec and the five implementation plans
 ```
 
 Three ideas are worth knowing before reading the code:

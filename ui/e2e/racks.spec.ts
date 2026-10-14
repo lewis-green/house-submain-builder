@@ -1,30 +1,13 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { API } from './fixtures'
+import { API, seedRack } from './fixtures'
 import { fingerDrag } from './touch'
-
-interface Seeded { projectId: string; rackId: string; items: { id: string; label: string; topU: number }[] }
-
-/** A house with a 12U rack holding a 48-port switch and a patch panel, built straight through the API. */
-async function seedRack(request: APIRequestContext): Promise<Seeded> {
-  const cabinets = await (await request.get(`${API}/catalogue/rack-types`)).json()
-  const types = await (await request.get(`${API}/catalogue/rack-device-types`)).json()
-  const twelve = cabinets.find((c: { heightU: number }) => c.heightU === 12)
-  const sw = types.find((t: { model: string }) => t.model === 'USW-Pro-Max-48-PoE')
-  const panel = types.find((t: { kind: string }) => t.kind === 'PatchPanel')
-
-  const project = await (await request.post(`${API}/projects`, { data: { name: `E2E rack ${Date.now()}-${Math.random()}` } })).json()
-  const rack = await (await request.post(`${API}/projects/${project.id}/racks`, { data: { name: 'Comms cupboard', rackTypeId: twelve.id } })).json()
-  await request.post(`${API}/racks/${rack.id}/items`, { data: { rackDeviceTypeId: sw.id } })
-  const layout = await (await request.post(`${API}/racks/${rack.id}/items`, { data: { rackDeviceTypeId: panel.id } })).json()
-  return { projectId: project.id, rackId: rack.id, items: layout.items }
-}
 
 const layoutOf = async (request: APIRequestContext, rackId: string) =>
   (await (await request.get(`${API}/racks/${rackId}/layout`)).json()) as {
     items: { id: string; label: string; topU: number; ports: { number: number; label: string | null; poe: boolean }[] }[]
   }
 
-test('a rack is added from the house page, like a submain', async ({ page, request }) => {
+test('a rack is added from the house page, like a submain, and its first switch from the rack screen', async ({ page, request }) => {
   const project = await (await request.post(`${API}/projects`, { data: { name: `E2E house ${Date.now()}` } })).json()
 
   await page.goto(`/projects/${project.id}`)
@@ -34,6 +17,13 @@ test('a rack is added from the house page, like a submain', async ({ page, reque
 
   await expect(page.getByRole('heading', { name: 'Comms cupboard' })).toBeVisible()
   await expect(page.getByText('Nothing in this rack yet')).toBeVisible()
+
+  // The first item goes in the top U of the 12U cabinet the new-rack page offers first.
+  await page.getByRole('button', { name: 'Add to rack' }).first().tap()
+  await page.getByRole('dialog', { name: 'Add to rack' }).getByRole('button', { name: /USW-Pro-Max-48-PoE/ }).tap()
+
+  await expect(page.getByRole('button', { name: /^Switch 1, / })).toBeVisible()
+  await expect(page.getByRole('status')).toContainText('Switch 1 added in U12')
 })
 
 test('ports are labelled in one run: Return saves and moves to the next port', async ({ page, request }) => {

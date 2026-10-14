@@ -99,12 +99,11 @@ public static class TerminalEndpoints
             .SingleOrDefaultAsync(s => s.Id == id, ct);
         if (submain is null) return null;
 
-        var rows = submain.Circuits.ToDictionary(c => c.Id);
         var ordered = TerminalBandBuilder.InTerminalOrder(submain.Circuits.Select(DomainMapper.ToDomain));
 
         return new TerminalsResponse(
             submain.LayoutVersion,
             ordered.Select(c => new TerminalCircuitResponse(
-                c.Id, c.Name, c.Room, rows[c.Id].Type, c.TerminalCount)).ToList());
+                c.Id, c.Name, c.Room, c.Type.ToString(), c.TerminalCount)).ToList());
     }
 }

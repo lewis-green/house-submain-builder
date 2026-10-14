@@ -260,4 +260,32 @@ public class TerminalEndpointTests(HouseConfigApiFactory factory)
         var stored = await client.GetFromJsonAsync<DesignDto>($"/submains/{submainId}/layout");
         Assert.Equal(["C1.1", "C1.2"], TerminalLabels(stored!, ids[3]));
     }
+
+    [Fact]
+    public async Task Generating_with_a_circuit_list_keeps_the_stored_order_and_counts()
+    {
+        var client = factory.CreateClient();
+        var (submainId, _, terminals) = await WithTerminals(client);
+        var ids = terminals.Circuits.Select(c => c.CircuitId).ToArray();
+
+        var put = await client.PutAsJsonAsync($"/submains/{submainId}/terminals",
+            Put(terminals.LayoutVersion, (ids[3], 2), (ids[0], 1), (ids[1], 1), (ids[2], 1)));
+        put.EnsureSuccessStatusCode();
+
+        // The wizard resends every circuit by id in its original sequence order
+        // and knows nothing of terminal places.
+        var design = await (await client.PostAsJsonAsync($"/submains/{submainId}/design/generate", new
+        {
+            circuits = terminals.Circuits.Select((c, i) => new
+            {
+                id = c.CircuitId, type = c.Type, name = c.Name, sequence = i + 1
+            }).ToArray()
+        })).Content.ReadFromJsonAsync<DesignDto>();
+
+        Assert.Equal(["C1.1", "C1.2"], TerminalLabels(design!, ids[3]));
+        Assert.Equal(["C2"], TerminalLabels(design!, ids[0]));
+        var after = await client.GetFromJsonAsync<TerminalsDto>($"/submains/{submainId}/terminals");
+        Assert.Equal(["Porch", "Kitchen", "Hall", "Landing"], after!.Circuits.Select(c => c.Name));
+        Assert.Equal(2, after.Circuits[0].TerminalCount);
+    }
 }

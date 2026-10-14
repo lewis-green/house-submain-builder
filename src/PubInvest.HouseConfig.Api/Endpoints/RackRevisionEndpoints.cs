@@ -1,6 +1,7 @@
 using PubInvest.HouseConfig.Api.Contracts;
 using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Api.Racks;
+using QuestPDF.Fluent;
 
 namespace PubInvest.HouseConfig.Api.Endpoints;
 
@@ -74,6 +75,23 @@ public static class RackRevisionEndpoints
                 return Results.File(
                     System.Text.Encoding.UTF8.GetBytes(csv), "text/csv",
                     $"{ExportEndpoints.Slug(snapshot.RackName)}-bom.csv");
+            })
+            .WithTags("Rack revisions");
+
+        app.MapGet("/rack-revisions/{id:guid}/export/pdf", async (
+                Guid id,
+                RackRevisionService revisions,
+                CancellationToken ct) =>
+            {
+                var revision = await revisions.FindAsync(id, ct);
+                if (revision is null) return Results.NotFound();
+
+                var snapshot = RackRevisionService.Read(revision);
+                var bytes = new RackDocument(
+                        snapshot, await revisions.NumberOfAsync(revision, ct), revision.IssuedAt, revision.IssuedBy)
+                    .GeneratePdf();
+
+                return Results.File(bytes, "application/pdf", $"{ExportEndpoints.Slug(snapshot.RackName)}-rack.pdf");
             })
             .WithTags("Rack revisions");
 

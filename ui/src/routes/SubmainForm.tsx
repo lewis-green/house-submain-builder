@@ -37,6 +37,13 @@ const describeEnclosure = (e: EnclosureType) => {
   return `${size} · ${maker}`
 }
 
+/**
+ * A house's locations for the picker. A failure costs the picker its choices,
+ * not the form: the panel's own location is still offered, so a save keeps it.
+ */
+const housesLocations = (houseId: string) =>
+  api.get(`/projects/${houseId}/locations`).then(asLocations).catch(() => [])
+
 /** The panel being edited, as it was stored when the form opened. */
 interface Built { submain: SubmainResponse; circuits: CircuitResponse[] }
 
@@ -133,8 +140,8 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
       api.get<DeviceTypeResponse[]>('/catalogue/device-types'),
       submainId
         ? api.get<SubmainResponse>(`/submains/${submainId}`).then(async s =>
-          ({ submain: s, locations: asLocations(await api.get(`/projects/${s.projectId}/locations`)) }))
-        : api.get(`/projects/${projectId}/locations`).then(l => ({ submain: null, locations: asLocations(l) })),
+          ({ submain: s, locations: await housesLocations(s.projectId) }))
+        : housesLocations(projectId!).then(l => ({ submain: null, locations: l })),
       submainId ? api.get<CircuitResponse[]>(`/submains/${submainId}/circuits`) : null,
     ])
       .then(([list, devices, { submain, locations: places }, stored]) => {

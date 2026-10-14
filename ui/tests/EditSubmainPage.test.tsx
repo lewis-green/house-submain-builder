@@ -174,6 +174,26 @@ describe('EditSubmainPage', () => {
     expect(bodiesOf(fetchMock, '/api/submains/s1', 'PATCH')[0]).toMatchObject({ locationId: 'l2' })
   })
 
+  it('still opens when the house\'s locations fail to load, and keeps the panel where it is', async () => {
+    const underlying = stubApi()
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => url === '/api/projects/p1/locations'
+      ? json({ title: 'The server hit a problem.' }, 500)
+      : underlying(url, init))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    const location = await screen.findByLabelText('Location')
+    expect(location).toHaveValue('l1')
+    expect(screen.getByRole('option', { name: 'Its current location' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await userEvent.click(saveButton())
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    const patch = fetchMock.mock.calls.find(c => c[0] === '/api/submains/s1' && c[1]?.method === 'PATCH')
+    expect(JSON.parse(String(patch![1]!.body)).locationId).toBe('l1')
+  })
+
   it('unplaces the panel when Not placed is chosen', async () => {
     const fetchMock = stubApi()
 

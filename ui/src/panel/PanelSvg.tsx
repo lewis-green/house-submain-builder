@@ -193,15 +193,23 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1, onO
             aria-label={interactive ? `Terminals ${group.label}, change order` : `Terminals ${group.label}`}
             onClick={onOpenTerminals}
             onKeyDown={interactive
-              ? e => { if (e.key === 'Enter' || e.key === ' ') onOpenTerminals!() }
+              ? e => {
+                if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) onOpenTerminals!()
+                // Space must not also scroll the page.
+                if (e.key === 'Enter' || e.key === ' ') e.preventDefault()
+              }
               : undefined}
             className={interactive ? 'cursor-pointer' : undefined}
           >
             <rect {...rect} rx={3} className={`${style.fill} ${style.stroke}`} strokeWidth={1} />
-            <g clipPath={`url(#clip-${group.key})`} className="pointer-events-none">
+            <g clipPath={`url(#clip-${group.key})`} className="pointer-events-none" aria-hidden="true">
               {group.members.map((member, i) => {
                 const x = slotToX(member.startSlot)
-                const cx = x + slotToX(member.moduleWidth) / 2
+                // Centred on the part of the slot that is visible: the block is
+                // inset at its outer edges, so the slot's own centre would clip.
+                const left = Math.max(x, rect.x)
+                const right = Math.min(x + slotToX(member.moduleWidth), rect.x + rect.width)
+                const cx = (left + right) / 2
                 const bottom = rect.y + rect.height - 8
                 return (
                   <g key={member.id ?? `${member.rowIndex}-${member.startSlot}`}>
@@ -222,7 +230,7 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1, onO
               })}
               {bridgedRuns(group.members).map(({ first, last }) => (
                 <rect
-                  key={`bridge-${first.label}`}
+                  key={`bridge-${first.id ?? `${first.rowIndex}-${first.startSlot}`}`}
                   data-bridge={`${first.label}–${last.label}`}
                   x={slotToX(first.startSlot) + 2}
                   y={rect.y + 3}
@@ -265,7 +273,10 @@ export function PanelSvg({ layout, selectedId, onSelect, dragging, zoom = 1, onO
             data-device-id={device.id ?? undefined}
             onClick={() => device.id && onSelect(device.id)}
             onKeyDown={e => {
-              if ((e.key === 'Enter' || e.key === ' ') && device.id) onSelect(device.id)
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              // Space must not also scroll the page; a held key selects once.
+              e.preventDefault()
+              if (device.id && !e.repeat) onSelect(device.id)
             }}
             className="cursor-pointer outline-none"
             opacity={drag ? 0.9 : 1}

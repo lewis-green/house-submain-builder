@@ -54,6 +54,11 @@ export function PanelPage() {
   const svgWrapper = useRef<HTMLDivElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const once = useSingleFlight()
+  // Its own guard: a rebuild in flight must not swallow a tap on the terminals, nor the reverse.
+  const openingTerminals = useSingleFlight()
+  // Mirrors selectedId so an async open can see a device sheet opened while it waited.
+  const selectedIdRef = useRef<string | null>(null)
+  useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
 
   // The stored layout, not /design/preview: preview regenerates and returns
   // id: null on every device, so nothing would be draggable.
@@ -196,10 +201,11 @@ export function PanelPage() {
 
   // One load at a time (a double tap would fetch twice), and not over a device
   // sheet that is already open.
-  const openTerminals = () => once(async () => {
-    if (selectedId) return
+  const openTerminals = () => openingTerminals(async () => {
+    if (selectedIdRef.current) return
     try {
       const response = await api.get<TerminalsResponse>(`/submains/${submainId}/terminals`)
+      if (selectedIdRef.current) return
       setTerminals(response.circuits)
     } catch (e) {
       announce(`Terminals not loaded: ${(e as ApiError).message}`, 'error')

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MAX_TERMINALS_PER_CIRCUIT, type TerminalCircuit } from '../api/types'
+import { MAX_TERMINALS_PER_CIRCUIT, type CircuitType, type TerminalCircuit } from '../api/types'
 import { Button } from '../components/Button'
 import { Sheet } from '../components/Sheet'
 import { Stepper } from '../components/Stepper'
@@ -14,7 +14,7 @@ interface Props {
 }
 
 /** The server's wording for each circuit type. */
-const TYPE_NAMES: Record<string, string> = {
+const TYPE_NAMES: Record<CircuitType, string> = {
   DimmedLighting: 'Dimmed lighting',
   Switched: 'Switched',
   LedTape: 'LED tape',

@@ -128,8 +128,8 @@ export function Sheet({ title, subtitle, onClose, children }: Props) {
     // that control and out to the page behind; bring it back the moment it
     // lands. Focus inside any dialog is left alone: with two sheets open, each
     // pulling focus back from the other would loop for ever, so only a target
-    // outside every dialog is pulled in, and by this one — the one that was
-    // focused last is the one the person is in.
+    // outside every dialog is pulled in, and by this one — the sheet whose
+    // listener was registered last.
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target
       if (!(target instanceof Element) || !panel.current) return

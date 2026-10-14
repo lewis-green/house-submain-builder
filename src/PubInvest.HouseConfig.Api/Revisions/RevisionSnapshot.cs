@@ -30,4 +30,8 @@ public sealed record RevisionSnapshot(
     bool HasIsolator = true,
     bool TerminalsAtBottom = false);
 
-public sealed record CircuitSnapshot(Guid Id, string Type, string Name, string? Room, int Sequence);
+/// TerminalPosition and TerminalCount are nullable so revisions issued before
+/// they existed still read.
+public sealed record CircuitSnapshot(
+    Guid Id, string Type, string Name, string? Room, int Sequence,
+    int? TerminalPosition = null, int? TerminalCount = null);

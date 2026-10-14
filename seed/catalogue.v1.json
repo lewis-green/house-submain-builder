@@ -417,6 +417,14 @@
       "rows": 3,
       "slotsPerRow": 72,
       "ipRating": "IP30"
+    },
+    {
+      "id": "e1000000-0000-4000-8000-000000000004",
+      "manufacturer": "NETWORK-CABS",
+      "model": "5 row x 24 way",
+      "rows": 5,
+      "slotsPerRow": 72,
+      "ipRating": "IP30"
     }
   ],
   "ruleSets": [

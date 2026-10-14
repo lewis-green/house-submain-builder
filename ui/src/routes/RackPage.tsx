@@ -19,7 +19,7 @@ import { RackDrawing } from '../racks/RackDrawing'
 import { RackSettings } from '../racks/RackSettings'
 import { drawingSize } from '../racks/rackGeometry'
 import { useRackDrag } from '../racks/useRackDrag'
-import { asLocations, locationName } from '../locations'
+import { asLocations, locationName } from '../locations/options'
 
 const EMPTY_LAYOUT: RackLayoutResponse = { rackId: '', heightU: 0, freeU: 0, layoutVersion: 0, items: [] }
 

@@ -6,7 +6,7 @@ import { Field } from '../components/Field'
 import { SelectField } from '../components/SelectField'
 import { announce } from '../components/status'
 import { useSingleFlight } from '../components/useSingleFlight'
-import { locationOptions } from '../locations'
+import { locationOptions } from '../locations/options'
 
 interface Props {
   rack: RackResponse

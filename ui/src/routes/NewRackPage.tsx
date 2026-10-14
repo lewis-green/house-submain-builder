@@ -10,7 +10,7 @@ import { SelectField } from '../components/SelectField'
 import { Skeleton } from '../components/Skeleton'
 import { announce, dismissStatus } from '../components/status'
 import { useSingleFlight } from '../components/useSingleFlight'
-import { asLocations, locationOptions } from '../locations'
+import { asLocations, locationOptions } from '../locations/options'
 
 /**
  * Three answers and the rack exists: what it is called, which cabinet, and

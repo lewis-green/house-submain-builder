@@ -24,7 +24,7 @@ import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geome
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
 import { SLOT_UNITS_PER_MODULE } from '../units'
-import { asLocations, locationName } from '../locations'
+import { asLocations, locationName } from '../locations/options'
 import { FixturePicker } from '../wizard/FixturePicker'
 
 const ZOOM_STEP = 1.25

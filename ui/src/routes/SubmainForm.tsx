@@ -21,7 +21,7 @@ import { PreviewSummary } from '../wizard/PreviewSummary'
 import { NEW_TAPE_RUN, buildCircuits, type TapeInput } from '../wizard/buildCircuits'
 import { circuitsForEdit, countsFromCircuits, namesRemoved, removedByEdit } from '../wizard/editCircuits'
 import { formatModules } from '../units'
-import { asLocations, locationOptions } from '../locations'
+import { asLocations, locationOptions } from '../locations/options'
 
 const PREVIEW_DEBOUNCE_MS = 400
 

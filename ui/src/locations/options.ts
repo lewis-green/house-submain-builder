@@ -1,4 +1,4 @@
-import type { LocationResponse } from './api/types'
+import type { LocationResponse } from '../api/types'
 
 /**
  * A house's locations as a picker offers them, "Not placed" first. If the

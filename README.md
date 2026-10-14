@@ -94,9 +94,12 @@ don't commit it filled.
 8. **Edit** on the panel screen opens the panel back in the form that built it,
    filled in as it stands: change the name, the enclosure, the counts or the
    tape runs, and **Save and rebuild** saves and lays it out again in one
-   transaction. Circuits you keep keep their names, rooms and terminal order. A
-   lower count removes the last circuits of that type, and the form names them
-   beside the button before you save.
+   transaction. Circuits you keep keep their names, rooms and terminal order,
+   though, as with any rebuild, a channel freed by hand is reassigned. A lower
+   count removes the last circuits of that type, and the form names them beside
+   the button before you save. If the panel was changed elsewhere since the form
+   opened, it will not save over that; Reload starts it again from the panel as
+   it now is.
 
 ### The catalogue is not confirmed yet
 
@@ -123,7 +126,7 @@ units.
 
 ```bash
 dotnet test          # 336 tests (127 Domain, 27 Data, 182 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 260 Vitest tests in jsdom
+cd ui && npm test    # 268 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
 cd ui && npm run test:e2e   # 35 Playwright tests in WebKit (see below)

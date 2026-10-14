@@ -120,8 +120,8 @@ describe('Back navigation', () => {
 })
 
 function Where() {
-  const { pathname } = useLocation()
-  return <output aria-label="location">{pathname}</output>
+  const { pathname, search, hash } = useLocation()
+  return <output aria-label="location">{pathname + search + hash}</output>
 }
 
 describe('Old automation panel addresses', () => {
@@ -139,5 +139,12 @@ describe('Old automation panel addresses', () => {
 
     await waitFor(() => expect(screen.getByLabelText('location').textContent).toBe(newUrl))
     expect(screen.queryByRole('heading', { name: /nothing here/i })).not.toBeInTheDocument()
+  })
+  it('keeps a query and fragment through the redirect', async () => {
+    stubApi()
+
+    render(<MemoryRouter initialEntries={['/submains/s1/bom?from=pdf#lines']}><App /><Where /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByLabelText('location').textContent).toBe('/panels/s1/bom?from=pdf#lines'))
   })
 })

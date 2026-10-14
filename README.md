@@ -116,7 +116,7 @@ costing happens wherever your pricing actually lives.
 **Confirmed from real hardware:** the Shelly Pro Dimmer is 2 channels at 1 DIN
 module, the Shelly Pro relay is 4 channels at 3 modules, and three WAGO
 2003-7646 fit in one module. Everything else needs checking against a datasheet
-before anyone orders from a generated BOM.
+before anyone orders from a generated parts list.
 
 Parts can be corrected in the **Catalogue** screen (linked from the houses list)
 without a redeploy — widths there are entered in DIN modules, not internal slot

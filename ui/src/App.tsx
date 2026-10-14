@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useParams } from 'react-router'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import { BomPage } from './routes/BomPage'
 import { CataloguePage } from './routes/CataloguePage'
 import { EditSubmainPage, NewSubmainPage } from './routes/SubmainForm'
@@ -8,7 +8,9 @@ import { ProjectPage } from './routes/ProjectPage'
 import { ProjectsPage } from './routes/ProjectsPage'
 
 function MovedTo({ to }: { to: (params: Readonly<Record<string, string | undefined>>) => string }) {
-  return <Navigate to={to(useParams())} replace />
+  // The query and fragment go along too, so a link saved with either still lands where it pointed.
+  const { search, hash } = useLocation()
+  return <Navigate to={to(useParams()) + search + hash} replace />
 }
 
 export function App() {

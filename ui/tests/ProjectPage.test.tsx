@@ -175,7 +175,7 @@ describe('ProjectPage with locations', () => {
     })
     show()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Rename or remove Plant room' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Plant room' }))
     const sheet = screen.getByRole('dialog', { name: 'Plant room' })
     const field = within(sheet).getByLabelText('Location name')
     await userEvent.clear(field)
@@ -195,7 +195,7 @@ describe('ProjectPage with locations', () => {
     })
     show()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Rename or remove Plant room' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Plant room' }))
     const sheet = screen.getByRole('dialog', { name: 'Plant room' })
     await userEvent.click(within(sheet).getByRole('button', { name: 'Remove location' }))
     const question = within(sheet).getByRole('group', { name: /Remove Plant room\?/ })

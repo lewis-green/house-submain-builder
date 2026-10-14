@@ -108,7 +108,7 @@ export function ProjectPage() {
               <section key={location.id} aria-labelledby={`location-${location.id}`} className="mb-8">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h2 id={`location-${location.id}`} className="min-w-0 wrap-anywhere text-lg font-bold">{location.name}</h2>
-                  <Button variant="ghost" aria-label={`Rename or remove ${location.name}`} onClick={() => setEditing(location)}>
+                  <Button variant="ghost" aria-label={`Edit ${location.name}`} onClick={() => setEditing(location)}>
                     Edit
                   </Button>
                 </div>

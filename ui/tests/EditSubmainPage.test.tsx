@@ -47,13 +47,13 @@ const design: DesignResponse = {
   summary: { rowsUsed: 2, slotsUsed: 3, totalSlots: 144, deviceCount: 1, spareChannels: 0 },
 }
 
-function stubApi(patchResponse: () => Response = () => json(submain)) {
+function stubApi(patchResponse: () => Response = () => json(submain), stored: CircuitResponse[] = circuits) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === '/api/catalogue/enclosures') return json(enclosures)
     if (url === '/api/catalogue/device-types') return json([])
     if (url === '/api/submains/s1' && init?.method === 'PATCH') return patchResponse()
     if (url === '/api/submains/s1') return json(submain)
-    if (url === '/api/submains/s1/circuits') return json(circuits)
+    if (url === '/api/submains/s1/circuits') return json(stored)
     if (url === '/api/submains/s1/design/preview') return json(design)
     return json({})
   })
@@ -170,6 +170,36 @@ describe('EditSubmainPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
     await userEvent.click(screen.getByRole('button', { name: /more switched/i }))
     expect(screen.queryByText(/saving removes/i)).not.toBeInTheDocument()
+  })
+
+  it('ties the warning to the button for a screen reader, and says it politely as it changes', async () => {
+    stubApi()
+
+    renderPage()
+    await screen.findByLabelText(/submain name/i)
+    expect(saveButton()).not.toHaveAttribute('aria-describedby')
+
+    await userEvent.click(screen.getByRole('button', { name: /fewer switched/i }))
+
+    expect(saveButton()).toHaveAccessibleDescription('Saving removes: Landing')
+    const warning = document.getElementById(saveButton().getAttribute('aria-describedby')!)!
+    expect(warning.closest('[aria-live="polite"]')).not.toBeNull()
+    // Polite, and not a second status region competing with the app's own.
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+  })
+
+  it('names the first few circuits a save would remove and counts the rest', async () => {
+    const many: CircuitResponse[] = Array.from({ length: 8 }, (_, i) => ({
+      id: `w${i + 1}`, type: 'Switched', name: `Switched ${i + 1}`, room: null, sequence: i + 1, wattsPerMetre: null, lengthMetres: null,
+    }))
+    stubApi(undefined, [...many, { ...circuits[0], sequence: 9 }])
+
+    renderPage()
+    const fewer = await screen.findByRole('button', { name: /fewer switched/i })
+    for (let i = 0; i < 8; i++) await userEvent.click(fewer)
+
+    expect(saveButton()).toHaveAccessibleDescription(
+      'Saving removes: Switched 1, Switched 2, Switched 3, Switched 4, Switched 5 and 3 more')
   })
 
   it('stays on the form and says why when the generator refuses the rebuild', async () => {

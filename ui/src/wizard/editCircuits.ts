@@ -97,3 +97,17 @@ export function removedByEdit(existing: readonly CircuitResponse[], counts: Coun
 
   return inSequence(existing).filter(c => dropped.has(c.id))
 }
+
+/** How many removed circuits the warning names before it starts counting. */
+const NAMED_IN_WARNING = 5
+
+/**
+ * The removed circuits as the warning says them: a handful by name, the rest
+ * counted, so dropping a dozen cannot fill the action bar. "and 1 more" would
+ * take as much room as the name it hides, so a sixth is simply named.
+ */
+export function namesRemoved(removed: readonly CircuitResponse[]): string {
+  const names = removed.map(c => c.name)
+  if (names.length <= NAMED_IN_WARNING + 1) return names.join(', ')
+  return `${names.slice(0, NAMED_IN_WARNING).join(', ')} and ${names.length - NAMED_IN_WARNING} more`
+}

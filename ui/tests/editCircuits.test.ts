@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CircuitResponse } from '../src/api/types'
 import { buildCircuits } from '../src/wizard/buildCircuits'
-import { circuitsForEdit, countsFromCircuits, removedByEdit } from '../src/wizard/editCircuits'
+import { circuitsForEdit, countsFromCircuits, namesRemoved, removedByEdit } from '../src/wizard/editCircuits'
 
 // A panel as the engineer left it: some circuits renamed and given rooms since the build.
 const existing: CircuitResponse[] = [
@@ -145,5 +145,21 @@ describe('removedByEdit', () => {
     const counts = { ...countsFromCircuits(existing), dimmed: 1 }
 
     expect(removedByEdit(existing, counts).map(c => c.id)).toEqual(['d2'])
+  })
+})
+
+describe('namesRemoved', () => {
+  const named = (...names: string[]) => names.map(name => ({ ...existing[0], name }))
+
+  it('names every circuit when there are only a few', () => {
+    expect(namesRemoved(named('Hall lights', 'Landing'))).toBe('Hall lights, Landing')
+  })
+
+  it('names five and counts the rest, so a long list cannot fill the action bar', () => {
+    expect(namesRemoved(named('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'))).toBe('A, B, C, D, E and 3 more')
+  })
+
+  it('names a sixth rather than saying "and 1 more"', () => {
+    expect(namesRemoved(named('A', 'B', 'C', 'D', 'E', 'F'))).toBe('A, B, C, D, E, F')
   })
 })

@@ -18,7 +18,7 @@ import { useSingleFlight } from '../components/useSingleFlight'
 import { FixturePicker } from '../wizard/FixturePicker'
 import { PreviewSummary } from '../wizard/PreviewSummary'
 import { NEW_TAPE_RUN, buildCircuits, type TapeInput } from '../wizard/buildCircuits'
-import { circuitsForEdit, countsFromCircuits, removedByEdit } from '../wizard/editCircuits'
+import { circuitsForEdit, countsFromCircuits, namesRemoved, removedByEdit } from '../wizard/editCircuits'
 import { formatModules } from '../units'
 
 const PREVIEW_DEBOUNCE_MS = 400
@@ -263,15 +263,26 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
       back={editing ? { to: `/submains/${submainId}/panel`, label: 'Panel' } : { to: `/projects/${projectId}`, label: 'House' }}
       actions={(
         <div className="w-full">
-          {removed.length > 0 && (
-            <p className="mb-3 rounded-lg border border-l-4 border-warn bg-warn-soft px-3 py-2 text-sm text-warn">
-              <span className="font-bold">Saving removes:</span> {removed.map(c => c.name).join(', ')}
-            </p>
-          )}
+          {/* Always in the page, so the change is spoken as it happens — politely,
+              and not as a second status region talking over the app's own. The
+              button names it as its description while there is something to say. */}
+          <div aria-live="polite">
+            {removed.length > 0 && (
+              <p id="removal-warning" className="mb-3 rounded-lg border border-l-4 border-warn bg-warn-soft px-3 py-2 text-sm text-warn">
+                <span className="font-bold">Saving removes:</span> {namesRemoved(removed)}
+              </p>
+            )}
+          </div>
           {generateError?.inputs === request && (
             <div className="mb-3"><ErrorNote compact message={`${words.failed}: ${generateError.message}`} /></div>
           )}
-          <Button type="submit" form="submain-form" disabled={generating || !ready || whyNot !== null} className="w-full">
+          <Button
+            type="submit"
+            form="submain-form"
+            disabled={generating || !ready || whyNot !== null}
+            aria-describedby={removed.length > 0 ? 'removal-warning' : undefined}
+            className="w-full"
+          >
             {generating ? words.busy : words.act}
           </Button>
           {whyNot && <p className="mt-2 text-center text-sm text-ink-2">{whyNot}</p>}

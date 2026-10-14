@@ -72,6 +72,21 @@ describe('BomPage', () => {
     expect(await screen.findByText(/nothing to order/i)).toBeInTheDocument()
   })
 
+  it('says whose issued drawing is empty, in a whole sentence', async () => {
+    // A fresh Response per call: a body reads once, and two pages are rendered here.
+    vi.stubGlobal('fetch', vi.fn(async () => json({ lines: [] })))
+
+    renderPage()
+    expect(await screen.findByText('The issued panel has no parts in it.')).toBeInTheDocument()
+
+    render(
+      <MemoryRouter initialEntries={['/racks/r1/bom']}>
+        <Routes><Route path="/racks/:rackId/bom" element={<BomPage />} /></Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('The issued rack has no parts in it.')).toBeInTheDocument()
+  })
+
   it('offers the csv download for the scope it is showing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(bom)))
 

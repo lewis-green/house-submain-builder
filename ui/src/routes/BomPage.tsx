@@ -48,7 +48,7 @@ export function BomPage() {
       )}
 
       {bom && bom.lines.length === 0 && (
-        <EmptyState title="Nothing to order" hint={`The issued ${owner ?? 'drawings have'} no parts in ${owner ? 'it' : 'them'}.`} />
+        <EmptyState title="Nothing to order" hint={owner ? `The issued ${owner} has no parts in it.` : 'The issued drawings have no parts in them.'} />
       )}
 
       {bom && bom.lines.length > 0 && (

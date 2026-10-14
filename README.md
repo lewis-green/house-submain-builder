@@ -18,6 +18,12 @@ Then open **http://localhost:8080**. The UI is served by nginx, which proxies
 `/api` through to the API container, so the browser only ever talks to one
 origin.
 
+**Postgres needs ICU.** The `Locations` migration creates a collation
+(`CREATE COLLATION … provider = icu`) so location names are unique whatever
+their case. The official `postgres` images are built with ICU; a managed or
+hand-built server must be too, and the user the API migrates as needs CREATE
+on the `public` schema, which the database's owner has.
+
 ### Running it for development
 
 You need Docker, the .NET 10 SDK and Node 22.
@@ -107,8 +113,9 @@ don't commit it filled.
    port — and tick PoE where the cable needs it. **Issue PDF revision** gives
    the rack drawing, a schedule of every port and the parts to order.
 10. **Add location** on the house page — a plant room, a garage, a comms
-    cupboard. Place an automation panel in one from its form (**Location**),
-    and a rack when you add it or from its settings. Once a house has
+    cupboard. Place an automation panel in one with **Location** on its screen
+    — which saves at once and rebuilds nothing — or in its form, and a rack
+    when you add it or from its settings. Once a house has
     locations, its page lists the panels and racks under the place they are
     in, in the order the locations were added, with anything not yet placed
     last. **Edit** beside a location renames or removes it; removing one keeps
@@ -142,8 +149,8 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 441 tests (155 Domain, 36 Data, 250 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 335 Vitest tests in jsdom
+dotnet test          # 445 tests (155 Domain, 36 Data, 254 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 340 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
 cd ui && npm run test:e2e   # 43 Playwright tests in WebKit (see below)

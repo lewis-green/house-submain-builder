@@ -288,6 +288,58 @@ public class CatalogueAdminTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task Line_bar_ways_without_a_line_bar_device_are_refused()
+    {
+        var client = factory.CreateClient();
+        await Seed();
+
+        var response = await client.PostAsJsonAsync("/catalogue/rulesets", new
+        {
+            name = $"LineBar {Guid.NewGuid():N}",
+            version = 1,
+            isDefault = false,
+            payload = new
+            {
+                layouts = new[]
+                {
+                    new
+                    {
+                        zones = new[]
+                        {
+                            new { fromLeft = new[] { "Terminal240" }, fromRight = new[] { "Isolator" } },
+                        },
+                    },
+                },
+                bandStartsNewRow = true,
+                psuDeratingFactor = 0.8,
+                preferredDevice = new
+                {
+                    isolator = TestSeed.IsolatorId,
+                    dimmer240 = TestSeed.DimmerId,
+                    dimmer0_10V = TestSeed.TapeDimId,
+                    relay = TestSeed.RelayId,
+                    dc24VPositive = TestSeed.DcPosId,
+                    dc24VNegative = TestSeed.DcNegId,
+                    externalDriver = new[] { TestSeed.Psu240Id },
+                },
+                terminals = new
+                {
+                    deviceTypeId = TestSeed.TerminalId,
+                    bridgeBarDeviceTypeId = TestSeed.BridgeId,
+                    bridgeBarWays = 10,
+                    endStopDeviceTypeId = TestSeed.EndStopId,
+                    endStopsPerBank = 2,
+                    lineBridgeBarWays = 10,
+                },
+                packing = "firstFit",
+            },
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("catalogue", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task A_new_device_type_is_usable_on_the_next_design_without_a_deploy()
     {
         var client = factory.CreateClient();

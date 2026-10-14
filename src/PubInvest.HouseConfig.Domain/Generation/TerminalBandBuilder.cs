@@ -59,6 +59,10 @@ public static class TerminalBandBuilder
         var ordered = InTerminalOrder(circuits);
         var devices = new List<RequiredDevice>();
         var lineBars = 0;
+        var bridges = false;
+        var lineBarType = terminals.LineBridgeBarWays > 0
+            ? catalogue.FindActive(terminals.LineBridgeBarDeviceTypeId)
+            : null;
 
         for (var i = 0; i < ordered.Count; i++)
         {
@@ -80,13 +84,26 @@ public static class TerminalBandBuilder
             }
 
             // Cut to length per circuit. An offcut is not counted as a bar.
-            if (count > 1 && terminals.LineBridgeBarWays > 0)
+            if (count > 1) bridges = true;
+            if (count > 1 && lineBarType is not null)
             {
                 lineBars += (int)Math.Ceiling(count / (double)terminals.LineBridgeBarWays);
             }
         }
 
-        return new TerminalBand(devices, BuildAccessories(terminals, devices.Count, lineBars), []);
+        // Never drop a bridged circuit's line bar silently: say so instead.
+        IReadOnlyList<Diagnostic> diagnostics = bridges && lineBarType is null
+            ?
+            [
+                new Diagnostic(
+                    DiagnosticSeverity.Warning,
+                    DiagnosticCodes.NoPreferredDevice,
+                    "Circuits bridged across several terminals need a line jumper bar, but the ruleset names none that is in the catalogue.",
+                    "Point the ruleset's line bar at an active catalogue entry, or order the bars by hand.")
+            ]
+            : [];
+
+        return new TerminalBand(devices, BuildAccessories(terminals, devices.Count, lineBars), diagnostics);
     }
 
     /// One bank, so one neutral bar run and one set of stops; line bars only

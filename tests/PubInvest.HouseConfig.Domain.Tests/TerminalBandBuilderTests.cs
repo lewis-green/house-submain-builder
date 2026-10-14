@@ -185,6 +185,56 @@ public class TerminalBandBuilderTests
         var band = TerminalBandBuilder.Build([Switched(1, count: 4)], rules, CatalogueFixture.Catalogue());
 
         Assert.DoesNotContain(band.Accessories, a => a.DeviceTypeId == CatalogueFixture.LineBridgeId);
+        var warning = Assert.Single(band.Diagnostics);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+    }
+
+    [Fact]
+    public void A_line_bar_missing_from_the_catalogue_is_warned_not_dropped_silently()
+    {
+        var rules = CatalogueFixture.Rules() with
+        {
+            Terminals = CatalogueFixture.Rules().Terminals with { LineBridgeBarDeviceTypeId = Guid.NewGuid() }
+        };
+
+        var band = TerminalBandBuilder.Build([Switched(1, count: 3)], rules, CatalogueFixture.Catalogue());
+
+        Assert.DoesNotContain(band.Accessories, a => a.DeviceTypeId == rules.Terminals.LineBridgeBarDeviceTypeId);
+        var warning = Assert.Single(band.Diagnostics);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Equal(DiagnosticCodes.NoPreferredDevice, warning.Code);
+    }
+
+    [Fact]
+    public void No_line_bar_warning_when_nothing_bridges()
+    {
+        var rules = CatalogueFixture.Rules() with
+        {
+            Terminals = CatalogueFixture.Rules().Terminals with { LineBridgeBarWays = 0 }
+        };
+
+        var band = TerminalBandBuilder.Build([Switched(1), Switched(2)], rules, CatalogueFixture.Catalogue());
+
+        Assert.Empty(band.Diagnostics);
+    }
+
+    [Fact]
+    public void Two_circuits_on_the_same_position_fall_back_to_sequence()
+    {
+        var later = Switched(2, position: 1);
+        var earlier = Switched(1, position: 1);
+
+        var band = Build(later, earlier);
+
+        Assert.Equal([earlier.Id, later.Id], band.Devices.Select(d => d.CircuitId!.Value));
+    }
+
+    [Fact]
+    public void A_count_below_one_is_held_to_one()
+    {
+        var band = Build(Switched(1, count: 0));
+
+        Assert.Equal(["C1"], band.Devices.Select(d => d.Label));
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
 using PubInvest.HouseConfig.Data;
+using PubInvest.HouseConfig.Domain.Catalogue;
 
 namespace PubInvest.HouseConfig.Api.Endpoints;
 
@@ -82,7 +83,7 @@ public static class DeviceEndpoints
 
                 // The terminal order places terminals; dragging one would break the
                 // run a bridged circuit's bar and the schedule's range depend on.
-                if (device.Category == "Terminal240")
+                if (device.Category == nameof(DeviceCategory.Terminal240))
                 {
                     return Results.ValidationProblem(new Dictionary<string, string[]>
                     {

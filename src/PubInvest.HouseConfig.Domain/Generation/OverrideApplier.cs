@@ -34,7 +34,7 @@ public static class OverrideApplier
                      .Where(o => devices.Any(d => d.Label == o.Label && d.Category == DeviceCategory.Terminal240))
                      .ToList())
         {
-            diagnostics.Add(Dropped(terminal, "terminals follow the terminal order"));
+            diagnostics.Add(Dropped(terminal, "terminals follow the terminal order", "Change the terminal order instead."));
             pending.Remove(terminal);
         }
 
@@ -98,9 +98,12 @@ public static class OverrideApplier
         return "another device is already there";
     }
 
-    private static Diagnostic Dropped(PositionOverride request, string why) => new(
+    private static Diagnostic Dropped(
+        PositionOverride request,
+        string why,
+        string suggestion = "Drag it again if the new position is not what you want.") => new(
         DiagnosticSeverity.Warning,
         DiagnosticCodes.PositionOverrideDropped,
         $"'{request.Label}' could not be kept where you put it because {why}; it has been placed automatically.",
-        "Drag it again if the new position is not what you want.");
+        suggestion);
 }

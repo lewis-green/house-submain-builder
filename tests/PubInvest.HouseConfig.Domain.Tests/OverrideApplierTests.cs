@@ -38,6 +38,7 @@ public class OverrideApplierTests
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticCodes.PositionOverrideDropped, diagnostic.Code);
         Assert.Contains("terminals follow the terminal order", diagnostic.Message);
+        Assert.Equal("Change the terminal order instead.", diagnostic.Suggestion);
     }
 
     [Fact]

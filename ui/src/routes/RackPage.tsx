@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  LocationResponse, RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse,
-  SubmainResponse,
+  LocationResponse,
+  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -239,7 +239,7 @@ export function RackPage() {
 
           <div className="mt-6">
             <RackSettings
-              key={`${rack.name}|${rack.rackTypeId}|${rack.fedFromSubmainId}`}
+              key={`${rack.name}|${rack.rackTypeId}|${rack.fedFromSubmainId}|${rack.locationId}`}
               rack={rack}
               cabinets={cabinets}
               submains={submains}

@@ -84,6 +84,27 @@ public class RackCatalogueAdminTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task A_body_without_a_part_number_is_a_field_error_not_a_crash()
+    {
+        var (client, switchId, cabinetId) = await OwnRows();
+
+        var item = await client.PatchAsJsonAsync($"/catalogue/rack-device-types/{switchId}", new
+        {
+            manufacturer = "Ubiquiti", model = "Admin switch", kind = "Switch", heightU = 1,
+            portGroups = Ports, poeBudgetW = 60, requiredAccessoryId = (Guid?)null, active = true,
+        });
+        var cabinet = await client.PatchAsJsonAsync($"/catalogue/rack-types/{cabinetId}", new
+        {
+            manufacturer = "Generic", model = "Admin cabinet", heightU = 6, mounting = "Wall",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, item.StatusCode);
+        Assert.Contains("partNumber", (await item.Content.ReadFromJsonAsync<ProblemDto>())!.Errors.Keys);
+        Assert.Equal(HttpStatusCode.BadRequest, cabinet.StatusCode);
+        Assert.Contains("partNumber", (await cabinet.Content.ReadFromJsonAsync<ProblemDto>())!.Errors.Keys);
+    }
+
+    [Fact]
     public async Task A_placed_items_height_and_ports_cannot_change_but_its_part_number_can()
     {
         var (client, switchId, cabinetId) = await OwnRows();

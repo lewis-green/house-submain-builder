@@ -147,6 +147,34 @@ public class RackRevisionEndpointTests(HouseConfigApiFactory factory)
         Assert.Contains(bom.Lines, l => l.PartNumber == "T-DIM2");
     }
 
+    /// Retiring a catalogue item prints nothing new, so the PDFs that hold it
+    /// stay current.
+    [Fact]
+    public async Task Retiring_a_placed_item_does_not_make_the_pdf_out_of_date()
+    {
+        var (client, _, rackId) = await Rack();
+        await Add(client, rackId, TestSeed.Switch16Id);
+        await Issue(client, rackId);
+        Assert.True(await LatestIsCurrent(client, rackId));
+
+        await using (var db = factory.NewDbContext())
+        {
+            db.RackDeviceTypes.Single(t => t.Id == TestSeed.Switch16Id).Active = false;
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            Assert.True(await LatestIsCurrent(client, rackId));
+        }
+        finally
+        {
+            await using var db = factory.NewDbContext();
+            db.RackDeviceTypes.Single(t => t.Id == TestSeed.Switch16Id).Active = true;
+            await db.SaveChangesAsync();
+        }
+    }
+
     /// Review focus: an item retired after it was placed is still in the rack.
     [Fact]
     public async Task A_deactivated_item_still_appears_in_a_new_revision()

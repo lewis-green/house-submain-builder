@@ -67,10 +67,31 @@ public sealed class RackDocument(
             });
         });
 
+    /// The cabinet in bands of at most 14U, the top band first, so a 42U
+    /// cabinet prints at the same scale as a 12U one instead of being shrunk to
+    /// fit one page. A band is drawn at the page's width and kept whole: one
+    /// that does not fit under the band before it starts the next page.
     private void Drawing(IContainer container) =>
         container.Column(column =>
         {
-            column.Item().Svg(RackSvgRenderer.Render(snapshot)).FitArea();
+            var spans = snapshot.Items.Select(i => new RackSpan(Guid.Empty, i.TopU, i.HeightU)).ToList();
+            var bands = RackBands.Split(snapshot.Cabinet.HeightU, spans);
+
+            foreach (var band in bands)
+            {
+                column.Item().ShowEntire().Column(drawing =>
+                {
+                    // A wall cabinet prints as one band and needs no caption.
+                    if (bands.Count > 1)
+                    {
+                        drawing.Item().PaddingBottom(2, Unit.Millimetre)
+                            .Text($"U{band.TopU}–U{band.BottomU}").SemiBold().FontColor(Colors.Grey.Darken1);
+                    }
+
+                    drawing.Item().Svg(RackSvgRenderer.Render(snapshot, band.TopU, band.BottomU));
+                });
+            }
+
             column.Item().PaddingTop(4, Unit.Millimetre)
                 .Text("Filled port: labelled.  Orange dot: PoE.  U1 is the bottom of the cabinet.")
                 .FontColor(Colors.Grey.Darken1);

@@ -245,6 +245,24 @@ public class RackItemEndpointTests(HouseConfigApiFactory factory)
         Assert.Contains("U3–U4", (await response.Content.ReadFromJsonAsync<ProblemDto>())!.Errors["rackTypeId"][0]);
     }
 
+    /// Several saves of a port not yet stored, at once: two can both find no
+    /// row and both insert it. None may fail with a 500, and the port ends up
+    /// with one of the labels sent.
+    [Fact]
+    public async Task Concurrent_saves_of_a_new_port_never_fail_and_one_of_them_sticks()
+    {
+        var (client, rackId) = await Rack(TestSeed.Cabinet4UId);
+        var item = Assert.Single((await Added(client, rackId, TestSeed.Switch48Id)).Items);
+        var labels = Enumerable.Range(1, 6).Select(n => $"Racer {n}").ToArray();
+
+        var responses = await Task.WhenAll(labels.Select(label => Port(client, item.Id, 7, label, false)));
+
+        Assert.All(responses, r => Assert.Contains(r.StatusCode, new[] { HttpStatusCode.OK, HttpStatusCode.Conflict }));
+        var port = Assert.Single(Assert.Single((await Layout(client, rackId)).Items).Ports);
+        Assert.Equal(7, port.Number);
+        Assert.Contains(port.Label, labels);
+    }
+
     /// Review focus: two adds racing for the same U. However they interleave,
     /// no request may fail with a 500, and no two items may share a U.
     [Fact]

@@ -41,9 +41,18 @@ public sealed class RackRevisionService(HouseConfigDbContext db)
     public async Task<Func<RackRevision, bool>> CurrentCheckAsync(Guid rackId, CancellationToken ct)
     {
         var (snapshot, _, _) = await BuildAsync(rackId, ct);
-        var now = snapshot is null ? null : JsonSerializer.Serialize(snapshot, DomainMapper.Json);
-        return revision => now is not null && JsonSerializer.Serialize(Read(revision), DomainMapper.Json) == now;
+        var now = snapshot is null ? null : Printed(snapshot);
+        return revision => now is not null && Printed(Read(revision)) == now;
     }
+
+    /// The snapshot as the PDF prints it. Whether a catalogue row is still
+    /// offered is embedded with it but printed nowhere, so retiring a switch
+    /// must not make every issued rack that holds one out of date. The stored
+    /// snapshot keeps the row as it was; only the comparison ignores it.
+    private static string Printed(RackSnapshot snapshot) =>
+        JsonSerializer.Serialize(
+            snapshot with { Catalogue = snapshot.Catalogue.Select(t => t with { Active = true }).ToList() },
+            DomainMapper.Json);
 
     /// Counted from one in issue order — the "revision 3" a drawing is called by.
     public async Task<int> NumberOfAsync(RackRevision revision, CancellationToken ct)

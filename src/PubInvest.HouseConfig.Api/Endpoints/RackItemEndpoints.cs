@@ -17,6 +17,9 @@ public static class RackItemEndpoints
     /// left, up to this many times, before the loser is told to reload.
     private const int MaxAddAttempts = 3;
 
+    /// A port save that loses a race is run once more against what won.
+    private const int MaxPortSaveAttempts = 2;
+
     public static IEndpointRouteBuilder MapRackItemEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/racks/{id:guid}/items", async (
@@ -201,25 +204,50 @@ public static class RackItemEndpoints
                     });
                 }
 
-                var port = await db.RackPorts.SingleOrDefaultAsync(p => p.RackItemId == id && p.Number == number, ct);
+                // Two saves of a port not yet stored can both find nothing and
+                // both insert it, and the second insert hits the port's key; or
+                // one save clears the port while another updates it, and the
+                // update finds no row. The loser is run once more against what
+                // the winner left, and lands where a save made a moment later
+                // would have.
+                for (var attempt = 1; ; attempt++)
+                {
+                    var port = await db.RackPorts.SingleOrDefaultAsync(p => p.RackItemId == id && p.Number == number, ct);
 
-                if (label is null && !request.Poe)
-                {
-                    // An empty port is not stored at all.
-                    if (port is not null) db.RackPorts.Remove(port);
-                }
-                else if (port is null)
-                {
-                    db.RackPorts.Add(new RackPort { RackItemId = id, Number = number, Label = label, Poe = request.Poe });
-                }
-                else
-                {
-                    port.Label = label;
-                    port.Poe = request.Poe;
-                }
+                    if (label is null && !request.Poe)
+                    {
+                        // An empty port is not stored at all.
+                        if (port is not null) db.RackPorts.Remove(port);
+                    }
+                    else if (port is null)
+                    {
+                        db.RackPorts.Add(new RackPort { RackItemId = id, Number = number, Label = label, Poe = request.Poe });
+                    }
+                    else
+                    {
+                        port.Label = label;
+                        port.Poe = request.Poe;
+                    }
 
-                await db.SaveChangesAsync(ct);
-                return Results.Ok(new RackPortResponse(number, label, request.Poe));
+                    try
+                    {
+                        await db.SaveChangesAsync(ct);
+                        return Results.Ok(new RackPortResponse(number, label, request.Poe));
+                    }
+                    catch (DbUpdateException) when (attempt < MaxPortSaveAttempts)
+                    {
+                        db.ChangeTracker.Clear();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        db.ChangeTracker.Clear();
+                        return Results.Json(
+                            new ConflictResponse(
+                                $"Port {number} was saved by someone else at the same moment. Reload and try again.",
+                                await db.Racks.Where(r => r.Id == item.RackId).Select(r => r.LayoutVersion).SingleAsync(ct)),
+                            statusCode: StatusCodes.Status409Conflict);
+                    }
+                }
             })
             .WithTags("Racks");
 

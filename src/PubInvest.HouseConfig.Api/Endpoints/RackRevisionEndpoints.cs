@@ -29,7 +29,8 @@ public static class RackRevisionEndpoints
                 if (revision is null) return Results.NotFound();
 
                 // Just issued from the rack as it is, so current by definition.
-                return Results.Created($"/rack-revisions/{revision.Id}", new
+                // The Location is the PDF: the revision has no route of its own.
+                return Results.Created($"/rack-revisions/{revision.Id}/export/pdf", new
                 {
                     revision.Id,
                     revision.RackId,

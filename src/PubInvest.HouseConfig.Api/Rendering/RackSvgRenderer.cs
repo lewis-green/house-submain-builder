@@ -18,30 +18,35 @@ public static class RackSvgRenderer
     private const double PortMm = 7;
     private const double PortGapMm = 1.6;
 
-    public static string Render(RackSnapshot snapshot)
+    /// The whole cabinet, U1 at the bottom.
+    public static string Render(RackSnapshot snapshot) => Render(snapshot, snapshot.Cabinet.HeightU, 1);
+
+    /// One band of the cabinet: only U bottomU up to topU, with the items whose
+    /// top U is in it, drawn whole. RackBands picks the bands so that an item's
+    /// bottom is never below the band's.
+    public static string Render(RackSnapshot snapshot, int topU, int bottomU)
     {
-        var heightU = snapshot.Cabinet.HeightU;
         var types = snapshot.Catalogue.ToDictionary(t => t.Id);
         var svg = new StringBuilder();
 
         // InvariantCulture throughout: a comma decimal separator would make invalid SVG.
         svg.Append(CultureInfo.InvariantCulture,
-            $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {N(GutterMm + PanelMm)} {N(heightU * UnitMm)}\">");
+            $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {N(GutterMm + PanelMm)} {N((topU - bottomU + 1) * UnitMm)}\">");
 
-        for (var u = heightU; u >= 1; u--)
+        for (var u = topU; u >= bottomU; u--)
         {
-            var y = (heightU - u) * UnitMm;
+            var y = (topU - u) * UnitMm;
             svg.Append(CultureInfo.InvariantCulture,
                 $"<rect x=\"{N(GutterMm)}\" y=\"{N(y)}\" width=\"{N(PanelMm)}\" height=\"{N(UnitMm)}\" fill=\"#f1f5f9\" stroke=\"#cbd5e1\" stroke-width=\"0.4\"/>");
             svg.Append(CultureInfo.InvariantCulture,
                 $"<text x=\"{N(GutterMm - 4)}\" y=\"{N(y + UnitMm / 2)}\" text-anchor=\"end\" dominant-baseline=\"middle\" font-size=\"9\" fill=\"#475569\">U{u}</text>");
         }
 
-        foreach (var item in snapshot.Items)
+        foreach (var item in snapshot.Items.Where(i => i.TopU <= topU && i.TopU >= bottomU))
         {
             var type = types[item.RackDeviceTypeId];
             var x = GutterMm + 2;
-            var y = (heightU - item.TopU) * UnitMm + 2;
+            var y = (topU - item.TopU) * UnitMm + 2;
             var width = PanelMm - 4;
             var height = item.HeightU * UnitMm - 4;
 

@@ -18,8 +18,14 @@ public class RackDocumentTests(HouseConfigApiFactory factory)
         return string.Join("\n", document.GetPages().Select(p => p.Text));
     }
 
+    private static int PageCount(byte[] bytes)
+    {
+        using var document = UglyToad.PdfPig.PdfDocument.Open(bytes);
+        return document.NumberOfPages;
+    }
+
     /// A rack fed from "Ground floor" holding a switch with two labelled ports.
-    private async Task<(HttpClient Client, Guid RevisionId)> IssuedRack(string firstPortLabel)
+    private async Task<(HttpClient Client, Guid RevisionId)> IssuedRack(string firstPortLabel, Guid? cabinetId = null)
     {
         await using (var db = factory.NewDbContext())
         {
@@ -34,7 +40,7 @@ public class RackDocumentTests(HouseConfigApiFactory factory)
             circuits = Array.Empty<object>(),
         })).Content.ReadFromJsonAsync<IdDto>();
         var rack = await (await client.PostAsJsonAsync($"/projects/{project.Id}/racks",
-            new { name = "Comms cupboard", rackTypeId = TestSeed.Cabinet4UId, fedFromSubmainId = submain!.Id }))
+            new { name = "Comms cupboard", rackTypeId = cabinetId ?? TestSeed.Cabinet4UId, fedFromSubmainId = submain!.Id }))
             .Content.ReadFromJsonAsync<IdDto>();
         var layout = await (await client.PostAsJsonAsync($"/racks/{rack!.Id}/items", new { rackDeviceTypeId = TestSeed.Switch48Id }))
             .Content.ReadFromJsonAsync<LayoutDto>();
@@ -80,7 +86,30 @@ public class RackDocumentTests(HouseConfigApiFactory factory)
 
         // Port 52 has no label, but a patching sheet needs its row.
         Assert.Contains("52", text);
-        Assert.Contains("—", text);
+        // Of the 52 ports, 2 are labelled; each of the other 50 prints an em
+        // dash in its label cell. The headers carry a few more.
+        var dashes = text.Count(c => c == '—');
+        Assert.True(dashes >= 50, $"Expected an em dash for each of the 50 unlabelled ports, but the PDF text holds {dashes}.");
+    }
+
+    /// A 42U cabinet drawn whole on one page would be shrunk past reading.
+    /// Printed in bands, it takes more pages than a wall cabinet and the switch
+    /// is still named on the drawing.
+    [Fact]
+    public async Task A_42u_cabinet_prints_in_bands_over_more_pages_than_a_4u_one()
+    {
+        var (client, smallId) = await IssuedRack("Kitchen AP");
+        var (_, tallId) = await IssuedRack("Kitchen AP", TestSeed.Cabinet42UId);
+
+        var small = await client.GetByteArrayAsync($"/rack-revisions/{smallId}/export/pdf");
+        var tall = await client.GetByteArrayAsync($"/rack-revisions/{tallId}/export/pdf");
+
+        Assert.True(PageCount(tall) > PageCount(small), $"42U: {PageCount(tall)} pages, 4U: {PageCount(small)} pages.");
+        var text = PdfText(tall);
+        Assert.Contains("Switch 1", text);
+        Assert.Contains("U42–U29", text);
+        Assert.Contains("U14–U1", text);
+        Assert.Contains("T-CAB42", text);
     }
 
     /// Review focus: what an electrician types is what prints.

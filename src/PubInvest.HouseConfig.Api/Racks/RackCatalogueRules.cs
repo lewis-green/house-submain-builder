@@ -17,6 +17,13 @@ public static class RackCatalogueRules
         Required(problems, "model", request.Model);
         Required(problems, "partNumber", request.PartNumber);
 
+        // The JSON binder leaves an omitted string or list null rather than
+        // refusing the body, and the rack catalogue is edited only by scripts,
+        // which is exactly where a partial body comes from. Both validators say
+        // what is missing before anything below, or the endpoint after them,
+        // trims or walks it.
+        if (problems.Count > 0) return problems;
+
         if (request.HeightU is < 1 or > 60) problems["heightU"] = ["A cabinet is between 1U and 60U tall."];
         if (request.Mounting is not ("Wall" or "Floor")) problems["mounting"] = ["Mounting is Wall or Floor."];
         return problems;
@@ -32,11 +39,9 @@ public static class RackCatalogueRules
         Required(problems, "manufacturer", request.Manufacturer);
         Required(problems, "model", request.Model);
         Required(problems, "partNumber", request.PartNumber);
+        // Before the trims and the walk below, as in Validate.
+        if (problems.Count > 0) return problems;
 
-        // The JSON binder leaves an omitted list null rather than refusing the
-        // body, and port groups are edited only by scripts, which is exactly
-        // where a partial body comes from. Say what is missing before anything
-        // below, or the endpoint after it, dereferences it.
         if (request.PortGroups is null)
         {
             problems["portGroups"] = ["Send the item's port groups: an empty list for an accessory."];

@@ -31,6 +31,7 @@ public static class TestSeed
 
     public static readonly Guid Cabinet4UId      = new("dddd0000-0000-4000-8000-000000000001");
     public static readonly Guid Cabinet2UId      = new("dddd0000-0000-4000-8000-000000000002");
+    public static readonly Guid Cabinet42UId     = new("dddd0000-0000-4000-8000-000000000003");
     public static readonly Guid Switch48Id       = new("dddd0000-0000-4000-8000-000000000011");
     public static readonly Guid Switch16Id       = new("dddd0000-0000-4000-8000-000000000012");
     public static readonly Guid PatchPanelId     = new("dddd0000-0000-4000-8000-000000000013");
@@ -146,6 +147,7 @@ public static class TestSeed
         [
             new SeedRackType(Cabinet4UId, "Test", "4U cabinet", "T-CAB4", 4, "Wall"),
             new SeedRackType(Cabinet2UId, "Test", "2U cabinet", "T-CAB2", 2, "Wall"),
+            new SeedRackType(Cabinet42UId, "Test", "42U cabinet", "T-CAB42", 42, "Floor"),
         ],
         RackDeviceTypes:
         [

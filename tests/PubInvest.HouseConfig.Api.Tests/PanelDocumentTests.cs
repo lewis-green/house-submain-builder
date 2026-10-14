@@ -180,6 +180,24 @@ public class PanelDocumentTests
     }
 
     [Fact]
+    public void Terminals_from_an_old_revision_without_circuits_leave_the_terminal_cell_blank()
+    {
+        var terminalType = Guid.NewGuid();
+        var snapshot = Snapshot(
+        [
+            new(terminalType, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All),
+            new(DimmerType, DeviceCategory.Dimmer240, 1, 0, 3, "Dimmer 1",
+                [new ChannelAssignment(0, CircuitA, false)], TerminalRole.None),
+        ]);
+
+        var text = PdfText(new PanelDocument(snapshot, DateTimeOffset.UnixEpoch, "tester").GeneratePdf());
+
+        Assert.Contains("Terminal", text);
+        Assert.Contains("Dimmer 1", text);
+        Assert.Contains("row 2, module 1", text);
+    }
+
+    [Fact]
     public void The_schedule_and_legend_use_words_not_enum_names()
     {
         var text = PdfText(Document().GeneratePdf());

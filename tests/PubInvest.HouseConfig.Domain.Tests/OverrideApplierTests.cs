@@ -25,6 +25,22 @@ public class OverrideApplierTests
     }
 
     [Fact]
+    public void An_override_on_a_terminal_is_dropped_because_terminals_follow_the_terminal_order()
+    {
+        var terminal = new PlacedDevice(
+            CatalogueFixture.DimmerId, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All);
+        var layout = new PanelLayout(4, 54, [terminal]);
+
+        var (moved, diagnostics) = OverrideApplier.Apply(layout, [new PositionOverride("C1", 2, 10)]);
+
+        var placed = moved.Devices.Single();
+        Assert.Equal((0, 0), (placed.RowIndex, placed.StartSlot));
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticCodes.PositionOverrideDropped, diagnostic.Code);
+        Assert.Contains("terminals follow the terminal order", diagnostic.Message);
+    }
+
+    [Fact]
     public void An_override_naming_a_device_that_no_longer_exists_is_reported()
     {
         var layout = new PanelLayout(4, 54, [Device("Dimmer 1", 1, 0)]);

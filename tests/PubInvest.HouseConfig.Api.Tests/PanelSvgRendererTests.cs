@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Security;
+using System.Text.RegularExpressions;
 using PubInvest.HouseConfig.Api.Documents;
 using PubInvest.HouseConfig.Api.Rendering;
 using PubInvest.HouseConfig.Domain.Catalogue;
@@ -103,7 +104,41 @@ public class PanelSvgRendererTests
         Assert.Contains(">C2.1<", svg);
         Assert.Contains(">C2.2<", svg);
         Assert.Contains("data-bridge=\"C2.1–C2.2\"", svg);
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(svg, "data-bridge="));
+        Assert.Single(Regex.Matches(svg, "data-bridge="));
+    }
+
+    [Fact]
+    public void A_bar_never_spans_another_circuits_terminal()
+    {
+        var (a, b, c, type) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var layout = new PanelLayout(1, 12,
+        [
+            new(type, DeviceCategory.Terminal240, 0, 0, 1, "C1", [], TerminalRole.All, a),
+            new(type, DeviceCategory.Terminal240, 0, 1, 1, "C2.1", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 2, 1, "C3", [], TerminalRole.All, c),
+            new(type, DeviceCategory.Terminal240, 0, 3, 1, "C2.2", [], TerminalRole.All, b),
+        ]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.DoesNotContain("data-bridge=", svg);
+    }
+
+    [Fact]
+    public void A_bridge_of_three_blocks_gets_one_bar()
+    {
+        var (b, type) = (Guid.NewGuid(), Guid.NewGuid());
+        var layout = new PanelLayout(1, 12,
+        [
+            new(type, DeviceCategory.Terminal240, 0, 0, 1, "C2.1", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 1, 1, "C2.2", [], TerminalRole.All, b),
+            new(type, DeviceCategory.Terminal240, 0, 2, 1, "C2.3", [], TerminalRole.All, b),
+        ]);
+
+        var svg = PanelSvgRenderer.Render(layout, new Dictionary<Guid, string>());
+
+        Assert.Single(Regex.Matches(svg, "data-bridge="));
+        Assert.Contains("data-bridge=\"C2.1–C2.3\"", svg);
     }
 
     [Fact]

@@ -87,6 +87,24 @@ public class DevicePositionTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task A_terminal_cannot_be_moved_because_the_terminal_order_places_it()
+    {
+        var client = factory.CreateClient();
+        var (submainId, design) = await Generated(client, ThreeDimmed);
+        var terminal = design.Layout.Devices.First(d => d.Category == "Terminal240");
+
+        var response = await client.PatchAsJsonAsync($"/devices/{terminal.Id}/position",
+            new { rowIndex = terminal.RowIndex, startSlot = FreeSlot, basedOnLayoutVersion = design.LayoutVersion });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await using var db = factory.NewDbContext();
+        Assert.Equal(terminal.StartSlot, (await db.DeviceInstances.SingleAsync(d => d.Id == terminal.Id)).StartSlot);
+        Assert.Equal(design.LayoutVersion,
+            (await db.Submains.SingleAsync(s => s.Id == submainId)).LayoutVersion);
+    }
+
+    [Fact]
     public async Task A_move_outside_the_enclosure_is_rejected()
     {
         var client = factory.CreateClient();

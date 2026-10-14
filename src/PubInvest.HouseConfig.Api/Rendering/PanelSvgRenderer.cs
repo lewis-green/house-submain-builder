@@ -140,13 +140,12 @@ public static class PanelSvgRenderer
             }
 
             // A bar along the top of each circuit bridged across several blocks.
-            foreach (var bridged in group.Members
-                         .Where(m => m.CircuitId is not null)
-                         .GroupBy(m => m.CircuitId)
-                         .Where(g => g.Count() > 1))
+            // One bar per run of slot-adjacent blocks of the same circuit, so a bar
+            // can never pass over another circuit's terminal.
+            foreach (var bridged in BridgedRuns(group.Members))
             {
-                var first = bridged.First();
-                var last = bridged.Last();
+                var first = bridged[0];
+                var last = bridged[^1];
                 var bx = PanelGeometry.SlotToX(first.StartSlot) + 0.6;
                 var bw = PanelGeometry.SlotToX(last.EndSlotExclusive) - PanelGeometry.SlotToX(first.StartSlot) - 1.2;
 
@@ -215,6 +214,29 @@ public static class PanelSvgRenderer
                 line++;
             }
         }
+    }
+
+    private static List<List<PlacedDevice>> BridgedRuns(List<PlacedDevice> members)
+    {
+        var runs = new List<List<PlacedDevice>>();
+
+        foreach (var member in members)
+        {
+            if (member.CircuitId is not null
+                && runs.Count > 0
+                && runs[^1][^1] is var previous
+                && previous.CircuitId == member.CircuitId
+                && previous.EndSlotExclusive == member.StartSlot)
+            {
+                runs[^1].Add(member);
+            }
+            else
+            {
+                runs.Add([member]);
+            }
+        }
+
+        return runs.Where(r => r.Count > 1).ToList();
     }
 
     private sealed record Group(int RowIndex, int StartSlot, int Slots, TerminalRole Role, List<PlacedDevice> Members);

@@ -7,6 +7,7 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
 {
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Submain> Submains => Set<Submain>();
+    public DbSet<Location> Locations => Set<Location>();
     public DbSet<CircuitRow> Circuits => Set<CircuitRow>();
     public DbSet<ExtraFixtureRow> ExtraFixtures => Set<ExtraFixtureRow>();
     public DbSet<DeviceInstance> DeviceInstances => Set<DeviceInstance>();
@@ -23,10 +24,29 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
     public DbSet<RackPort> RackPorts => Set<RackPort>();
     public DbSet<RackRevision> RackRevisions => Set<RackRevision>();
 
+    private const string CaseInsensitive = "case_insensitive";
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<Project>().HasMany(p => p.Submains).WithOne(s => s.Project!)
             .HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<Project>().HasMany<Location>().WithOne()
+            .HasForeignKey(l => l.ProjectId).OnDelete(DeleteBehavior.Cascade);
+
+        // "Plant room" and "plant room" are one room. A nondeterministic ICU
+        // collation lets the unique index say so, where a plain index would let
+        // both in; the endpoint refuses the duplicate first with a proper message.
+        b.HasCollation(CaseInsensitive, locale: "und-u-ks-level2", provider: "icu", deterministic: false);
+        b.Entity<Location>().Property(l => l.Name).UseCollation(CaseInsensitive);
+        b.Entity<Location>().HasIndex(l => new { l.ProjectId, l.Name }).IsUnique();
+
+        // A location is where something is, not what owns it: removing one
+        // leaves its panels and racks in the house, unplaced.
+        b.Entity<Submain>().HasOne<Location>().WithMany()
+            .HasForeignKey(s => s.LocationId).OnDelete(DeleteBehavior.SetNull);
+        b.Entity<Rack>().HasOne<Location>().WithMany()
+            .HasForeignKey(r => r.LocationId).OnDelete(DeleteBehavior.SetNull);
 
         // Panels built before this column existed all have an isolator, and so
         // does a submain created without saying either way.

@@ -12,6 +12,9 @@ public class Rack
     public Guid? FedFromSubmainId { get; set; }
     public string? Notes { get; set; }
 
+    /// Where in the house the rack is, or null when nobody has said.
+    public Guid? LocationId { get; set; }
+
     /// Bumped by every add, move and removal. A concurrency token, so two adds
     /// racing for the same U cannot both land.
     public int LayoutVersion { get; set; }

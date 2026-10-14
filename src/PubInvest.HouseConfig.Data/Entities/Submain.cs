@@ -14,6 +14,9 @@ public class Submain
     public Guid? RuleSetId { get; set; }
     public string? Notes { get; set; }
 
+    /// Where in the house the panel is, or null when nobody has said.
+    public Guid? LocationId { get; set; }
+
     /// False when the submain is isolated upstream, so the panel fits none.
     public bool HasIsolator { get; set; } = true;
 

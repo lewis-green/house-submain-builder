@@ -17,6 +17,7 @@ namespace PubInvest.HouseConfig.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasAnnotation("Npgsql:CollationDefinition:case_insensitive", "und-u-ks-level2,und-u-ks-level2,icu,False")
                 .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -237,6 +238,37 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.ToTable("ExtraFixtures");
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Location", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .UseCollation("case_insensitive");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Locations");
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PanelRevision", b =>
                 {
                     b.Property<Guid>("Id")
@@ -338,6 +370,9 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -360,6 +395,8 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("FedFromSubmainId");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("ProjectId");
 
@@ -573,6 +610,9 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.Property<int>("LayoutVersion")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -599,6 +639,8 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("ProjectId");
 
@@ -641,6 +683,15 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Location", b =>
+                {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.PositionOverrideRow", b =>
                 {
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
@@ -655,6 +706,11 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Submain", null)
                         .WithMany()
                         .HasForeignKey("FedFromSubmainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Project", null)
@@ -705,6 +761,11 @@ namespace PubInvest.HouseConfig.Data.Migrations
 
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.Submain", b =>
                 {
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PubInvest.HouseConfig.Data.Entities.Project", "Project")
                         .WithMany("Submains")
                         .HasForeignKey("ProjectId")

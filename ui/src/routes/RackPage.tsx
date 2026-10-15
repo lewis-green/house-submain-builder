@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  LocationResponse,
-  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SubmainResponse,
+  HouseSwitch, LocationResponse,
+  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SaveUplinkRequest, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -40,6 +40,8 @@ export function RackPage() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [switches, setSwitches] = useState<HouseSwitch[] | null>(null)
+  const [switchesError, setSwitchesError] = useState<string | null>(null)
   // Bumped by every port save and settings save, so the PDF's currency is
   // asked again: a label, a rename, a cabinet or a feed change moves nothing,
   // so the layout version alone would never notice them.
@@ -72,6 +74,24 @@ export function RackPage() {
 
   useEffect(() => { void load() }, [load])
   useEffect(() => { void loadCatalogue() }, [loadCatalogue])
+
+  const projectId = rack?.projectId
+  const loadSwitches = useCallback(() => {
+    if (!projectId) return
+    api.get<HouseSwitch[]>(`/projects/${projectId}/switches`)
+      .then(list => { setSwitches(list); setSwitchesError(null) })
+      .catch((e: ApiError) => setSwitchesError(e.message))
+  }, [projectId])
+
+  // An uplink reaches into the house's other racks, which may have changed
+  // since this one loaded — the switch it went to removed, a port taken. So
+  // opening a switch fetches the house's switches and this rack's links again.
+  const openSwitchId = layout?.items.find(i => i.id === selectedId)?.kind === 'Switch' ? selectedId : null
+  useEffect(() => {
+    if (!openSwitchId) return
+    loadSwitches()
+    api.get<RackLayoutResponse>(`/racks/${rackId}/layout`).then(setLayout).catch(() => {})
+  }, [openSwitchId, loadSwitches, rackId])
 
   /** The drawing is scaled to the screen's width; this undoes that scale. */
   const toPoint = useCallback((clientX: number, clientY: number) => {
@@ -152,6 +172,32 @@ export function RackPage() {
     } catch (e) {
       const error = e as ApiError
       announce(`Port ${number} not saved: ${error.fieldErrors?.label?.[0] ?? error.fieldErrors?.poe?.[0] ?? error.message}`, 'error')
+      throw e
+    }
+  }
+
+  // Like a port label, an uplink moves nothing, so the PDF's currency is asked
+  // again. The answer is the rack's whole layout: the switch it went to may be
+  // in this rack, and its port shows the downlink.
+  async function saveUplink(itemId: string, request: SaveUplinkRequest | null) {
+    try {
+      const next = request
+        ? await api.put<RackLayoutResponse>(`/rack-items/${itemId}/uplink`, request)
+        : await api.del<RackLayoutResponse>(`/rack-items/${itemId}/uplink`)
+      setLayout(next)
+      setSyncKey(n => n + 1)
+      loadSwitches()
+      announce(request ? 'Uplink saved' : 'Uplink removed', 'ok')
+    } catch (e) {
+      const error = e as ApiError
+      if (error.status === 404) {
+        announce('That switch is no longer in this rack — reloading')
+        setSelectedId(null)
+        await load()
+        return
+      }
+      const failed = request ? 'Uplink not saved' : 'Uplink not removed'
+      announce(Object.keys(error.fieldErrors).length > 0 ? `${failed} — see the form` : `${failed}: ${error.message}`, 'error')
       throw e
     }
   }
@@ -271,6 +317,12 @@ export function RackPage() {
           onMove={topU => { void commitMove(selected.id, topU) }}
           onRemove={() => void removeItem(selected.id)}
           onClose={closeItem}
+          uplinks={{
+            switches,
+            switchesError,
+            onSave: request => saveUplink(selected.id, request),
+            onRemove: () => saveUplink(selected.id, null),
+          }}
         />
       )}
     </AppShell>

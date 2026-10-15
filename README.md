@@ -121,6 +121,12 @@ don't commit it filled.
     last. **Edit** beside a location renames or removes it; removing one keeps
     its panels and racks, which simply become unplaced. A placed panel's or
     rack's screen and its issued PDF say where it is.
+11. Tap a switch and set its **Uplink**: the port it leaves by (its first SFP+
+    port unless you pick another) and where it goes — another switch's port in
+    any rack of the house, picked by place and rack, or something in words such
+    as "UDM Pro". Both ends say so: the uplink port reads "Uplink to Switch 1 ·
+    Core · port 3", and the port it arrives at, on the other switch, "Downlink
+    from Switch 1 · Comms cupboard".
 
 ### The catalogue is not confirmed yet
 
@@ -149,11 +155,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 445 tests (155 Domain, 36 Data, 254 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 340 Vitest tests in jsdom
+dotnet test          # 474 tests (155 Domain, 40 Data, 279 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 358 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 43 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 45 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -165,8 +171,8 @@ images, and pushes them to GHCR from `main`.
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard and
 editing a built panel, Home Screen metadata, the rack screen's port labelling,
-drag and PDF, placing a panel in a location, and a few checks with a mouse
-(43 tests). It brings up its own
+drag and PDF, placing a panel in a location, a switch uplinking into one in
+another rack, and a few checks with a mouse (45 tests). It brings up its own
 stack and takes it down again, so it needs nothing running first and never
 touches a development database:
 
@@ -254,6 +260,15 @@ units with U1 at the bottom; the server places each item in the top free U
 and checks every move, exactly as it decides every panel layout. Ports are
 numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 
+**A switch has one uplink, recorded at its own end.** It goes to another
+switch's port anywhere in the house or to something written in words, never
+both; a port takes at most one switch's uplink, and never the one its own
+switch leaves by — the endpoint says so, and a unique index over the
+destination holds it. The other end is worked out, not stored, so it cannot
+disagree. Like a port label, an uplink moves nothing and leaves the layout
+version alone. Removing a switch clears the uplinks into it in the same save,
+and its remove button says whose they are first.
+
 **A location is where something is, not what owns it.** A panel or a rack
 points at one of its house's locations, or at none; removing a location sets
 them back to none rather than taking them with it. Names are unique within a
@@ -273,7 +288,10 @@ and bumps no layout version — still marks the PDF on offer as out of date. The
 snapshot includes the two install options, so an option saved without a rebuild
 reads as out of date too, and the location's name, which the PDF prints in its
 header — so placing a panel or a rack dates the PDF issued before it. Revisions
-issued before locations existed read as unplaced and stay current.
+issued before locations existed read as unplaced and stay current. A rack's
+port schedule prints both ends of every uplink, so a switch in another rack
+uplinking into this one, or that rack being renamed, dates this rack's PDF too;
+revisions issued before uplinks existed read as having none and stay current.
 
 **Sign-in is a separate chunk.** `main.tsx` imports the OIDC provider and gate
 only when the runtime config names an identity provider, so installs that leave

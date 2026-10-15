@@ -152,7 +152,10 @@ public static class RackItemEndpoints
                 var rack = await db.Racks.SingleAsync(r => r.Id == item.RackId, ct);
                 if (rack.LayoutVersion != basedOnLayoutVersion) return Conflict(rack.LayoutVersion);
 
-                // Its ports go with it, by the cascade on RackPorts.
+                // Its ports go with it, by the cascade on RackPorts. Uplinks into
+                // it, from this rack or another, are cleared in the same save: a
+                // link to a switch that is gone would say where no cable goes.
+                await RackUplinks.ClearIntoAsync(db, id, ct);
                 db.RackItems.Remove(item);
                 rack.LayoutVersion++;
 

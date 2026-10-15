@@ -32,7 +32,11 @@ public sealed record RackItemResponse(
     IReadOnlyList<PortGroup> PortGroups,
     int? PoeBudgetW,
     /// Only the ports that have a label or a tick; the rest are implied by the groups.
-    IReadOnlyList<RackPortResponse> Ports);
+    IReadOnlyList<RackPortResponse> Ports,
+    /// A switch's uplink, or null when none is recorded.
+    RackUplinkResponse? Uplink,
+    /// Other switches' uplinks arriving at this item's ports, from any rack in the house.
+    IReadOnlyList<RackDownlinkResponse> Downlinks);
 
 /// Items top U first, the order a person reads a rack in.
 public sealed record RackLayoutResponse(

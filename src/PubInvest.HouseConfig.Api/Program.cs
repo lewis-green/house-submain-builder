@@ -69,6 +69,7 @@ app.MapRevisionEndpoints();
 app.MapExportEndpoints();
 app.MapRackEndpoints();
 app.MapRackItemEndpoints();
+app.MapRackUplinkEndpoints();
 app.MapRackRevisionEndpoints();
 app.MapCatalogueAdminEndpoints(authEnabled);
 

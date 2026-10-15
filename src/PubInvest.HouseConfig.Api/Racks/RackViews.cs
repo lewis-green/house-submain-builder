@@ -56,6 +56,7 @@ public static class RackViews
         var cabinet = await db.RackTypes.SingleAsync(t => t.Id == rack.RackTypeId, ct);
         var types = await TypesAsync(db, rack.Items, ct);
         var spans = rack.Items.Select(i => new RackSpan(i.Id, i.TopU, types[i.RackDeviceTypeId].HeightU)).ToList();
+        var links = await RackUplinks.LinksAsync(db, rack.Items, ct);
 
         return new RackLayoutResponse(
             rack.Id,
@@ -64,14 +65,16 @@ public static class RackViews
             rack.LayoutVersion,
             rack.Items
                 .OrderByDescending(i => i.TopU)
-                .Select(i => Item(i, types[i.RackDeviceTypeId]))
+                .Select(i => Item(i, types[i.RackDeviceTypeId], links))
                 .ToList());
     }
 
-    public static RackItemResponse Item(RackItem item, RackDeviceType type) => new(
+    public static RackItemResponse Item(RackItem item, RackDeviceType type, RackUplinks.Links links) => new(
         item.Id, type.Id, type.Kind, type.Description, type.PartNumber, item.Label, item.TopU, type.HeightU,
         type.PortGroups, type.PoeBudgetW,
-        item.Ports.OrderBy(p => p.Number).Select(p => new RackPortResponse(p.Number, p.Label, p.Poe)).ToList());
+        item.Ports.OrderBy(p => p.Number).Select(p => new RackPortResponse(p.Number, p.Label, p.Poe)).ToList(),
+        links.UplinkOf(item),
+        links.DownlinksInto(item.Id));
 
     public static async Task<Dictionary<string, string[]>> ValidateAsync(
         HouseConfigDbContext db,

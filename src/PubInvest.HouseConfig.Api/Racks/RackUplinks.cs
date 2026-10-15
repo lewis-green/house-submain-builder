@@ -30,7 +30,8 @@ public static class RackUplinks
         int TopU,
         int? UplinkPort,
         Guid? UplinkToItemId,
-        int? UplinkToPort);
+        int? UplinkToPort,
+        string? UplinkToText);
 
     public static IQueryable<Placed> Where(HouseConfigDbContext db, IQueryable<RackItem> items) =>
         from i in items
@@ -39,7 +40,14 @@ public static class RackUplinks
         select new Placed(
             i.Id, i.Label, i.RackDeviceTypeId, r.Id, r.ProjectId, r.Name,
             r.LocationId, l == null ? null : l.Name, l == null ? null : l.Sequence,
-            i.TopU, i.UplinkPort, i.UplinkToItemId, i.UplinkToPort);
+            i.TopU, i.UplinkPort, i.UplinkToItemId, i.UplinkToPort, i.UplinkToText);
+
+    /// The port a switch's own uplink leaves by, which no other uplink may
+    /// arrive at — but only while that uplink still goes somewhere. One left
+    /// pointing at nothing by the database's set-null holds no port. The
+    /// picker is told this same port, so it and the check agree.
+    public static int? HeldUplinkPort(Placed item) =>
+        item.UplinkToItemId is not null || item.UplinkToText is not null ? item.UplinkPort : null;
 
     /// "Switch 1" beside the switch being edited; "Switch 1 in Garage" from
     /// another rack, where its own rack's "Switch 1" would be a different one.
@@ -159,15 +167,56 @@ public static class RackUplinks
 
         if (toPort is not { } port) return [("toPort", $"Choose the port on {name} it plugs into.")];
         if (type.GroupOf(port) is null) return [("toPort", $"{name} has no port {port}; its ports are {Range(type)}.")];
-        if (target.UplinkPort == port) return [("toPort", $"Port {port} is the uplink of {name}.")];
+        if (HeldUplinkPort(target) == port) return [("toPort", $"Port {port} is the uplink of {name}.")];
 
         if (await TakerAsync(db, target.Id, port, item.Id, ct) is { } taker)
         {
             return [("toPort", $"Port {port} on {name} already takes the uplink from {Name(taker, item.RackId)}.")];
         }
 
+        if (await LoopAsync(db, item, target, ct) is { } through)
+        {
+            var via = through.Count == 0 ? "" : $" (through {Listed(through.Select(t => Name(t, item.RackId)).ToList())})";
+            return [("toItemId", $"{name} already uplinks{via} into {item.Label}; that would make a loop.")];
+        }
+
         return [];
     }
+
+    /// The switches between the target and this item when the target's own
+    /// uplinks lead back here — so this uplink would close a ring, which a
+    /// switched network cannot have — or null when they lead elsewhere. The
+    /// walk is bounded by the number of links, so links already in a ring
+    /// (made before this check existed) cannot keep it going.
+    private static async Task<List<Placed>?> LoopAsync(HouseConfigDbContext db, Placed item, Placed target, CancellationToken ct)
+    {
+        var links = (await Where(db, db.RackItems.Where(i =>
+                i.UplinkToItemId != null && i.Id != item.Id && db.Racks.Any(r => r.Id == i.RackId && r.ProjectId == item.ProjectId)))
+            .ToListAsync(ct))
+            .ToDictionary(l => l.Id);
+
+        var through = new List<Placed>();
+        var current = target;
+        for (var step = 0; step <= links.Count; step++)
+        {
+            if (!links.TryGetValue(current.Id, out var link) || link.UplinkToItemId is not { } next) return null;
+            if (next == item.Id) return through;
+            if (!links.TryGetValue(next, out var onward))
+            {
+                // The next switch has no uplink of its own: the chain ends there.
+                return null;
+            }
+
+            through.Add(onward);
+            current = onward;
+        }
+
+        return null;
+    }
+
+    /// "A", "A and B", "A, B and C".
+    private static string Listed(List<string> names) =>
+        names.Count <= 1 ? string.Concat(names) : $"{string.Join(", ", names[..^1])} and {names[^1]}";
 
     /// The switch, other than `except`, whose uplink arrives at this port.
     private static Task<Placed?> TakerAsync(HouseConfigDbContext db, Guid itemId, int port, Guid? except, CancellationToken ct) =>

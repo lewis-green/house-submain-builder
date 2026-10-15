@@ -115,13 +115,13 @@ public static class RackUplinkEndpoints
                     .Select(i => new HouseSwitchResponse(
                         i.Id, i.Label, types[i.RackDeviceTypeId].Description, i.RackId, i.RackName, i.LocationId, i.LocationName,
                         types[i.RackDeviceTypeId].PortGroups,
-                        // Only a link that still goes somewhere holds a port.
-                        i.UplinkToItemId is not null || i.UplinkToPort is null ? i.UplinkPort : null,
+                        RackUplinks.HeldUplinkPort(i),
                         items
                             .Where(s => s.UplinkToItemId == i.Id && s.UplinkToPort is not null)
                             .OrderBy(s => s.UplinkToPort)
                             .Select(s => new RackDownlinkResponse(s.UplinkToPort!.Value, s.Id, s.Label, s.RackId, s.RackName))
-                            .ToList()))
+                            .ToList(),
+                        i.UplinkToItemId))
                     .ToList());
             })
             .WithTags("Racks");

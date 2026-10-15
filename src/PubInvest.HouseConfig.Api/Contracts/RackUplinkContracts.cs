@@ -33,4 +33,7 @@ public sealed record HouseSwitchResponse(
     string? LocationName,
     IReadOnlyList<PortGroup> PortGroups,
     int? UplinkPort,
-    IReadOnlyList<RackDownlinkResponse> Downlinks);
+    IReadOnlyList<RackDownlinkResponse> Downlinks,
+    /// The switch its own uplink goes into, so the picker can keep out a
+    /// choice that would close a loop.
+    Guid? UplinkToItemId);

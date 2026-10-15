@@ -21,7 +21,7 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
     private record GroupDto(string Name, int From, int To);
     private record SwitchDto(
         Guid Id, string Label, string Model, Guid RackId, string RackName, Guid? LocationId, string? LocationName,
-        GroupDto[] PortGroups, int? UplinkPort, DownlinkDto[] Downlinks);
+        GroupDto[] PortGroups, int? UplinkPort, DownlinkDto[] Downlinks, Guid? UplinkToItemId);
     private record ProblemDto(Dictionary<string, string[]> Errors);
     private record RevisionDto(Guid Id, int Number, bool Current);
 
@@ -251,6 +251,65 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
     }
 
     [Fact]
+    public async Task Two_switches_cannot_uplink_into_each_other()
+    {
+        var house = await NewHouse();
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 });
+
+        var message = await Problem(await Uplink(house.Client, house.CommsSwitch,
+            new { port = 52, toItemId = house.GarageSwitch, toPort = 1 }), "toItemId");
+
+        Assert.Equal("Switch 1 in Garage already uplinks into Switch 1; that would make a loop.", message);
+    }
+
+    [Fact]
+    public async Task Three_switches_cannot_uplink_round_in_a_ring()
+    {
+        var house = await NewHouse();
+        var second = await AnotherGarageSwitch(house);
+        await Uplink(house.Client, house.CommsSwitch, new { port = 52, toItemId = house.GarageSwitch, toPort = 1 });
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = second, toPort = 1 });
+
+        var message = await Problem(await Uplink(house.Client, second,
+            new { port = 49, toItemId = house.CommsSwitch, toPort = 49 }), "toItemId");
+
+        Assert.Equal("Switch 1 in Comms already uplinks (through Switch 1) into Switch 2; that would make a loop.", message);
+    }
+
+    [Fact]
+    public async Task A_chain_of_uplinks_is_not_a_loop()
+    {
+        var house = await NewHouse();
+        var second = await AnotherGarageSwitch(house);
+        await Uplink(house.Client, second, new { port = 49, toItemId = house.GarageSwitch, toPort = 1 });
+
+        var response = await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    /// A switch removed without the endpoint (the database's set-null) leaves
+    /// its uplinker's port pointing at nothing. That port holds nothing, to the
+    /// check and to the picker alike.
+    [Fact]
+    public async Task An_uplink_left_pointing_at_nothing_holds_no_port_for_the_check_or_the_picker()
+    {
+        var house = await NewHouse();
+        var second = await AnotherGarageSwitch(house);
+        await Uplink(house.Client, house.CommsSwitch, new { port = 52, toItemId = second, toPort = 1 });
+        await using (var db = factory.NewDbContext())
+        {
+            await db.RackItems.Where(i => i.Id == second).ExecuteDeleteAsync();
+        }
+
+        var switches = (await house.Client.GetFromJsonAsync<SwitchDto[]>($"/projects/{house.ProjectId}/switches"))!;
+        var response = await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 52 });
+
+        Assert.Null(switches.Single(s => s.Id == house.CommsSwitch).UplinkPort);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task An_unknown_item_is_not_found()
     {
         var house = await NewHouse();
@@ -345,6 +404,7 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
         Assert.Null(comms.UplinkPort);
         Assert.Equal(49, Assert.Single(comms.Downlinks).Port);
         Assert.Equal((17, (string?)null), (switches[1].UplinkPort, switches[1].LocationName));
+        Assert.Equal(house.CommsSwitch, switches[1].UplinkToItemId);
     }
 
     [Fact]

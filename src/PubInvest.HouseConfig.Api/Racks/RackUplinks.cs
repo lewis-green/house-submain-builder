@@ -177,6 +177,20 @@ public static class RackUplinks
     private static string Range(RackDeviceType type) =>
         $"{type.PortGroups.Min(g => g.From)}–{type.PortGroups.Max(g => g.To)}";
 
+    /// The uplink as an issued drawing prints it.
+    public static RackUplinkSnapshot? Printed(RackUplinkResponse? uplink, Guid rackId) => uplink switch
+    {
+        null => null,
+        { ToText: { } text } => new RackUplinkSnapshot(uplink.Port, text, null, null, null, null),
+        _ when uplink.ToRackId == rackId => new RackUplinkSnapshot(uplink.Port, null, uplink.ToLabel, null, null, uplink.ToPort),
+        _ => new RackUplinkSnapshot(uplink.Port, null, uplink.ToLabel, uplink.ToRackName, uplink.ToLocationName, uplink.ToPort),
+    };
+
+    public static IReadOnlyList<RackDownlinkSnapshot>? Printed(IReadOnlyList<RackDownlinkResponse> downlinks, Guid rackId) =>
+        downlinks.Count == 0
+            ? null
+            : downlinks.Select(d => new RackDownlinkSnapshot(d.Port, d.FromLabel, d.FromRackId == rackId ? null : d.FromRackName)).ToList();
+
     public static void Clear(RackItem item)
     {
         item.UplinkPort = null;

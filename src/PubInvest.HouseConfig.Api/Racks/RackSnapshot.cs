@@ -24,6 +24,26 @@ public sealed record RackItemSnapshot(
     string Label,
     int TopU,
     int HeightU,
-    IReadOnlyList<RackPortSnapshot> Ports);
+    IReadOnlyList<RackPortSnapshot> Ports,
+    /// A switch's uplink, or null when it has none — as every item issued
+    /// before uplinks existed had, so those still compare equal.
+    RackUplinkSnapshot? Uplink = null,
+    /// Other switches' uplinks arriving here, from this rack or another. Null
+    /// rather than empty when there are none, for the same reason.
+    IReadOnlyList<RackDownlinkSnapshot>? Downlinks = null);
 
 public sealed record RackPortSnapshot(int Number, string? Label, bool Poe);
+
+/// Either the words, or the other switch with its port. The other switch's
+/// rack and location are null when it is in this rack: the drawing's own
+/// header already says where that is.
+public sealed record RackUplinkSnapshot(
+    int Port,
+    string? ToText,
+    string? ToLabel,
+    string? ToRackName,
+    string? ToLocationName,
+    int? ToPort);
+
+/// The rack is null when the switch it comes from is in this one.
+public sealed record RackDownlinkSnapshot(int Port, string FromLabel, string? FromRackName);

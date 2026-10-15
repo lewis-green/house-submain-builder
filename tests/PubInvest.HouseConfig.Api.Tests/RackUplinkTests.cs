@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Data.Seeding;
 
 namespace PubInvest.HouseConfig.Api.Tests;
@@ -22,6 +23,7 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
         Guid Id, string Label, string Model, Guid RackId, string RackName, Guid? LocationId, string? LocationName,
         GroupDto[] PortGroups, int? UplinkPort, DownlinkDto[] Downlinks);
     private record ProblemDto(Dictionary<string, string[]> Errors);
+    private record RevisionDto(Guid Id, int Number, bool Current);
 
     /// A house with a "Comms" rack in the plant room holding a 48-port switch
     /// and a patch panel, and a "Garage" rack holding a 16-port switch.
@@ -350,5 +352,93 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
     {
         var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/projects/{Guid.NewGuid()}/switches")).StatusCode);
+    }
+    private static async Task<RevisionDto> Issue(HttpClient client, Guid rackId) =>
+        (await (await client.PostAsJsonAsync($"/racks/{rackId}/revisions", new { }))
+            .Content.ReadFromJsonAsync<RevisionDto>())!;
+
+    private static async Task<bool> IsCurrent(HttpClient client, Guid rackId, Guid revisionId) =>
+        (await client.GetFromJsonAsync<RevisionDto[]>($"/racks/{rackId}/revisions"))!.Single(r => r.Id == revisionId).Current;
+
+    private static async Task<string> PdfText(HttpClient client, Guid revisionId)
+    {
+        using var document = UglyToad.PdfPig.PdfDocument.Open(await client.GetByteArrayAsync($"/rack-revisions/{revisionId}/export/pdf"));
+        return string.Join("\n", document.GetPages().Select(p => p.Text));
+    }
+
+    [Fact]
+    public async Task Each_racks_pdf_prints_its_end_of_the_link_and_names_the_other_rack()
+    {
+        var house = await NewHouse();
+        await house.Client.PutAsJsonAsync($"/rack-items/{house.GarageSwitch}/ports/17", new { label = "To comms", poe = false });
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 });
+
+        var garage = await PdfText(house.Client, (await Issue(house.Client, house.GarageId)).Id);
+        var comms = await PdfText(house.Client, (await Issue(house.Client, house.CommsId)).Id);
+
+        Assert.Contains("To comms", garage);
+        Assert.Contains("Uplink to Switch 1  ·  Comms  ·  Plant room  ·  port 49", garage);
+        Assert.Contains("Downlink from Switch 1  ·  Garage", comms);
+    }
+
+    [Fact]
+    public async Task Within_one_rack_the_pdf_names_the_switch_alone_and_words_print_as_written()
+    {
+        var house = await NewHouse();
+        var second = await AnotherGarageSwitch(house);
+        await Uplink(house.Client, second, new { port = 49, toItemId = house.GarageSwitch, toPort = 18 });
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toText = "UDM Pro" });
+
+        var garage = await PdfText(house.Client, (await Issue(house.Client, house.GarageId)).Id);
+
+        Assert.Contains("Uplink to Switch 1  ·  port 18", garage);
+        Assert.Contains("Downlink from Switch 2", garage);
+        Assert.DoesNotContain("Downlink from Switch 2  ·", garage);
+        Assert.Contains("Uplink to UDM Pro", garage);
+    }
+
+    /// The downlink is printed on this rack's schedule, so a switch in another
+    /// rack uplinking into this one dates this rack's PDF too.
+    [Fact]
+    public async Task An_uplink_from_another_rack_dates_this_racks_pdf_and_removing_it_makes_it_current_again()
+    {
+        var house = await NewHouse();
+        var revision = await Issue(house.Client, house.CommsId);
+
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 });
+        Assert.False(await IsCurrent(house.Client, house.CommsId, revision.Id));
+
+        await house.Client.DeleteAsync($"/rack-items/{house.GarageSwitch}/uplink");
+        Assert.True(await IsCurrent(house.Client, house.CommsId, revision.Id));
+    }
+
+    [Fact]
+    public async Task Renaming_the_rack_an_uplink_goes_to_dates_the_pdf_that_names_it()
+    {
+        var house = await NewHouse();
+        await Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 });
+        var revision = await Issue(house.Client, house.GarageId);
+
+        await house.Client.PatchAsJsonAsync($"/racks/{house.CommsId}", new { name = "Comms cupboard", rackTypeId = TestSeed.Cabinet4UId });
+
+        Assert.False(await IsCurrent(house.Client, house.GarageId, revision.Id));
+    }
+
+    [Fact]
+    public async Task A_rack_revision_issued_before_uplinks_were_recorded_is_still_current()
+    {
+        var house = await NewHouse();
+        var revision = await Issue(house.Client, house.CommsId);
+
+        await using (var db = factory.NewDbContext())
+        {
+            var stored = await db.RackRevisions.SingleAsync(r => r.Id == revision.Id);
+            Assert.Contains("\"uplink\":null,\"downlinks\":null", stored.SnapshotJson);
+            stored.SnapshotJson = stored.SnapshotJson.Replace(",\"uplink\":null,\"downlinks\":null", "");
+            Assert.DoesNotContain("uplink", stored.SnapshotJson);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True(await IsCurrent(house.Client, house.CommsId, revision.Id));
     }
 }

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import type {
-  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SubmainResponse,
+  HouseSwitch, LocationResponse,
+  RackDeviceTypeResponse, RackLayoutResponse, RackPortResponse, RackResponse, RackTypeResponse, SaveUplinkRequest, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -18,6 +19,7 @@ import { RackDrawing } from '../racks/RackDrawing'
 import { RackSettings } from '../racks/RackSettings'
 import { drawingSize } from '../racks/rackGeometry'
 import { useRackDrag } from '../racks/useRackDrag'
+import { asLocations, locationName } from '../locations/options'
 
 const EMPTY_LAYOUT: RackLayoutResponse = { rackId: '', heightU: 0, freeU: 0, layoutVersion: 0, items: [] }
 
@@ -33,10 +35,13 @@ export function RackPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [cabinets, setCabinets] = useState<RackTypeResponse[]>([])
   const [submains, setSubmains] = useState<SubmainResponse[]>([])
+  const [locations, setLocations] = useState<LocationResponse[]>([])
   const [catalogue, setCatalogue] = useState<RackDeviceTypeResponse[] | null>(null)
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [switches, setSwitches] = useState<HouseSwitch[] | null>(null)
+  const [switchesError, setSwitchesError] = useState<string | null>(null)
   // Bumped by every port save and settings save, so the PDF's currency is
   // asked again: a label, a rename, a cabinet or a feed change moves nothing,
   // so the layout version alone would never notice them.
@@ -57,6 +62,7 @@ export function RackPage() {
         // costs the settings form its choices, not the rack.
         api.get<RackTypeResponse[]>('/catalogue/rack-types').then(setCabinets).catch(() => setCabinets([]))
         api.get<SubmainResponse[]>(`/projects/${r.projectId}/submains`).then(setSubmains).catch(() => setSubmains([]))
+        api.get(`/projects/${r.projectId}/locations`).then(l => setLocations(asLocations(l))).catch(() => setLocations([]))
       })
       .catch((e: ApiError) => setLoadError(e.message)), [rackId])
 
@@ -68,6 +74,35 @@ export function RackPage() {
 
   useEffect(() => { void load() }, [load])
   useEffect(() => { void loadCatalogue() }, [loadCatalogue])
+
+  const projectId = rack?.projectId
+  /** `live` says whether the answer is still wanted when it arrives. */
+  const loadSwitches = useCallback((live: () => boolean = () => true) => {
+    if (!projectId) return
+    api.get<HouseSwitch[]>(`/projects/${projectId}/switches`)
+      .then(list => { if (live()) { setSwitches(list); setSwitchesError(null) } })
+      .catch((e: ApiError) => { if (live()) setSwitchesError(e.message) })
+  }, [projectId])
+
+  // An uplink reaches into the house's other racks, which may have changed
+  // since this one loaded — the switch it went to removed, a port taken. So
+  // opening a switch fetches the house's switches and this rack's links again.
+  // Either answer is dropped once the sheet has closed, and a layout older than
+  // the one on screen — a move or an add landed while it was on its way — is
+  // never put back over it. One of the same version is taken: an uplink saved
+  // elsewhere changes the links without bumping the version.
+  const openSwitchId = layout?.items.find(i => i.id === selectedId)?.kind === 'Switch' ? selectedId : null
+  useEffect(() => {
+    if (!openSwitchId) return
+    let live = true
+    loadSwitches(() => live)
+    api.get<RackLayoutResponse>(`/racks/${rackId}/layout`)
+      .then(fresh => {
+        if (live) setLayout(current => (current && fresh.layoutVersion < current.layoutVersion ? current : fresh))
+      })
+      .catch(() => {})
+    return () => { live = false }
+  }, [openSwitchId, loadSwitches, rackId])
 
   /** The drawing is scaled to the screen's width; this undoes that scale. */
   const toPoint = useCallback((clientX: number, clientY: number) => {
@@ -152,6 +187,32 @@ export function RackPage() {
     }
   }
 
+  // Like a port label, an uplink moves nothing, so the PDF's currency is asked
+  // again. The answer is the rack's whole layout: the switch it went to may be
+  // in this rack, and its port shows the downlink.
+  async function saveUplink(itemId: string, request: SaveUplinkRequest | null) {
+    try {
+      const next = request
+        ? await api.put<RackLayoutResponse>(`/rack-items/${itemId}/uplink`, request)
+        : await api.del<RackLayoutResponse>(`/rack-items/${itemId}/uplink`)
+      setLayout(next)
+      setSyncKey(n => n + 1)
+      loadSwitches()
+      announce(request ? 'Uplink saved' : 'Uplink removed', 'ok')
+    } catch (e) {
+      const error = e as ApiError
+      if (error.status === 404) {
+        announce('That switch is no longer in this rack — reloading')
+        setSelectedId(null)
+        await load()
+        return
+      }
+      const failed = request ? 'Uplink not saved' : 'Uplink not removed'
+      announce(Object.keys(error.fieldErrors).length > 0 ? `${failed} — see the form` : `${failed}: ${error.message}`, 'error')
+      throw e
+    }
+  }
+
   // A second "Yes, remove it" in the same tick would carry a stale version and
   // come back as a conflict; `once` drops it before it is sent.
   const removeItem = (itemId: string) => once(async () => {
@@ -176,11 +237,12 @@ export function RackPage() {
   const subtitle = rack
     ? `${rack.cabinet} · ${rack.fedFromSubmainName ? `fed from ${rack.fedFromSubmainName}` : 'not fed from an automation panel'}`
     : undefined
+  const place = rack && locationName(locations, rack.locationId)
 
   return (
     <AppShell
       title={rack?.name ?? 'Rack'}
-      subtitle={subtitle}
+      subtitle={place ? `${place} · ${subtitle}` : subtitle}
       back={{ to: rack ? `/projects/${rack.projectId}` : '/', label: 'House' }}
       nav={rack ? (
         <Link to={`/racks/${rack.id}/bom`} className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-ink-2 active:bg-press">
@@ -234,10 +296,11 @@ export function RackPage() {
 
           <div className="mt-6">
             <RackSettings
-              key={`${rack.name}|${rack.rackTypeId}|${rack.fedFromSubmainId}`}
+              key={`${rack.name}|${rack.rackTypeId}|${rack.fedFromSubmainId}|${rack.locationId}`}
               rack={rack}
               cabinets={cabinets}
               submains={submains}
+              locations={locations}
               onSaved={saved => { setRack(saved); setSyncKey(n => n + 1); void load() }}
               onConflict={() => void load()}
             />
@@ -265,6 +328,13 @@ export function RackPage() {
           onMove={topU => { void commitMove(selected.id, topU) }}
           onRemove={() => void removeItem(selected.id)}
           onClose={closeItem}
+          uplinks={{
+            switches,
+            switchesError,
+            onRetrySwitches: () => { setSwitchesError(null); loadSwitches() },
+            onSave: request => saveUplink(selected.id, request),
+            onRemove: () => saveUplink(selected.id, null),
+          }}
         />
       )}
     </AppShell>

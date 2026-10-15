@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import { currentDetails } from '../api/submainDetails'
 import type {
-  CircuitResponse, DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, SubmainResponse,
+  CircuitResponse, DesignResponse, DeviceTypeResponse, EnclosureType, ExtraFixture, LocationResponse, SubmainResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
+import { SelectField } from '../components/SelectField'
 import { Skeleton } from '../components/Skeleton'
 import { Stepper } from '../components/Stepper'
 import { Toggle } from '../components/Toggle'
@@ -20,6 +21,7 @@ import { PreviewSummary } from '../wizard/PreviewSummary'
 import { NEW_TAPE_RUN, buildCircuits, type TapeInput } from '../wizard/buildCircuits'
 import { circuitsForEdit, countsFromCircuits, namesRemoved, removedByEdit } from '../wizard/editCircuits'
 import { formatModules } from '../units'
+import { asLocations, locationOptions } from '../locations/options'
 
 const PREVIEW_DEBOUNCE_MS = 400
 
@@ -34,6 +36,13 @@ const describeEnclosure = (e: EnclosureType) => {
   const maker = /\brows?\b/i.test(e.model) ? e.manufacturer : `${e.manufacturer} ${e.model}`
   return `${size} · ${maker}`
 }
+
+/**
+ * A house's locations for the picker. A failure costs the picker its choices,
+ * not the form: the panel's own location is still offered, so a save keeps it.
+ */
+const housesLocations = (houseId: string) =>
+  api.get(`/projects/${houseId}/locations`).then(asLocations).catch(() => [])
 
 /** The panel being edited, as it was stored when the form opened. */
 interface Built { submain: SubmainResponse; circuits: CircuitResponse[] }
@@ -96,6 +105,8 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [name, setName] = useState('')
+  const [locations, setLocations] = useState<LocationResponse[]>([])
+  const [locationId, setLocationId] = useState('')
   const [enclosureId, setEnclosureId] = useState('')
   const [dimmed, setDimmed] = useState(0)
   const [switched, setSwitched] = useState(0)
@@ -120,16 +131,23 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
   const once = useSingleFlight()
 
   // A callback, not an inline effect, so the error state can offer Try again.
+  // The house's locations come with the panel, not after it: editing, the
+  // house is only known once the panel is, and the picker must not open on a
+  // list that has yet to arrive.
   const load = useCallback(() =>
     Promise.all([
       api.get<EnclosureType[]>('/catalogue/enclosures'),
       api.get<DeviceTypeResponse[]>('/catalogue/device-types'),
-      submainId ? api.get<SubmainResponse>(`/submains/${submainId}`) : null,
+      submainId
+        ? api.get<SubmainResponse>(`/submains/${submainId}`).then(async s =>
+          ({ submain: s, locations: await housesLocations(s.projectId) }))
+        : housesLocations(projectId!).then(l => ({ submain: null, locations: l })),
       submainId ? api.get<CircuitResponse[]>(`/submains/${submainId}/circuits`) : null,
     ])
-      .then(([list, devices, submain, stored]) => {
+      .then(([list, devices, { submain, locations: places }, stored]) => {
         setEnclosures(list)
         setCatalogue(devices)
+        setLocations(places)
         // The biggest box first: a panel that fits is the common case, and a
         // smaller enclosure is a choice someone makes on purpose.
         const largest = [...list].sort((a, b) => b.totalSlots - a.totalSlots)[0]
@@ -137,6 +155,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
           const counts = countsFromCircuits(stored)
           setBuilt({ submain, circuits: stored })
           setName(submain.name)
+          setLocationId(submain.locationId ?? '')
           setEnclosureId(submain.enclosureTypeId ?? largest?.id ?? '')
           setHasIsolator(submain.hasIsolator)
           setTerminalsAtBottom(submain.terminalsAtBottom)
@@ -147,7 +166,7 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
           setTape(counts.tape)
         } else if (largest) setEnclosureId(largest.id)
       })
-      .catch((e: ApiError) => setLoadError(e.message)), [submainId])
+      .catch((e: ApiError) => setLoadError(e.message)), [projectId, submainId])
 
   useEffect(() => { void load() }, [load])
 
@@ -243,12 +262,14 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
         saved = await api.patch<SubmainResponse>(`/submains/${built.submain.id}`, {
           ...currentDetails(built.submain),
           name: name.trim(),
+          locationId: locationId || null,
           ...request,
           rebuild: true,
         })
       } else {
         saved = await api.post<SubmainResponse>(`/projects/${projectId}/submains`, {
           name: name.trim() || 'New automation panel',
+          locationId: locationId || null,
           ...request,
           generate: true,
         })
@@ -258,14 +279,14 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
     } catch (e) {
       const error = e as ApiError
       setFieldErrors(error.fieldErrors)
-      // The name is the only field here that shows its own errors; anything
-      // else the server refused is said at the form's level, or it is said
-      // nowhere. Said once: the note is an alert, so VoiceOver hears it without
+      // The name and the location are the only fields here that show their own
+      // errors; anything else the server refused is said at the form's level,
+      // or it is said nowhere. Said once: the note is an alert, so VoiceOver hears it without
       // a status toast repeating the sentence above it; the status region speaks
       // only when the server gave no field to pin the refusal to.
-      const elsewhere = error.errorsOutside(['name'])
+      const elsewhere = error.errorsOutside(['name', 'locationId'])
       if (elsewhere.length > 0) setGenerateError({ message: elsewhere.join(' '), inputs: request })
-      else if (!error.fieldErrors.name) announce(`${words.failed}: ${error.message}`, 'error')
+      else if (!error.fieldErrors.name && !error.fieldErrors.locationId) announce(`${words.failed}: ${error.message}`, 'error')
       // A 422 carries the diagnostics that explain why: keep the engineer here
       // with the inputs they can change, rather than throwing them to an error page.
       if (error.status === 422) await preview()
@@ -357,6 +378,15 @@ function SubmainForm({ projectId, submainId }: { projectId?: string; submainId?:
             autoCapitalize="words"
             autoComplete="off"
             enterKeyHint="next"
+          />
+
+          <SelectField
+            label="Location"
+            hint="Where in the house this panel is. Add locations on the house page."
+            value={locationId}
+            onChange={setLocationId}
+            errors={fieldErrors.locationId}
+            options={locationOptions(locations, built?.submain.locationId ?? null)}
           />
 
           <div>

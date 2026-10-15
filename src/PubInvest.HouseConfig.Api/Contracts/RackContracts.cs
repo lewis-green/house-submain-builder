@@ -2,7 +2,7 @@ using PubInvest.HouseConfig.Domain.Racks;
 
 namespace PubInvest.HouseConfig.Api.Contracts;
 
-public sealed record SaveRackRequest(string Name, Guid RackTypeId, Guid? FedFromSubmainId, string? Notes = null);
+public sealed record SaveRackRequest(string Name, Guid RackTypeId, Guid? FedFromSubmainId, string? Notes = null, Guid? LocationId = null);
 
 public sealed record RackResponse(
     Guid Id,
@@ -15,7 +15,8 @@ public sealed record RackResponse(
     Guid? FedFromSubmainId,
     string? FedFromSubmainName,
     string? Notes,
-    int LayoutVersion);
+    int LayoutVersion,
+    Guid? LocationId);
 
 public sealed record RackPortResponse(int Number, string? Label, bool Poe);
 
@@ -31,7 +32,11 @@ public sealed record RackItemResponse(
     IReadOnlyList<PortGroup> PortGroups,
     int? PoeBudgetW,
     /// Only the ports that have a label or a tick; the rest are implied by the groups.
-    IReadOnlyList<RackPortResponse> Ports);
+    IReadOnlyList<RackPortResponse> Ports,
+    /// A switch's uplink, or null when none is recorded.
+    RackUplinkResponse? Uplink,
+    /// Other switches' uplinks arriving at this item's ports, from any rack in the house.
+    IReadOnlyList<RackDownlinkResponse> Downlinks);
 
 /// Items top U first, the order a person reads a rack in.
 public sealed record RackLayoutResponse(

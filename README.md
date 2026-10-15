@@ -18,6 +18,12 @@ Then open **http://localhost:8080**. The UI is served by nginx, which proxies
 `/api` through to the API container, so the browser only ever talks to one
 origin.
 
+**Postgres needs ICU.** The `Locations` migration creates a collation
+(`CREATE COLLATION … provider = icu`) so location names are unique whatever
+their case. The official `postgres` images are built with ICU; a managed or
+hand-built server must be too, and the user the API migrates as needs CREATE
+on the `public` schema, which the database's owner has.
+
 ### Running it for development
 
 You need Docker, the .NET 10 SDK and Node 22.
@@ -106,6 +112,21 @@ don't commit it filled.
    hold it first). Tap an item to label its ports — Return moves to the next
    port — and tick PoE where the cable needs it. **Issue PDF revision** gives
    the rack drawing, a schedule of every port and the parts to order.
+10. **Add location** on the house page — a plant room, a garage, a comms
+    cupboard. Place an automation panel in one with **Location** on its screen
+    — which saves at once and rebuilds nothing — or in its form, and a rack
+    when you add it or from its settings. Once a house has
+    locations, its page lists the panels and racks under the place they are
+    in, in the order the locations were added, with anything not yet placed
+    last. **Edit** beside a location renames or removes it; removing one keeps
+    its panels and racks, which simply become unplaced. A placed panel's or
+    rack's screen and its issued PDF say where it is.
+11. Tap a switch and set its **Uplink**: the port it leaves by (its first SFP+
+    port unless you pick another) and where it goes — another switch's port in
+    any rack of the house, picked by place and rack, or something in words such
+    as "UDM Pro". Both ends say so: the uplink port reads "Uplink to Switch 1 ·
+    Core · port 3", and the port it arrives at, on the other switch, "Downlink
+    from Switch 1 · Comms cupboard".
 
 ### The catalogue is not confirmed yet
 
@@ -115,7 +136,7 @@ jumper bar's ways, the line jumper bar that bridges a multi-cable circuit's
 terminals (`ASSUMED-LINE-JUMPER-BAR-10`) and the end stops per bank. Confirm them before ordering from
 a generated parts list. The rack cabinets, the 24-port patch panel and
 the USW-Pro-Max-16-PoE's rack-mount kit carry ASSUMED part numbers, and the
-three switches' port splits and PoE budgets come from retailer listings rather
+three USW-Pro-Max switches' port splits and PoE budgets come from retailer listings rather
 than Ubiquiti's datasheets.
 
 The parts list carries **no prices**. It lists each part by part number,
@@ -134,11 +155,11 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 414 tests (155 Domain, 31 Data, 228 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 319 Vitest tests in jsdom
+dotnet test          # 479 tests (155 Domain, 40 Data, 284 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 364 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
-cd ui && npm run test:e2e   # 42 Playwright tests in WebKit (see below)
+cd ui && npm run test:e2e   # 45 Playwright tests in WebKit (see below)
 ```
 
 CI runs all of these on every push and pull request, builds both container
@@ -150,7 +171,8 @@ images, and pushes them to GHCR from `main`.
 touch drag with the real Safari event sequence, the bottom sheet, the PDF link,
 horizontal overflow at four widths and again with 200% text, the wizard and
 editing a built panel, Home Screen metadata, the rack screen's port labelling,
-drag and PDF, and a few checks with a mouse (42 tests). It brings up its own
+drag and PDF, placing a panel in a location, a switch uplinking into one in
+another rack, and a few checks with a mouse (45 tests). It brings up its own
 stack and takes it down again, so it needs nothing running first and never
 touches a development database:
 
@@ -238,6 +260,26 @@ units with U1 at the bottom; the server places each item in the top free U
 and checks every move, exactly as it decides every panel layout. Ports are
 numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 
+**A switch has one uplink, recorded at its own end.** It goes to another
+switch's port anywhere in the house or to something written in words, never
+both; a port takes at most one switch's uplink, and never the one its own
+switch leaves by, and no uplink may close a loop. The endpoint says so; a
+unique index over the destination holds the one-per-port rule on its own, and
+a house's uplink saves take turns under a Postgres advisory lock, so the
+rules that span two switches cannot be broken by two saves at once. The
+other end is worked out, not stored, so it cannot disagree. Like a port label, an uplink moves nothing and leaves the layout
+version alone. Removing a switch clears the uplinks into it in the same save,
+and its remove button says whose they are first.
+
+**A location is where something is, not what owns it.** A panel or a rack
+points at one of its house's locations, or at none; removing a location sets
+them back to none rather than taking them with it. Names are unique within a
+house whatever their case — the endpoint says so, and a unique index over a
+case-insensitive ICU collation holds it. Like the notes, the location is one of
+the fields `PATCH /submains/{id}` and `PATCH /racks/{id}` replace with whatever
+they are sent, so every caller in the UI sends the current one back
+(`ui/src/api/submainDetails.ts` for panels).
+
 **An issued revision embeds what it used.** `PanelRevision` stores the layout,
 the ruleset payload and the catalogue entries as they were, so editing a rule or
 a part next month cannot retroactively change what a drawing in someone's folder
@@ -246,7 +288,12 @@ said. The same snapshot is how the server knows whether a PDF is still current:
 issuing now would embed, so a renamed circuit or room — which moves no device
 and bumps no layout version — still marks the PDF on offer as out of date. The
 snapshot includes the two install options, so an option saved without a rebuild
-reads as out of date too.
+reads as out of date too, and the location's name, which the PDF prints in its
+header — so placing a panel or a rack dates the PDF issued before it. Revisions
+issued before locations existed read as unplaced and stay current. A rack's
+port schedule prints both ends of every uplink, so a switch in another rack
+uplinking into this one, or that rack being renamed, dates this rack's PDF too;
+revisions issued before uplinks existed read as having none and stay current.
 
 **Sign-in is a separate chunk.** `main.tsx` imports the OIDC provider and gate
 only when the runtime config names an identity provider, so installs that leave

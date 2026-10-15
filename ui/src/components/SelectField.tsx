@@ -3,6 +3,21 @@ import { useId } from 'react'
 interface Option {
   value: string
   label: string
+  /** Shown but not choosable; say why in the label. */
+  disabled?: boolean
+  /** Options next to each other with the same group are listed under it. */
+  group?: string
+}
+
+/** The options in runs, so each run of one group becomes one optgroup. */
+function runs(options: Option[]): { group?: string; options: Option[] }[] {
+  const out: { group?: string; options: Option[] }[] = []
+  for (const option of options) {
+    const last = out.at(-1)
+    if (last && option.group && last.group === option.group) last.options.push(option)
+    else out.push({ group: option.group, options: [option] })
+  }
+  return out
 }
 
 interface Props {
@@ -34,7 +49,10 @@ export function SelectField({ label, value, options, onChange, hint, errors, dis
         aria-describedby={[hint ? hintId : null, invalid ? errorId : null].filter(Boolean).join(' ') || undefined}
         className={`select mt-1 w-full min-w-0 rounded-lg border bg-sheet pl-3 ${invalid ? 'border-danger' : 'border-rule'}`}
       >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {runs(options).flatMap(run => {
+          const items = run.options.map(o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)
+          return run.group ? [<optgroup key={`group-${run.options[0].value}`} label={run.group}>{items}</optgroup>] : items
+        })}
       </select>
       {hint && <p id={hintId} className="mt-1 text-sm text-ink-2">{hint}</p>}
       {invalid && (

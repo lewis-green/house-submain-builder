@@ -12,6 +12,9 @@ public class Rack
     public Guid? FedFromSubmainId { get; set; }
     public string? Notes { get; set; }
 
+    /// Where in the house the rack is, or null when nobody has said.
+    public Guid? LocationId { get; set; }
+
     /// Bumped by every add, move and removal. A concurrency token, so two adds
     /// racing for the same U cannot both land.
     public int LayoutVersion { get; set; }
@@ -38,6 +41,16 @@ public class RackItem
     public int Sequence { get; set; }
     public string Label { get; set; } = "";
     public List<RackPort> Ports { get; set; } = [];
+
+    /// A switch's one uplink: which of its own ports it leaves by, and where
+    /// it goes — another switch's port anywhere in the house, or something
+    /// said in words ("UDM Pro"). Exactly one of the two, or all null when no
+    /// uplink is recorded. Kept on the item rather than as a port: a port row
+    /// is stored only while it has a label or a tick, and an uplink needs neither.
+    public int? UplinkPort { get; set; }
+    public Guid? UplinkToItemId { get; set; }
+    public int? UplinkToPort { get; set; }
+    public string? UplinkToText { get; set; }
 }
 
 /// Stored only once a port has a label or a PoE tick, so a new 48-port switch

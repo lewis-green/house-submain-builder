@@ -25,6 +25,15 @@ export interface ProjectResponse {
   submainCount: number
 }
 
+/** A place in a house — a plant room, a garage — that panels and racks can be in. */
+export interface LocationResponse {
+  id: string
+  name: string
+  notes: string | null
+  /** The order the house lists them in: the order they were added. */
+  sequence: number
+}
+
 export interface SubmainResponse {
   id: string
   projectId: string
@@ -42,6 +51,8 @@ export interface SubmainResponse {
   extraFixtures: ExtraFixture[]
   circuitCount: number
   deviceCount: number
+  /** Null when the panel is not placed in any location. */
+  locationId: string | null
 }
 
 export interface ChannelResponse {
@@ -232,6 +243,8 @@ export interface RackResponse {
   fedFromSubmainName: string | null
   notes: string | null
   layoutVersion: number
+  /** Null when the rack is not placed in any location. */
+  locationId: string | null
 }
 
 export interface RackPortResponse {
@@ -254,7 +267,61 @@ export interface RackItemResponse {
   poeBudgetW: number | null
   /** Only ports with a label or a PoE tick; the rest are implied by the groups. */
   ports: RackPortResponse[]
+  /**
+   * A switch's uplink, null when none is recorded. The server always sends
+   * this and downlinks; they are optional so an item made by hand need not
+   * spell out that it has no links.
+   */
+  uplink?: RackUplinkResponse | null
+  /** Other switches' uplinks arriving at this item's ports, from any rack in the house. */
+  downlinks?: RackDownlinkResponse[]
 }
+
+/** Where a switch's uplink goes: another switch's port anywhere in the house, or something said in words. */
+export interface RackUplinkResponse {
+  port: number
+  toItemId: string | null
+  toPort: number | null
+  toText: string | null
+  toLabel: string | null
+  toRackId: string | null
+  toRackName: string | null
+  toLocationName: string | null
+}
+
+/** Another switch's uplink, seen from the port it arrives at. */
+export interface RackDownlinkResponse {
+  port: number
+  fromItemId: string
+  fromLabel: string
+  fromRackId: string
+  fromRackName: string
+}
+
+/** Exactly one destination: another switch's port, or words. */
+export type SaveUplinkRequest =
+  | { port: number; toItemId: string; toPort: number }
+  | { port: number; toText: string }
+
+/** A switch anywhere in the house, as the uplink picker offers it. */
+export interface HouseSwitch {
+  id: string
+  label: string
+  model: string
+  rackId: string
+  rackName: string
+  locationId: string | null
+  locationName: string | null
+  portGroups: PortGroup[]
+  /** The port its own uplink leaves by, which cannot take another's. */
+  uplinkPort: number | null
+  downlinks: RackDownlinkResponse[]
+  /** The switch its own uplink goes into, so a choice that would close a loop can be kept out. */
+  uplinkToItemId: string | null
+}
+
+/** The longest an uplink said in words may be. Mirrors RackUplinks.MaxText. */
+export const MAX_UPLINK_TEXT = 80
 
 /** What the server decided. The UI draws it and never places anything itself. */
 export interface RackLayoutResponse {

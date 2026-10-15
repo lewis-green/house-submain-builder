@@ -40,7 +40,7 @@ public sealed class RevisionService(HouseConfigDbContext db)
     /// snapshot is compared, byte for byte, with the one issuing this moment
     /// would embed. That covers everything the drawing and schedule print — a
     /// moved device, a renamed circuit or room, a changed fixture or install
-    /// option, a renamed submain — without the client having to know which
+    /// option, a renamed submain or location — without the client having to know which
     /// edits matter. LayoutVersion alone cannot: a rename changes no geometry,
     /// so it never bumped the version, and the PDF went quietly out of date.
     /// A submain that can no longer be issued (no panel, say) is current to
@@ -167,7 +167,10 @@ public sealed class RevisionService(HouseConfigDbContext db)
             DomainMapper.ToDomain(enclosureRow),
             bom,
             submain.HasIsolator,
-            submain.TerminalsAtBottom);
+            submain.TerminalsAtBottom,
+            submain.LocationId is { } locationId
+                ? await db.Locations.Where(l => l.Id == locationId).Select(l => l.Name).SingleOrDefaultAsync(ct)
+                : null);
 
         return (snapshot, submain, null);
     }

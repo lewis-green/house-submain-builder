@@ -62,6 +62,16 @@ describe('RackPage', () => {
     expect(screen.getByRole('link', { name: 'Parts list' })).toHaveAttribute('href', '/racks/r1/bom')
   })
 
+  it('says where in the house the rack is, ahead of its cabinet', async () => {
+    stub({
+      'GET /api/racks/r1': () => json({ ...rack, locationId: 'l1' }),
+      'GET /api/projects/p1/locations': () => json([{ id: 'l1', name: 'Plant room', notes: null, sequence: 0 }]),
+    })
+    show()
+
+    expect(await screen.findByText('Plant room · Generic 12U wall cabinet · fed from Ground floor')).toBeInTheDocument()
+  })
+
   it('opens an item\'s sheet on a tap', async () => {
     stub()
     show()
@@ -180,6 +190,32 @@ describe('RackPage', () => {
     expect(await screen.findByRole('heading', { name: 'Plant room' })).toBeInTheDocument()
     await vi.waitFor(() =>
       expect(fetchMock.mock.calls.filter(([url]) => url === '/api/racks/r1/revisions').length).toBeGreaterThan(revisionsBefore))
+  })
+
+  it('shows a location moved elsewhere once the rack reloads, so a later save keeps it there', async () => {
+    // Someone else moves the rack to the garage; this screen learns of it from
+    // the reload a refused save brings.
+    let locationId = 'l1'
+    stub({
+      'GET /api/racks/r1': () => json({ ...rack, locationId }),
+      'GET /api/projects/p1/locations': () => json([
+        { id: 'l1', name: 'Plant room', notes: null, sequence: 0 },
+        { id: 'l2', name: 'Garage', notes: null, sequence: 1 },
+      ]),
+      'PATCH /api/racks/r1': () => {
+        locationId = 'l2'
+        return json({ message: 'This rack changed since you loaded it.', currentLayoutVersion: 5 }, 409)
+      },
+    })
+    show()
+
+    await screen.findByText(/^Plant room · /)
+    expect(screen.getByLabelText('Location')).toHaveValue('l1')
+    await userEvent.type(screen.getByLabelText('Rack name'), ' 2')
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+
+    await screen.findByText(/^Garage · /)
+    expect(screen.getByLabelText('Location')).toHaveValue('l2')
   })
 
   it('reloads the rack when a settings save finds it changed elsewhere', async () => {

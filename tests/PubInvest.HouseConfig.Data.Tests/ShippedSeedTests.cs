@@ -203,6 +203,21 @@ public class ShippedSeedTests(PostgresFixture fixture)
         Assert.Contains(seed.RackDeviceTypes!, d => d.Kind == "Accessory");
     }
 
+    /// The aggregation switch is the house's 10G spine: eight SFP+ cages, no
+    /// copper, no PoE, and full width, so it needs no kit to go in a rack.
+    [Fact]
+    public void The_shipped_rack_catalogue_has_the_aggregation_switch_with_eight_sfp_plus_ports()
+    {
+        var aggregation = Assert.Single(Load().RackDeviceTypes!, d => d.Model == "USW-Aggregation");
+
+        Assert.Equal("Switch", aggregation.Kind);
+        Assert.Equal(1, aggregation.HeightU);
+        var group = Assert.Single(aggregation.PortGroups);
+        Assert.Equal(("SFP+", 1, 8, false), (group.Name, group.From, group.To, group.PoeTick));
+        Assert.Null(aggregation.PoeBudgetW);
+        Assert.Null(aggregation.RequiredAccessoryId);
+    }
+
     /// Ports run 1..N across groups with no gap and no overlap, or "port 33" on
     /// a schedule would not be the 33rd socket on the front panel.
     [Fact]

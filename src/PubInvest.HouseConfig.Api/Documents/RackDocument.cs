@@ -54,6 +54,11 @@ public sealed class RackDocument(
             {
                 text.Span($"{snapshot.ProjectName} — ").SemiBold().FontSize(13);
                 text.Span(snapshot.RackName).FontSize(13);
+
+                if (snapshot.LocationName is not null)
+                {
+                    text.Span($"  ·  {snapshot.LocationName}").FontSize(13);
+                }
             });
 
             column.Item().Text(text =>
@@ -109,6 +114,7 @@ public sealed class RackDocument(
             {
                 var type = types[item.RackDeviceTypeId];
                 var stored = item.Ports.ToDictionary(p => p.Number);
+                var links = Links(item);
 
                 column.Item().PaddingTop(4, Unit.Millimetre)
                     .Text($"{item.Label} — {type.Description} — U{item.TopU}").SemiBold();
@@ -138,13 +144,39 @@ public sealed class RackDocument(
                             stored.TryGetValue(n, out var port);
                             table.Cell().PaddingVertical(1).Text(n.ToString(CultureInfo.InvariantCulture));
                             table.Cell().PaddingVertical(1).Text(group.Name);
-                            table.Cell().PaddingVertical(1).Text(port?.Label ?? "—");
+                            links.TryGetValue(n, out var link);
+                            table.Cell().PaddingVertical(1).Column(cell =>
+                            {
+                                if (port?.Label is not null || link is null) cell.Item().Text(port?.Label ?? "—");
+                                if (link is not null) cell.Item().Text(link).FontColor(Colors.Grey.Darken2);
+                            });
                             table.Cell().PaddingVertical(1).Text(port?.Poe == true ? "PoE" : "");
                         }
                     }
                 });
             }
         });
+    }
+
+    /// What each linked port of the item says under its label: where its
+    /// uplink goes, or whose uplink arrives there. The other switch's rack is
+    /// named only when it is not this one.
+    private static Dictionary<int, string> Links(RackItemSnapshot item)
+    {
+        var links = (item.Downlinks ?? [])
+            .ToDictionary(d => d.Port, d => d.FromRackName is null
+                ? $"Downlink from {d.FromLabel}"
+                : $"Downlink from {d.FromLabel}  ·  {d.FromRackName}");
+
+        if (item.Uplink is { } up)
+        {
+            links[up.Port] = up.ToText is not null
+                ? $"Uplink to {up.ToText}"
+                : string.Join("  ·  ", new[] { $"Uplink to {up.ToLabel}", up.ToRackName, up.ToLocationName, $"port {up.ToPort}" }
+                    .Where(part => part is not null));
+        }
+
+        return links;
     }
 
     private void Parts(IContainer container) =>

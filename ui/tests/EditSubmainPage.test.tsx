@@ -23,8 +23,13 @@ const submain: SubmainResponse = {
   id: 's1', projectId: 'p1', name: 'Ground floor', reference: 'DB-2', feedCableSize: '10mm²',
   originBreakerAmps: 40, phase: 'L1', enclosureTypeId: 'e0', ruleSetId: 'r1', notes: 'Under the stairs',
   layoutVersion: 3, hasIsolator: false, terminalsAtBottom: true,
-  extraFixtures: [{ deviceTypeId: 'meter', quantity: 1 }], circuitCount: 4, deviceCount: 5,
+  extraFixtures: [{ deviceTypeId: 'meter', quantity: 1 }], circuitCount: 4, deviceCount: 5, locationId: 'l1',
 }
+
+const locations = [
+  { id: 'l1', name: 'Plant room', notes: null, sequence: 0 },
+  { id: 'l2', name: 'Garage', notes: null, sequence: 1 },
+]
 
 const circuits: CircuitResponse[] = [
   { id: 'd1', type: 'DimmedLighting', name: 'Hall lights', room: 'Hall', sequence: 1, wattsPerMetre: null, lengthMetres: null },
@@ -55,6 +60,7 @@ function stubApi(patchResponse: () => Response = () => json(submain), stored: Ci
     if (url === '/api/submains/s1') return json(submain)
     if (url === '/api/submains/s1/circuits') return json(stored)
     if (url === '/api/submains/s1/design/preview') return json(design)
+    if (url === '/api/projects/p1/locations') return json(locations)
     return json({})
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -141,6 +147,7 @@ describe('EditSubmainPage', () => {
       phase: 'L1',
       ruleSetId: 'r1',
       notes: 'Under the stairs',
+      locationId: 'l1',
       enclosureTypeId: 'e0',
       hasIsolator: false,
       terminalsAtBottom: true,
@@ -150,6 +157,53 @@ describe('EditSubmainPage', () => {
     expect(patch.circuits.map((c: { id?: string; name: string }) => [c.id, c.name])).toEqual([
       ['d1', 'Hall lights'], ['d2', 'Lighting 2'], [undefined, 'Lighting 3'], ['w1', 'Landing'], ['t1', 'Kitchen plinth'],
     ])
+  })
+
+  it('opens on the panel\'s location and moves it to another with the save', async () => {
+    const fetchMock = stubApi()
+
+    renderPage()
+    const location = await screen.findByLabelText('Location')
+    expect(location).toHaveValue('l1')
+    expect([...(location as HTMLSelectElement).options].map(o => o.text)).toEqual(['Not placed', 'Plant room', 'Garage'])
+    await userEvent.selectOptions(location, 'l2')
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await userEvent.click(saveButton())
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    expect(bodiesOf(fetchMock, '/api/submains/s1', 'PATCH')[0]).toMatchObject({ locationId: 'l2' })
+  })
+
+  it('still opens when the house\'s locations fail to load, and keeps the panel where it is', async () => {
+    const underlying = stubApi()
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => url === '/api/projects/p1/locations'
+      ? json({ title: 'The server hit a problem.' }, 500)
+      : underlying(url, init))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    const location = await screen.findByLabelText('Location')
+    expect(location).toHaveValue('l1')
+    expect(screen.getByRole('option', { name: 'Its current location' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await userEvent.click(saveButton())
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    const patch = fetchMock.mock.calls.find(c => c[0] === '/api/submains/s1' && c[1]?.method === 'PATCH')
+    expect(JSON.parse(String(patch![1]!.body)).locationId).toBe('l1')
+  })
+
+  it('unplaces the panel when Not placed is chosen', async () => {
+    const fetchMock = stubApi()
+
+    renderPage()
+    await userEvent.selectOptions(await screen.findByLabelText('Location'), '')
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await userEvent.click(saveButton())
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    expect(bodiesOf(fetchMock, '/api/submains/s1', 'PATCH')[0].locationId).toBeNull()
   })
 
   it('names the circuits a save would remove, next to the button', async () => {

@@ -1,10 +1,12 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import type { RackItemResponse, RackLayoutResponse } from '../api/types'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { SelectField } from '../components/SelectField'
 import { Sheet } from '../components/Sheet'
 import { frontPanel, poeCapable, poeTicked, portRows } from './ports'
 import { freeTopUs } from './rackTargets'
+import { UplinkSection, type UplinkProps } from './UplinkSection'
+import { portLinks, removalWarning } from './uplinks'
 
 interface Props {
   item: RackItemResponse
@@ -14,6 +16,8 @@ interface Props {
   onMove: (topU: number) => void
   onRemove: () => void
   onClose: () => void
+  /** Where a switch's uplink is changed. Without it the sheet still shows each port's links, read-only. */
+  uplinks?: UplinkProps
 }
 
 /**
@@ -22,12 +26,14 @@ interface Props {
  * in one run with the keyboard up. The front panel above is the picture of
  * where each port is, and a way to jump to one.
  */
-export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose }: Props) {
+export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose, uplinks }: Props) {
   const inputs = useRef(new Map<number, HTMLInputElement>())
   const rows = portRows(item)
   const capable = poeCapable(item)
   const labelled = item.ports.filter(p => p.label).length
   const positions = freeTopUs(layout, item)
+  const links = portLinks(item)
+  const warning = removalWarning(item, layout.rackId)
 
   const register = useCallback((number: number, element: HTMLInputElement | null) => {
     if (element) inputs.current.set(number, element)
@@ -69,6 +75,7 @@ export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose 
                 poeOffered={group.poeTick}
                 initialLabel={row.label}
                 initialPoe={row.poe}
+                link={links.get(row.number)}
                 register={register}
                 onSave={(label, poe) => onSavePort(row.number, label, poe)}
                 onNext={() => focusAfter(row.number)}
@@ -77,6 +84,12 @@ export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose 
           </ul>
         </section>
       ))}
+
+      {item.kind === 'Switch' && uplinks && (
+        <div className="mt-6 border-t border-rule pt-4">
+          <UplinkSection key={JSON.stringify(item.uplink ?? null)} item={item} rackId={layout.rackId} {...uplinks} />
+        </div>
+      )}
 
       <div className="mt-6 space-y-4 border-t border-rule pt-4">
         <SelectField
@@ -91,7 +104,7 @@ export function ItemSheet({ item, layout, onSavePort, onMove, onRemove, onClose 
         />
         <ConfirmButton
           label="Remove from rack"
-          question={`Remove ${item.label}${labelled > 0 ? ` and its ${labelled} port ${labelled === 1 ? 'label' : 'labels'}` : ''}?`}
+          question={`Remove ${item.label}${labelled > 0 ? ` and its ${labelled} port ${labelled === 1 ? 'label' : 'labels'}` : ''}?${warning ? ` ${warning}` : ''}`}
           confirmLabel="Yes, remove it"
           onConfirm={onRemove}
         />
@@ -115,8 +128,10 @@ function FrontPanel({ item, onPick }: { item: RackItemResponse; onPick: (number:
       <span
         key={number}
         data-port={number}
+        data-uplink={item.uplink?.port === number || undefined}
         className={`relative flex h-6 min-w-6 items-center justify-center rounded-sm border text-[10px] font-semibold ${
-          port?.label ? 'border-ink bg-ink text-paper' : 'border-ink-2 bg-sheet text-ink-2'}`}
+          port?.label ? 'border-ink bg-ink text-paper' : 'border-ink-2 bg-sheet text-ink-2'}${
+          item.uplink?.port === number ? ' ring-2 ring-accent ring-offset-1 ring-offset-rail' : ''}`}
       >
         {number}
         {port?.poe && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-accent" />}
@@ -143,16 +158,19 @@ function FrontPanel({ item, onPick }: { item: RackItemResponse; onPick: (number:
   )
 }
 
-function PortRow({ number, poeOffered, initialLabel, initialPoe, register, onSave, onNext }: {
+function PortRow({ number, poeOffered, initialLabel, initialPoe, link, register, onSave, onNext }: {
   number: number
   poeOffered: boolean
   initialLabel: string
   initialPoe: boolean
+  /** Where the port's uplink goes, or whose arrives at it. Read here; changed in the uplink section. */
+  link?: string
   register: (number: number, element: HTMLInputElement | null) => void
   onSave: (label: string | null, poe: boolean) => Promise<void>
   onNext: () => void
 }) {
   const [label, setLabel] = useState(initialLabel)
+  const linkId = useId()
   const [poe, setPoe] = useState(initialPoe)
 
   // What the server has, recorded only once a save succeeds: a refused save
@@ -185,12 +203,13 @@ function PortRow({ number, poeOffered, initialLabel, initialPoe, register, onSav
   }
 
   return (
-    <li className="flex items-center gap-3 py-1">
+    <li className="flex flex-wrap items-center gap-x-3 py-1">
       <label className="flex min-w-0 flex-1 items-center gap-3">
         <span className="w-8 shrink-0 text-right font-semibold tabular-nums">{number}</span>
         <input
           ref={element => register(number, element)}
           aria-label={`Port ${number} label`}
+          aria-describedby={link ? linkId : undefined}
           value={label}
           maxLength={60}
           enterKeyHint="next"
@@ -230,6 +249,7 @@ function PortRow({ number, poeOffered, initialLabel, initialPoe, register, onSav
           <span aria-hidden="true">PoE</span>
         </label>
       )}
+      {link && <p id={linkId} className="basis-full pl-11 text-sm text-ink-2 wrap-anywhere">{link}</p>}
     </li>
   )
 }

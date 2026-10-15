@@ -314,6 +314,27 @@ describe('NewSubmainPage', () => {
     expect(screen.queryByText(/checking the design/i)).not.toBeInTheDocument()
   })
 
+  it('starts not placed, and places the new panel in the location chosen', async () => {
+    const underlying = stubApi()
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => url === '/api/projects/p1/locations'
+      ? json([{ id: 'l1', name: 'Plant room', notes: null, sequence: 0 }])
+      : underlying(url, init))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPage()
+    const location = await screen.findByLabelText('Location')
+    expect(location).toHaveValue('')
+    expect(screen.getByText(/add locations on the house page/i)).toBeInTheDocument()
+    await userEvent.selectOptions(location, 'l1')
+    await userEvent.click(screen.getByRole('button', { name: /more dimmed lighting/i }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /generate panel/i })).toBeEnabled())
+    await userEvent.click(screen.getByRole('button', { name: /generate panel/i }))
+
+    await screen.findByRole('heading', { name: /panel screen/i })
+    const create = fetchMock.mock.calls.find(c => c[0] === '/api/projects/p1/submains' && c[1]?.method === 'POST')
+    expect(JSON.parse(String(create![1]!.body))).toMatchObject({ locationId: 'l1', generate: true })
+  })
+
   it('starts on the largest enclosure and leads each option with its size', async () => {
     stubApi()
 

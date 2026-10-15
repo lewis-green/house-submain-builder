@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Locations;
 using PubInvest.HouseConfig.Api.Racks;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
@@ -43,11 +44,19 @@ public static class RackEndpoints
                     RackTypeId = request.RackTypeId,
                     FedFromSubmainId = request.FedFromSubmainId,
                     Notes = request.Notes,
+                    LocationId = request.LocationId,
                     CreatedAt = DateTimeOffset.UtcNow,
                 };
 
                 db.Racks.Add(rack);
-                await db.SaveChangesAsync(ct);
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException e) when (LocationRules.IsMissingLocation(e))
+                {
+                    return LocationRules.Misplaced();
+                }
 
                 return Results.Created($"/racks/{rack.Id}", await RackViews.ResponseAsync(db, rack, ct));
             })
@@ -95,6 +104,7 @@ public static class RackEndpoints
                 rack.RackTypeId = request.RackTypeId;
                 rack.FedFromSubmainId = request.FedFromSubmainId;
                 rack.Notes = request.Notes;
+                rack.LocationId = request.LocationId;
 
                 try
                 {
@@ -109,6 +119,11 @@ public static class RackEndpoints
                     return Results.Json(
                         new ConflictResponse("This rack changed since you loaded it. Reload and try again.", current),
                         statusCode: StatusCodes.Status409Conflict);
+                }
+                catch (DbUpdateException e) when (LocationRules.IsMissingLocation(e))
+                {
+                    // The location was removed after the check above passed it.
+                    return LocationRules.Misplaced();
                 }
 
                 return Results.Ok(await RackViews.ResponseAsync(db, rack, ct));

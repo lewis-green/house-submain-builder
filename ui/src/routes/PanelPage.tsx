@@ -3,13 +3,15 @@ import { Link, useParams } from 'react-router'
 import { ApiError, api } from '../api/client'
 import { currentDetails } from '../api/submainDetails'
 import type {
-  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, SubmainResponse, TerminalCircuit, TerminalsResponse,
+  DesignResponse, DeviceTypeResponse, ExtraFixture, FedRack, LocationResponse, SubmainResponse, TerminalCircuit,
+  TerminalsResponse,
 } from '../api/types'
 import { AppShell } from '../components/AppShell'
 import { Button, ButtonLink } from '../components/Button'
 import { Diagnostics } from '../components/Diagnostics'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorNote } from '../components/ErrorNote'
+import { SelectField } from '../components/SelectField'
 import { Skeleton } from '../components/Skeleton'
 import { Toggle } from '../components/Toggle'
 import { announce } from '../components/status'
@@ -23,6 +25,7 @@ import { DEVICE_INSET, ROW_PX, SLOT_PX, panelSize, rowToY } from '../panel/geome
 import { useDeviceDrag } from '../panel/useDeviceDrag'
 import { useScrollExtent } from '../panel/useScrollExtent'
 import { SLOT_UNITS_PER_MODULE } from '../units'
+import { asLocations, locationName, locationOptions } from '../locations/options'
 import { FixturePicker } from '../wizard/FixturePicker'
 
 const ZOOM_STEP = 1.25
@@ -49,7 +52,9 @@ export function PanelPage() {
   const [terminals, setTerminals] = useState<TerminalCircuit[] | null>(null)
   const [zoom, setZoom] = useState(1)
   const [rooms, setRooms] = useState<string[]>([])
+  const [locations, setLocations] = useState<LocationResponse[]>([])
   const [reworking, setReworking] = useState(false)
+  const [moving, setMoving] = useState(false)
   // null until the catalogue has arrived: the picker has nothing honest to offer before then.
   const [catalogue, setCatalogue] = useState<DeviceTypeResponse[] | null>(null)
   const [catalogueError, setCatalogueError] = useState<string | null>(null)
@@ -79,6 +84,8 @@ export function PanelPage() {
         // Rooms already used in this house, offered before anyone types one.
         // A failure here costs a suggestion list, not the panel.
         api.get<string[]>(`/projects/${s.projectId}/rooms`).then(setRooms).catch(() => setRooms([]))
+        // Only to name the panel's location in the subtitle; a failure costs the name.
+        api.get(`/projects/${s.projectId}/locations`).then(l => setLocations(asLocations(l))).catch(() => setLocations([]))
       })
       .catch((e: ApiError) => setLoadError(e.message)), [submainId])
 
@@ -191,6 +198,33 @@ export function PanelPage() {
     }
   })
 
+  /**
+   * Where the panel is says nothing about how it is laid out, so a move is
+   * saved on its own, with no rebuild: no device moves and no channel is
+   * reassigned. Shown at once and put back if the server refuses. It shares
+   * the rebuild's guard, because each PATCH sends every detail back and two in
+   * flight would undo each other.
+   */
+  const moveTo = (locationId: string | null) => once(async () => {
+    if (!submain) return
+    const before = submain
+    setMoving(true)
+    setSubmain({ ...submain, locationId })
+    try {
+      await api.patch<SubmainResponse>(`/submains/${submain.id}`, { ...currentDetails(before), locationId })
+      const name = locationName(locations, locationId)
+      announce(name ? `Moved to ${name}` : 'No longer placed', 'ok')
+      // Reloaded, so the PDF button asks again: the location is printed on it.
+      await load()
+    } catch (e) {
+      const error = e as ApiError
+      setSubmain(before)
+      announce(`Not moved: ${error.fieldErrors.locationId?.[0] ?? error.message}`, 'error')
+    } finally {
+      setMoving(false)
+    }
+  })
+
   async function freeChannel(deviceId: string, channelIndex: number) {
     if (!design) return
     try {
@@ -283,7 +317,10 @@ export function PanelPage() {
   return (
     <AppShell
       title={submain?.name ?? 'Panel'}
-      subtitle={design && !empty ? `${design.layout.rows} rows of ${modules} modules` : undefined}
+      subtitle={[
+        submain && locationName(locations, submain.locationId),
+        design && !empty ? `${design.layout.rows} rows of ${modules} modules` : null,
+      ].filter(Boolean).join(' · ') || undefined}
       back={{ to: submain ? `/projects/${submain.projectId}` : '/', label: 'House' }}
       // The parts list is a place to go, not something done to the panel, so it
       // sits with the title like Catalogue on the houses screen — and the bar
@@ -421,6 +458,19 @@ export function PanelPage() {
               <Diagnostics diagnostics={design.diagnostics} />
             </div>
           )}
+
+          {/* Out in the open rather than with the install options: changing it
+              rebuilds nothing, and every one of those does. */}
+          <div className="mt-6">
+            <SelectField
+              label="Location"
+              hint="Where in the house this panel is. Moving it changes nothing on the panel. Add locations on the house page."
+              value={submain?.locationId ?? ''}
+              disabled={moving || reworking || !submain}
+              onChange={value => void moveTo(value || null)}
+              options={locationOptions(locations, submain?.locationId ?? null)}
+            />
+          </div>
 
           <details className="group mt-6 rounded-lg border border-rule bg-sheet">
             <summary className="flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-4 font-semibold active:bg-press">

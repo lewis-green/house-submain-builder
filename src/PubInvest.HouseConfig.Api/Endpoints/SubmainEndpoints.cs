@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PubInvest.HouseConfig.Api.Contracts;
+using PubInvest.HouseConfig.Api.Locations;
 using PubInvest.HouseConfig.Api.Services;
 using PubInvest.HouseConfig.Data;
 using PubInvest.HouseConfig.Data.Entities;
@@ -31,6 +32,10 @@ public static class SubmainEndpoints
                 if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
+                if (await LocationRules.ProblemAsync(db, projectId, request.LocationId, ct) is { } misplaced)
+                {
+                    problems["locationId"] = [misplaced];
+                }
                 if (problems.Count > 0) return Results.ValidationProblem(problems);
 
                 var submain = new Submain
@@ -45,6 +50,7 @@ public static class SubmainEndpoints
                     EnclosureTypeId = request.EnclosureTypeId,
                     RuleSetId = request.RuleSetId,
                     Notes = request.Notes,
+                    LocationId = request.LocationId,
                     HasIsolator = request.HasIsolator ?? true,
                     TerminalsAtBottom = request.TerminalsAtBottom ?? false,
                     LayoutVersion = 0,
@@ -65,7 +71,7 @@ public static class SubmainEndpoints
                 // the insert too, so the house never gains a submain with no panel.
                 await using var transaction = await db.Database.BeginTransactionAsync(ct);
                 db.Submains.Add(submain);
-                await db.SaveChangesAsync(ct);
+                if (await SaveAsync(db, ct) is { } gone) return gone;
 
                 if (request.Generate == true)
                 {
@@ -116,6 +122,10 @@ public static class SubmainEndpoints
                 if (submain is null) return Results.NotFound();
 
                 var problems = Validate(request.Name, request.Circuits);
+                if (await LocationRules.ProblemAsync(db, submain.ProjectId, request.LocationId, ct) is { } misplaced)
+                {
+                    problems["locationId"] = [misplaced];
+                }
                 if (problems.Count > 0) return Results.ValidationProblem(problems);
 
                 // As on create: the edit and the rebuild stand or fall together.
@@ -129,6 +139,7 @@ public static class SubmainEndpoints
                 submain.EnclosureTypeId = request.EnclosureTypeId;
                 submain.RuleSetId = request.RuleSetId;
                 submain.Notes = request.Notes;
+                submain.LocationId = request.LocationId;
                 submain.HasIsolator = request.HasIsolator ?? submain.HasIsolator;
                 submain.TerminalsAtBottom = request.TerminalsAtBottom ?? submain.TerminalsAtBottom;
 
@@ -142,7 +153,7 @@ public static class SubmainEndpoints
                     ApplyExtraFixtures(db, submain, request.ExtraFixtures);
                 }
 
-                await db.SaveChangesAsync(ct);
+                if (await SaveAsync(db, ct) is { } gone) return gone;
 
                 if (request.Rebuild == true)
                 {
@@ -156,6 +167,22 @@ public static class SubmainEndpoints
             .WithTags("Submains");
 
         return app;
+    }
+
+    /// Saves, or answers as the location check would when the location was
+    /// removed between that check and this save. The caller's transaction is
+    /// still open, so returning the answer rolls the edit back.
+    private static async Task<IResult?> SaveAsync(HouseConfigDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return null;
+        }
+        catch (DbUpdateException e) when (LocationRules.IsMissingLocation(e))
+        {
+            return LocationRules.Misplaced();
+        }
     }
 
     /// The same answers POST /design/generate gives when it stores nothing — a
@@ -278,5 +305,6 @@ public static class SubmainEndpoints
         s.EnclosureTypeId, s.RuleSetId, s.Notes, s.HasIsolator, s.TerminalsAtBottom, s.LayoutVersion,
         s.Circuits.Count, s.Devices.Count,
         s.ExtraFixtures.OrderBy(f => f.Sequence)
-            .Select(f => new ExtraFixtureResponse(f.DeviceTypeId, f.Quantity)).ToList());
+            .Select(f => new ExtraFixtureResponse(f.DeviceTypeId, f.Quantity)).ToList(),
+        s.LocationId);
 }

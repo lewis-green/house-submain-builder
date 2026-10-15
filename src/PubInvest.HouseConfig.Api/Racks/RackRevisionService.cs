@@ -113,6 +113,10 @@ public sealed class RackRevisionService(HouseConfigDbContext db)
             .OrderBy(t => t.PartNumber, StringComparer.Ordinal)
             .ToList();
 
+        // Both ends of each link are printed, so a switch in another rack
+        // uplinking into this one, or that rack's rename, dates this PDF too.
+        var links = await RackUplinks.LinksAsync(db, rack.Items, ct);
+
         var snapshot = new RackSnapshot(
             project.Name,
             rack.Name,
@@ -125,10 +129,15 @@ public sealed class RackRevisionService(HouseConfigDbContext db)
                     i.Label,
                     i.TopU,
                     catalogue[i.RackDeviceTypeId].HeightU,
-                    i.Ports.OrderBy(p => p.Number).Select(p => new RackPortSnapshot(p.Number, p.Label, p.Poe)).ToList()))
+                    i.Ports.OrderBy(p => p.Number).Select(p => new RackPortSnapshot(p.Number, p.Label, p.Poe)).ToList(),
+                    RackUplinks.Printed(links.UplinkOf(i), rack.Id),
+                    RackUplinks.Printed(links.DownlinksInto(i.Id), rack.Id)))
                 .ToList(),
             used,
-            RackBom.Build(cabinet, placed, catalogue));
+            RackBom.Build(cabinet, placed, catalogue),
+            rack.LocationId is { } locationId
+                ? await db.Locations.Where(l => l.Id == locationId).Select(l => l.Name).SingleOrDefaultAsync(ct)
+                : null);
 
         return (snapshot, rack, null);
     }

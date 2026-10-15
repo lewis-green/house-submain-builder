@@ -473,12 +473,28 @@ namespace PubInvest.HouseConfig.Data.Migrations
                     b.Property<int>("TopU")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("UplinkPort")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UplinkToItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("UplinkToPort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UplinkToText")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RackDeviceTypeId");
 
                     b.HasIndex("RackId", "TopU")
                         .IsUnique();
+
+                    b.HasIndex("UplinkToItemId", "UplinkToPort")
+                        .IsUnique()
+                        .HasFilter("\"UplinkToItemId\" IS NOT NULL");
 
                     b.ToTable("RackItems");
                 });
@@ -739,6 +755,11 @@ namespace PubInvest.HouseConfig.Data.Migrations
                         .HasForeignKey("RackId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("PubInvest.HouseConfig.Data.Entities.RackItem", null)
+                        .WithMany()
+                        .HasForeignKey("UplinkToItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PubInvest.HouseConfig.Data.Entities.RackPort", b =>

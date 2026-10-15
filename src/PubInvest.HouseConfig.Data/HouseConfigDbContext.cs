@@ -105,6 +105,16 @@ public class HouseConfigDbContext(DbContextOptions<HouseConfigDbContext> options
 
         b.Entity<RackPort>().HasKey(p => new { p.RackItemId, p.Number });
 
+        // Removing a switch clears the uplinks into it in the same save; the
+        // set-null is what still holds if anything removes one without that.
+        // It cannot cascade: an uplink into a switch is not part of it.
+        b.Entity<RackItem>().HasOne<RackItem>().WithMany()
+            .HasForeignKey(i => i.UplinkToItemId).OnDelete(DeleteBehavior.SetNull);
+
+        // One cable per port: a port takes at most one switch's uplink.
+        b.Entity<RackItem>().HasIndex(i => new { i.UplinkToItemId, i.UplinkToPort }).IsUnique()
+            .HasFilter("\"UplinkToItemId\" IS NOT NULL");
+
         b.Entity<Rack>().HasMany<RackRevision>().WithOne()
             .HasForeignKey(r => r.RackId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<RackRevision>().HasIndex(r => r.RackId);

@@ -267,7 +267,59 @@ export interface RackItemResponse {
   poeBudgetW: number | null
   /** Only ports with a label or a PoE tick; the rest are implied by the groups. */
   ports: RackPortResponse[]
+  /**
+   * A switch's uplink, null when none is recorded. The server always sends
+   * this and downlinks; they are optional so an item made by hand need not
+   * spell out that it has no links.
+   */
+  uplink?: RackUplinkResponse | null
+  /** Other switches' uplinks arriving at this item's ports, from any rack in the house. */
+  downlinks?: RackDownlinkResponse[]
 }
+
+/** Where a switch's uplink goes: another switch's port anywhere in the house, or something said in words. */
+export interface RackUplinkResponse {
+  port: number
+  toItemId: string | null
+  toPort: number | null
+  toText: string | null
+  toLabel: string | null
+  toRackId: string | null
+  toRackName: string | null
+  toLocationName: string | null
+}
+
+/** Another switch's uplink, seen from the port it arrives at. */
+export interface RackDownlinkResponse {
+  port: number
+  fromItemId: string
+  fromLabel: string
+  fromRackId: string
+  fromRackName: string
+}
+
+/** Exactly one destination: another switch's port, or words. */
+export type SaveUplinkRequest =
+  | { port: number; toItemId: string; toPort: number }
+  | { port: number; toText: string }
+
+/** A switch anywhere in the house, as the uplink picker offers it. */
+export interface HouseSwitch {
+  id: string
+  label: string
+  model: string
+  rackId: string
+  rackName: string
+  locationId: string | null
+  locationName: string | null
+  portGroups: PortGroup[]
+  /** The port its own uplink leaves by, which cannot take another's. */
+  uplinkPort: number | null
+  downlinks: RackDownlinkResponse[]
+}
+
+/** The longest an uplink said in words may be. Mirrors RackUplinks.MaxText. */
+export const MAX_UPLINK_TEXT = 80
 
 /** What the server decided. The UI draws it and never places anything itself. */
 export interface RackLayoutResponse {

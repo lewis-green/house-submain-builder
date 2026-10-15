@@ -155,8 +155,8 @@ units.
 ## Tests
 
 ```bash
-dotnet test          # 474 tests (155 Domain, 40 Data, 279 Api). Needs Docker: the Data and Api suites use Testcontainers.
-cd ui && npm test    # 358 Vitest tests in jsdom
+dotnet test          # 479 tests (155 Domain, 40 Data, 284 Api). Needs Docker: the Data and Api suites use Testcontainers.
+cd ui && npm test    # 364 Vitest tests in jsdom
 cd ui && npm run build   # the real typecheck: `tsc -b`, covering src, tests and e2e
 cd ui && npm run lint    # oxlint, 0 warnings
 cd ui && npm run test:e2e   # 45 Playwright tests in WebKit (see below)

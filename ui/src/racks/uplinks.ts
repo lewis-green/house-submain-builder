@@ -50,3 +50,20 @@ export function removalWarning(item: RackItemResponse, rackId: string): string |
     ? `${names} uplinks into this switch; its uplink will be cleared.`
     : `${names} uplink into this switch; their uplinks will be cleared.`
 }
+
+/**
+ * Whether an uplink from this switch into the one chosen would close a loop:
+ * the chosen switch's own uplinks, followed on, lead back here. This switch's
+ * current uplink is the one being replaced, so it is not followed. The walk
+ * stops after as many steps as there are links, so a ring it is not part of
+ * cannot keep it going. The server checks the same.
+ */
+export function wouldLoop(links: { id: string; uplinkToItemId: string | null }[], itemId: string, toItemId: string): boolean {
+  const next = new Map(links.filter(l => l.id !== itemId).map(l => [l.id, l.uplinkToItemId]))
+  let current: string | null | undefined = toItemId
+  for (let step = 0; step <= next.size && current; step++) {
+    current = next.get(current)
+    if (current === itemId) return true
+  }
+  return false
+}

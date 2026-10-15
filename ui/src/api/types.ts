@@ -316,6 +316,8 @@ export interface HouseSwitch {
   /** The port its own uplink leaves by, which cannot take another's. */
   uplinkPort: number | null
   downlinks: RackDownlinkResponse[]
+  /** The switch its own uplink goes into, so a choice that would close a loop can be kept out. */
+  uplinkToItemId: string | null
 }
 
 /** The longest an uplink said in words may be. Mirrors RackUplinks.MaxText. */

@@ -17,18 +17,18 @@ const switch1: RackItemResponse = {
   id: 'i1', rackDeviceTypeId: 'sw48', kind: 'Switch', model: 'Ubiquiti USW-Pro-Max-48-PoE', partNumber: 'USW', label: 'Switch 1',
   topU: 12, heightU: 1, portGroups: groups, poeBudgetW: 720, ports: [], uplink: null, downlinks: [],
 }
-const layout = (item: RackItemResponse = switch1): RackLayoutResponse =>
-  ({ rackId: 'r1', heightU: 12, freeU: 11, layoutVersion: 3, items: [item] })
+const layout = (item: RackItemResponse = switch1, layoutVersion = 3): RackLayoutResponse =>
+  ({ rackId: 'r1', heightU: 12, freeU: 11, layoutVersion, items: [item] })
 const switches: HouseSwitch[] = [
-  { id: 'i1', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-48-PoE', rackId: 'r1', rackName: 'Comms', locationId: null, locationName: null, portGroups: groups, uplinkPort: null, downlinks: [] },
-  { id: 'agg', label: 'Switch 1', model: 'Ubiquiti USW-Aggregation', rackId: 'r2', rackName: 'Core', locationId: null, locationName: null, portGroups: [{ name: 'SFP+', from: 1, to: 8, poeTick: false }], uplinkPort: null, downlinks: [] },
+  { id: 'i1', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-48-PoE', rackId: 'r1', rackName: 'Comms', locationId: null, locationName: null, portGroups: groups, uplinkPort: null, downlinks: [], uplinkToItemId: null },
+  { id: 'agg', label: 'Switch 1', model: 'Ubiquiti USW-Aggregation', rackId: 'r2', rackName: 'Core', locationId: null, locationName: null, portGroups: [{ name: 'SFP+', from: 1, to: 8, poeTick: false }], uplinkPort: null, downlinks: [], uplinkToItemId: null },
 ]
 const linked: RackItemResponse = {
   ...switch1,
   uplink: { port: 5, toItemId: 'agg', toPort: 3, toText: null, toLabel: 'Switch 1', toRackId: 'r2', toRackName: 'Core', toLocationName: null },
 }
 
-function stub(handlers: Partial<Record<string, (init?: RequestInit) => Response>>, current: () => RackLayoutResponse = () => layout()) {
+function stub(handlers: Partial<Record<string, (init?: RequestInit) => Response | Promise<Response>>>, current: () => RackLayoutResponse = () => layout()) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const key = `${init?.method ?? 'GET'} ${url.split('?')[0]}`
     if (handlers[key]) return handlers[key]!(init)
@@ -108,5 +108,41 @@ describe('RackPage uplinks', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(/no longer in this rack/)
     await vi.waitFor(() => expect(calls(fetchMock, '/api/racks/r1/layout')).toBeGreaterThan(layoutsBefore))
+  })
+  /** A refetch that set off before a newer layout arrived must not undo it. */
+  it('keeps the newer layout when the one fetched on opening a switch comes back older', async () => {
+    let release!: (response: Response) => void
+    let layoutCalls = 0
+    stub({
+      'GET /api/racks/r1/layout': () => {
+        layoutCalls += 1
+        // The first load is the rack as it is now; the refetch on opening the
+        // switch is held back and comes back as it was a version before.
+        return layoutCalls === 1 ? json(layout(linked, 4)) : new Promise<Response>(done => { release = done })
+      },
+    })
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: /^Switch 1/ }))
+    await vi.waitFor(() => expect(layoutCalls).toBe(2))
+    release(json(layout(switch1, 3)))
+
+    await new Promise(done => setTimeout(done, 50))
+    expect(screen.getByLabelText('Port 5 label')).toHaveAccessibleDescription('Uplink to Switch 1 · Core · port 3')
+  })
+
+  it('tries the house\'s switches again from the sheet when they did not load', async () => {
+    let failing = true
+    stub({ 'GET /api/projects/p1/switches': () => (failing ? json({}, 500) : json(switches)) })
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: /^Switch 1/ }))
+    await userEvent.selectOptions(screen.getByLabelText('Goes to'), 'switch')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/did not load/)
+    failing = false
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('option', { name: 'Switch 1 · Ubiquiti USW-Aggregation' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

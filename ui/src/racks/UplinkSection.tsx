@@ -2,15 +2,18 @@ import { useState } from 'react'
 import { ApiError } from '../api/client'
 import { MAX_UPLINK_TEXT, type HouseSwitch, type RackItemResponse, type SaveUplinkRequest } from '../api/types'
 import { Button } from '../components/Button'
+import { ErrorNote } from '../components/ErrorNote'
 import { Field } from '../components/Field'
 import { SelectField } from '../components/SelectField'
-import { allPorts, defaultUplinkPort, fromName, uplinkText } from './uplinks'
+import { allPorts, defaultUplinkPort, fromName, uplinkText, wouldLoop } from './uplinks'
 
 export interface UplinkProps {
   /** Every switch in the house, this one included, or null until they have loaded. */
   switches: HouseSwitch[] | null
   /** Why the switches did not load, if they did not. */
   switchesError?: string | null
+  /** Fetches the switches again after they failed to load. */
+  onRetrySwitches?: () => void
   /** Rejects with the server's refusal, which the form shows by the field it is about. */
   onSave: (request: SaveUplinkRequest) => Promise<void>
   onRemove: () => Promise<void>
@@ -27,7 +30,7 @@ const FIELDS = ['port', 'toItemId', 'toPort', 'toText']
  * server checks every choice again; the form only keeps the obvious wrong
  * ones out of reach, and says why beside each port it will not offer.
  */
-export function UplinkSection({ item, rackId, switches, switchesError, onSave, onRemove }: UplinkProps & {
+export function UplinkSection({ item, rackId, switches, switchesError, onRetrySwitches, onSave, onRemove }: UplinkProps & {
   item: RackItemResponse
   /** The rack the sheet is in, so a switch from another is named with its rack. */
   rackId: string
@@ -54,9 +57,17 @@ export function UplinkSection({ item, rackId, switches, switchesError, onSave, o
 
   const others = (switches ?? []).filter(s => s.id !== item.id)
   const target = others.find(s => s.id === toItemId)
-  const switchOptions: { value: string; label: string; group?: string }[] = [
+  const switchOptions: { value: string; label: string; disabled?: boolean; group?: string }[] = [
     { value: '', label: 'Choose a switch' },
-    ...others.map(s => ({ value: s.id, label: `${s.label} · ${s.model}`, group: `${s.locationName ?? 'Not placed'} · ${s.rackName}` })),
+    ...others.map(s => {
+      const loop = wouldLoop(switches ?? [], item.id, s.id)
+      return {
+        value: s.id,
+        label: `${s.label} · ${s.model}${loop ? ' — would make a loop' : ''}`,
+        disabled: loop,
+        group: `${s.locationName ?? 'Not placed'} · ${s.rackName}`,
+      }
+    }),
   ]
   // The switch it goes to stays on offer when the list has not loaded or has
   // lost it, so the picker never shows "Choose a switch" over a recorded link.
@@ -74,7 +85,7 @@ export function UplinkSection({ item, rackId, switches, switchesError, onSave, o
   const complete = mode === 'switch' ? Boolean(port && toItemId && toPort) : mode === 'text' ? toText.trim() !== '' : false
 
   const switchHint = switchesError
-    ? `The house's switches did not load: ${switchesError}`
+    ? undefined
     : switches === null ? 'Loading the house\'s switches…'
       : others.length === 0 ? 'There is no other switch in this house yet. Add one to a rack, or say where it goes in words.'
         : undefined
@@ -134,6 +145,9 @@ export function UplinkSection({ item, rackId, switches, switchesError, onSave, o
             hint={switchHint}
             errors={errors.toItemId}
           />
+          {switchesError && (
+            <ErrorNote compact message={`The house's switches did not load: ${switchesError}`} onRetry={onRetrySwitches} />
+          )}
           <SelectField
             label="Its port"
             value={toPort}
@@ -161,10 +175,14 @@ export function UplinkSection({ item, rackId, switches, switchesError, onSave, o
           {outside.map(message => <li key={message} className="text-sm font-medium text-danger">{message}</li>)}
         </ul>
       )}
+      {mode === 'none' && uplink && <p className="text-sm text-ink-2">Remove uplink clears it, at both ends.</p>}
       {(mode !== 'none' || uplink) && (
         <div className="flex flex-wrap gap-2">
           {mode !== 'none' && <Button onClick={() => void save()} disabled={busy || !complete}>{busy ? 'Saving…' : 'Save uplink'}</Button>}
-          {uplink && <Button variant="secondary" onClick={() => void remove()} disabled={busy}>Remove uplink</Button>}
+          {/* With "Not recorded" chosen, removing is what saving that choice means, so it is the primary action. */}
+          {uplink && (
+            <Button variant={mode === 'none' ? 'primary' : 'secondary'} onClick={() => void remove()} disabled={busy}>Remove uplink</Button>
+          )}
         </div>
       )}
     </section>

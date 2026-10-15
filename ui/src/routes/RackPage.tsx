@@ -76,21 +76,32 @@ export function RackPage() {
   useEffect(() => { void loadCatalogue() }, [loadCatalogue])
 
   const projectId = rack?.projectId
-  const loadSwitches = useCallback(() => {
+  /** `live` says whether the answer is still wanted when it arrives. */
+  const loadSwitches = useCallback((live: () => boolean = () => true) => {
     if (!projectId) return
     api.get<HouseSwitch[]>(`/projects/${projectId}/switches`)
-      .then(list => { setSwitches(list); setSwitchesError(null) })
-      .catch((e: ApiError) => setSwitchesError(e.message))
+      .then(list => { if (live()) { setSwitches(list); setSwitchesError(null) } })
+      .catch((e: ApiError) => { if (live()) setSwitchesError(e.message) })
   }, [projectId])
 
   // An uplink reaches into the house's other racks, which may have changed
   // since this one loaded — the switch it went to removed, a port taken. So
   // opening a switch fetches the house's switches and this rack's links again.
+  // Either answer is dropped once the sheet has closed, and a layout older than
+  // the one on screen — a move or an add landed while it was on its way — is
+  // never put back over it. One of the same version is taken: an uplink saved
+  // elsewhere changes the links without bumping the version.
   const openSwitchId = layout?.items.find(i => i.id === selectedId)?.kind === 'Switch' ? selectedId : null
   useEffect(() => {
     if (!openSwitchId) return
-    loadSwitches()
-    api.get<RackLayoutResponse>(`/racks/${rackId}/layout`).then(setLayout).catch(() => {})
+    let live = true
+    loadSwitches(() => live)
+    api.get<RackLayoutResponse>(`/racks/${rackId}/layout`)
+      .then(fresh => {
+        if (live) setLayout(current => (current && fresh.layoutVersion < current.layoutVersion ? current : fresh))
+      })
+      .catch(() => {})
+    return () => { live = false }
   }, [openSwitchId, loadSwitches, rackId])
 
   /** The drawing is scaled to the screen's width; this undoes that scale. */
@@ -320,6 +331,7 @@ export function RackPage() {
           uplinks={{
             switches,
             switchesError,
+            onRetrySwitches: () => { setSwitchesError(null); loadSwitches() },
             onSave: request => saveUplink(selected.id, request),
             onRemove: () => saveUplink(selected.id, null),
           }}

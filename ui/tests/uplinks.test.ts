@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { RackItemResponse } from '../src/api/types'
-import { defaultUplinkPort, downlinkText, portLinks, removalWarning, uplinkText } from '../src/racks/uplinks'
+import { defaultUplinkPort, downlinkText, portLinks, removalWarning, uplinkText, wouldLoop } from '../src/racks/uplinks'
 
 const sw: RackItemResponse = {
   id: 'i1', rackDeviceTypeId: 't48', kind: 'Switch', model: 'Ubiquiti USW-Pro-Max-48-PoE', partNumber: 'USW', label: 'Switch 1',
@@ -52,5 +52,13 @@ describe('uplinks', () => {
       .toBe('Switch 3 and Switch 4 uplink into this switch; their uplinks will be cleared.')
     expect(removalWarning({ ...sw, downlinks: [down(2, 'Switch 3'), down(5, 'Switch 1', 'r2', 'Garage'), down(6, 'Switch 4')] }, 'r1'))
       .toBe('Switch 3, Switch 1 in Garage and Switch 4 uplink into this switch; their uplinks will be cleared.')
+  })
+  it('finds a loop by following uplinks from the switch chosen, and stops on a ring it is not part of', () => {
+    const links = [{ id: 'b', uplinkToItemId: 'c' }, { id: 'c', uplinkToItemId: 'a' }, { id: 'x', uplinkToItemId: 'y' }, { id: 'y', uplinkToItemId: 'x' }]
+
+    expect(wouldLoop(links, 'a', 'b')).toBe(true)
+    expect(wouldLoop(links, 'a', 'c')).toBe(true)
+    expect(wouldLoop(links, 'a', 'x')).toBe(false)
+    expect(wouldLoop([{ id: 'b', uplinkToItemId: null }], 'a', 'b')).toBe(false)
   })
 })

@@ -14,18 +14,19 @@ const sw: RackItemResponse = {
 const layout: RackLayoutResponse = { rackId: 'r1', heightU: 12, freeU: 11, layoutVersion: 3, items: [sw] }
 
 const house: HouseSwitch[] = [
-  { id: 'i1', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-48-PoE', rackId: 'r1', rackName: 'Comms', locationId: 'l1', locationName: 'Plant room', portGroups: groups, uplinkPort: null, downlinks: [] },
-  { id: 'i7', label: 'Switch 2', model: 'Ubiquiti USW-Pro-Max-16-PoE', rackId: 'r1', rackName: 'Comms', locationId: 'l1', locationName: 'Plant room', portGroups: groups, uplinkPort: null, downlinks: [] },
+  { id: 'i1', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-48-PoE', rackId: 'r1', rackName: 'Comms', locationId: 'l1', locationName: 'Plant room', portGroups: groups, uplinkPort: null, downlinks: [], uplinkToItemId: null },
+  { id: 'i7', label: 'Switch 2', model: 'Ubiquiti USW-Pro-Max-16-PoE', rackId: 'r1', rackName: 'Comms', locationId: 'l1', locationName: 'Plant room', portGroups: groups, uplinkPort: null, downlinks: [], uplinkToItemId: null },
   {
     id: 'i9', label: 'Switch 1', model: 'Ubiquiti USW-Aggregation', rackId: 'r2', rackName: 'Core', locationId: 'l1', locationName: 'Plant room', portGroups: sfp8, uplinkPort: 8,
-    downlinks: [{ port: 1, fromItemId: 'i7', fromLabel: 'Switch 2', fromRackId: 'r1', fromRackName: 'Comms' }],
+    downlinks: [{ port: 1, fromItemId: 'i7', fromLabel: 'Switch 2', fromRackId: 'r1', fromRackName: 'Comms' }], uplinkToItemId: null,
   },
-  { id: 'i8', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-24-PoE', rackId: 'r3', rackName: 'Garage', locationId: null, locationName: null, portGroups: groups, uplinkPort: null, downlinks: [] },
+  { id: 'i8', label: 'Switch 1', model: 'Ubiquiti USW-Pro-Max-24-PoE', rackId: 'r3', rackName: 'Garage', locationId: null, locationName: null, portGroups: groups, uplinkPort: null, downlinks: [], uplinkToItemId: null },
 ]
 
-function show(item: RackItemResponse = sw, switches: HouseSwitch[] | null = house) {
+function show(item: RackItemResponse = sw, switches: HouseSwitch[] | null = house, switchesError: string | null = null) {
   const onSave = vi.fn(async () => {})
   const onRemoveUplink = vi.fn(async () => {})
+  const onRetrySwitches = vi.fn()
   const onRemove = vi.fn()
   render(
     <ItemSheet
@@ -35,10 +36,10 @@ function show(item: RackItemResponse = sw, switches: HouseSwitch[] | null = hous
       onMove={vi.fn()}
       onRemove={onRemove}
       onClose={() => {}}
-      uplinks={{ switches, onSave, onRemove: onRemoveUplink }}
+      uplinks={{ switches, switchesError, onRetrySwitches, onSave, onRemove: onRemoveUplink }}
     />,
   )
-  return { onSave, onRemoveUplink, onRemove }
+  return { onSave, onRemoveUplink, onRemove, onRetrySwitches }
 }
 
 const options = (label: string) => within(screen.getByLabelText(label)).getAllByRole('option') as HTMLOptionElement[]
@@ -160,5 +161,43 @@ describe('ItemSheet uplinks', () => {
     show({ ...sw, kind: 'PatchPanel', label: 'Patch panel 1' })
 
     expect(screen.queryByLabelText('Uplink port')).not.toBeInTheDocument()
+  })
+  it('keeps out a switch whose own uplinks lead back here, saying it would make a loop', async () => {
+    // Switch 1 in Garage uplinks into Switch 2, which uplinks into this switch.
+    show(sw, house.map(s =>
+      s.id === 'i7' ? { ...s, uplinkToItemId: 'i1' } : s.id === 'i8' ? { ...s, uplinkToItemId: 'i7' } : s))
+
+    await userEvent.selectOptions(screen.getByLabelText('Goes to'), 'switch')
+    const picker = options('Switch')
+    expect(picker.find(o => o.value === 'i7')).toMatchObject({ disabled: true, textContent: 'Switch 2 · Ubiquiti USW-Pro-Max-16-PoE — would make a loop' })
+    expect(picker.find(o => o.value === 'i8')).toMatchObject({ disabled: true })
+    expect(picker.find(o => o.value === 'i9')).toMatchObject({ disabled: false })
+  })
+
+  it('removes the uplink when "Not recorded" is chosen, with Remove as the one action', async () => {
+    const { onRemoveUplink, onSave } = show({
+      ...sw, uplink: { port: 6, toItemId: null, toPort: null, toText: 'ISP fibre', toLabel: null, toRackId: null, toRackName: null, toLocationName: null },
+    })
+
+    await userEvent.selectOptions(screen.getByLabelText('Goes to'), 'none')
+    expect(screen.queryByRole('button', { name: 'Save uplink' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Remove uplink' })).toHaveLength(1)
+    // The primary action, as Save is in the other modes: the choice does what it says.
+    expect(screen.getByRole('button', { name: 'Remove uplink' })).toHaveClass('bg-accent')
+    expect(screen.getByText(/Remove uplink clears it/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove uplink' }))
+
+    expect(onRemoveUplink).toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('says when the house\'s switches did not load, and tries again on request', async () => {
+    const { onRetrySwitches } = show(sw, null, 'The server hit a problem (500). Try again.')
+
+    await userEvent.selectOptions(screen.getByLabelText('Goes to'), 'switch')
+    expect(screen.getByRole('alert')).toHaveTextContent('The server hit a problem (500).')
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(onRetrySwitches).toHaveBeenCalled()
   })
 })

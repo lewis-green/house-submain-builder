@@ -23,13 +23,20 @@ public static class RackUplinkEndpoints
                 HouseConfigDbContext db,
                 CancellationToken ct) =>
             {
-                // Two switches saved into the same port at once can both pass the
-                // check, and the index refuses the second; or the switch chosen
-                // is removed between the check and the save. The loser is checked
+                // Saves in one house take turns under its uplink lock, so each is
+                // checked against what the one before left. A save can still lose
+                // to something that does not take the lock — a port taken by a
+                // write from elsewhere, refused by the index, or the switch chosen
+                // removed between the check and the save. The loser is checked
                 // again against what the winner left, and told what a save made
                 // a moment later would have been told.
                 for (var attempt = 1; ; attempt++)
                 {
+                    if (await RackUplinks.HouseOfAsync(db, id, ct) is not { } projectId) return Results.NotFound();
+
+                    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+                    await RackUplinks.LockHouseAsync(db, projectId, ct);
+
                     var item = await db.RackItems.SingleOrDefaultAsync(i => i.Id == id, ct);
                     if (item is null) return Results.NotFound();
 
@@ -46,15 +53,18 @@ public static class RackUplinkEndpoints
                     try
                     {
                         await db.SaveChangesAsync(ct);
+                        await transaction.CommitAsync(ct);
                         return Results.Ok(await RackViews.LayoutAsync(db, item.RackId, ct));
                     }
                     // Also a removal of the item itself, which the next attempt finds.
                     catch (DbUpdateException) when (attempt < MaxUplinkSaveAttempts)
                     {
+                        await transaction.RollbackAsync(ct);
                         db.ChangeTracker.Clear();
                     }
                     catch (DbUpdateException)
                     {
+                        await transaction.RollbackAsync(ct);
                         db.ChangeTracker.Clear();
                         return Results.Json(
                             new ConflictResponse(
@@ -71,6 +81,11 @@ public static class RackUplinkEndpoints
         // screen loaded.
         app.MapDelete("/rack-items/{id:guid}/uplink", async (Guid id, HouseConfigDbContext db, CancellationToken ct) =>
             {
+                if (await RackUplinks.HouseOfAsync(db, id, ct) is not { } projectId) return Results.NotFound();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
+                await RackUplinks.LockHouseAsync(db, projectId, ct);
+
                 var item = await db.RackItems.SingleOrDefaultAsync(i => i.Id == id, ct);
                 if (item is null) return Results.NotFound();
 
@@ -79,6 +94,7 @@ public static class RackUplinkEndpoints
                 try
                 {
                     await db.SaveChangesAsync(ct);
+                    await transaction.CommitAsync(ct);
                 }
                 catch (DbUpdateConcurrencyException)
                 {

@@ -155,6 +155,9 @@ public static class RackItemEndpoints
                 // Its ports go with it, by the cascade on RackPorts. Uplinks into
                 // it, from this rack or another, are cleared in the same save: a
                 // link to a switch that is gone would say where no cable goes.
+                // Under the house's uplink lock, so no uplink save lands in between.
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
+                await RackUplinks.LockHouseAsync(db, rack.ProjectId, ct);
                 await RackUplinks.ClearIntoAsync(db, id, ct);
                 db.RackItems.Remove(item);
                 rack.LayoutVersion++;
@@ -162,9 +165,11 @@ public static class RackItemEndpoints
                 try
                 {
                     await db.SaveChangesAsync(ct);
+                    await transaction.CommitAsync(ct);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
+                    await transaction.RollbackAsync(ct);
                     db.ChangeTracker.Clear();
                     return Conflict(await db.Racks.Where(r => r.Id == rack.Id).Select(r => r.LayoutVersion).SingleAsync(ct));
                 }

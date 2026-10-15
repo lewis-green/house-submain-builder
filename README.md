@@ -263,8 +263,10 @@ numbered as UniFi numbers them, so a 48-port switch's uplinks are ports 49–52.
 **A switch has one uplink, recorded at its own end.** It goes to another
 switch's port anywhere in the house or to something written in words, never
 both; a port takes at most one switch's uplink, and never the one its own
-switch leaves by — the endpoint says so, and a unique index over the
-destination holds it. The other end is worked out, not stored, so it cannot
+switch leaves by, and no uplink may close a loop. The endpoint says so; a
+unique index over the destination holds the one-per-port rule on its own, and
+a house's uplink saves take turns under a Postgres advisory lock, so the
+rules that span two switches cannot be broken by two saves at once. The other end is worked out, not stored, so it cannot
 disagree. Like a port label, an uplink moves nothing and leaves the layout
 version alone. Removing a switch clears the uplinks into it in the same save,
 and its remove button says whose they are first.

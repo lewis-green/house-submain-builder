@@ -240,6 +240,21 @@ public static class RackUplinks
             ? null
             : downlinks.Select(d => new RackDownlinkSnapshot(d.Port, d.FromLabel, d.FromRackId == rackId ? null : d.FromRackName)).ToList();
 
+    /// Holds the house's uplink lock until the caller's transaction ends.
+    /// Saves of one house's uplinks take turns under it, so the rules that
+    /// span two switches — a port that takes another's uplink cannot be one's
+    /// own, and no loops — are checked against what the save before has left.
+    /// The unique index still holds one uplink per port on its own.
+    public static Task LockHouseAsync(HouseConfigDbContext db, Guid projectId, CancellationToken ct) =>
+        db.Database.ExecuteSqlAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended('house-uplinks:' || {projectId.ToString()}, 0))", ct);
+
+    /// The house the item is in, or null when there is no such item.
+    public static Task<Guid?> HouseOfAsync(HouseConfigDbContext db, Guid itemId, CancellationToken ct) =>
+        db.RackItems.Where(i => i.Id == itemId)
+            .Join(db.Racks, i => i.RackId, r => r.Id, (_, r) => (Guid?)r.ProjectId)
+            .SingleOrDefaultAsync(ct);
+
     public static void Clear(RackItem item)
     {
         item.UplinkPort = null;

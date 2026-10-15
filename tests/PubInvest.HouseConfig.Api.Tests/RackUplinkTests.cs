@@ -389,6 +389,32 @@ public class RackUplinkTests(HouseConfigApiFactory factory)
         Assert.Single((await Item(house.Client, house.CommsId, house.CommsSwitch)).Downlinks);
     }
 
+    /// Rules that span two switches — a port that takes another's uplink
+    /// cannot be one's own, and no loops — have no index to hold them, so the
+    /// saves of one house take turns. Two saves that each pass alone but break
+    /// a rule together are sent at once, over several houses: never may both
+    /// land. A race that happens not to interleave passes too, so this can
+    /// only catch the lock missing, not prove it present.
+    [Fact]
+    public async Task Saves_that_together_would_break_a_rule_never_both_land()
+    {
+        for (var round = 0; round < 8; round++)
+        {
+            var house = await NewHouse();
+
+            var loop = await Task.WhenAll(
+                Uplink(house.Client, house.GarageSwitch, new { port = 17, toItemId = house.CommsSwitch, toPort = 49 }),
+                Uplink(house.Client, house.CommsSwitch, new { port = 52, toItemId = house.GarageSwitch, toPort = 1 }));
+            Assert.Single(loop, r => r.StatusCode == HttpStatusCode.OK);
+
+            var other = await NewHouse();
+            var ownPort = await Task.WhenAll(
+                Uplink(other.Client, other.GarageSwitch, new { port = 17, toItemId = other.CommsSwitch, toPort = 49 }),
+                Uplink(other.Client, other.CommsSwitch, new { port = 49, toText = "UDM Pro" }));
+            Assert.Single(ownPort, r => r.StatusCode == HttpStatusCode.OK);
+        }
+    }
+
     [Fact]
     public async Task The_house_lists_every_switch_with_its_rack_place_ports_and_links()
     {
